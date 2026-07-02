@@ -63,12 +63,8 @@ class ClientRiskScore:
             "overdue_count": self.overdue_count,
             "overdue_amount": round(self.overdue_amount, 2),
             "max_days_overdue": self.max_days_overdue,
-            "days_avg_to_pay": (
-                round(self.days_avg_to_pay, 1) if self.days_avg_to_pay is not None else None
-            ),
-            "ratio_paid_on_time": (
-                round(self.ratio_paid_on_time, 3) if self.ratio_paid_on_time is not None else None
-            ),
+            "days_avg_to_pay": (round(self.days_avg_to_pay, 1) if self.days_avg_to_pay is not None else None),
+            "ratio_paid_on_time": (round(self.ratio_paid_on_time, 3) if self.ratio_paid_on_time is not None else None),
             "risk_level": self.risk_level,
             "risk_score": self.risk_score,
             "drivers": self.drivers,
@@ -83,9 +79,7 @@ def _days_between(a: datetime | date | None, b: datetime | date | None) -> int |
     return (da - db).days
 
 
-def compute_client_risk(
-    client: Client, invoices: list[Invoice], *, today: date | None = None
-) -> ClientRiskScore:
+def compute_client_risk(client: Client, invoices: list[Invoice], *, today: date | None = None) -> ClientRiskScore:
     """Computa el scoring para un cliente concreto sobre sus facturas emitidas."""
     today = today or local_today()
     total = len(invoices)
@@ -205,10 +199,7 @@ async def rank_tenant_collections(
         by_client.setdefault(str(inv.client_id), []).append(inv)
         clients_by_id[str(inv.client_id)] = inv.client
 
-    scores = [
-        compute_client_risk(clients_by_id[cid], invs, today=today)
-        for cid, invs in by_client.items()
-    ]
+    scores = [compute_client_risk(clients_by_id[cid], invs, today=today) for cid, invs in by_client.items()]
 
     if only_with_outstanding:
         scores = [s for s in scores if s.unpaid_count > 0]

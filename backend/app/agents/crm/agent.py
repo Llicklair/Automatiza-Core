@@ -18,9 +18,7 @@ from .tools import tools
 
 async def crm_agent_node(state: AgentState):
     if "messages" not in state or not state["messages"]:
-        sys_msg = make_cached_system_message(
-            CRM_SYSTEM_PROMPT.format(tenant_id=state.get("tenant_id"))
-        )
+        sys_msg = make_cached_system_message(CRM_SYSTEM_PROMPT.format(tenant_id=state.get("tenant_id")))
         user_msg = HumanMessage(content=state["user_intent"])
         extra_init_messages = [sys_msg, user_msg]
         state["messages"] = extra_init_messages
@@ -34,9 +32,7 @@ async def crm_agent_node(state: AgentState):
         step_id=f"crm_step_{datetime.now(UTC).timestamp()}",
         description="Analizando intención comercial y operando sobre ventas...",
         status="completed",
-        action_taken="Invocando herramientas CRM"
-        if response.tool_calls
-        else "Asistencia CRM completada.",
+        action_taken="Invocando herramientas CRM" if response.tool_calls else "Asistencia CRM completada.",
     )
 
     if "agent_results" not in state:
@@ -51,9 +47,7 @@ def crm_finalize_node(state: AgentState):
         step_id="crm_final",
         description="Agente CRM ha finalizado sus operaciones.",
         status="completed",
-        action_taken=last_msg.content
-        if isinstance(last_msg.content, str)
-        else "Operaciones en BD completadas.",
+        action_taken=last_msg.content if isinstance(last_msg.content, str) else "Operaciones en BD completadas.",
     )
     return {"status": "done", "agent_results": [final_result.model_dump()]}
 

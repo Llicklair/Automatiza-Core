@@ -29,9 +29,7 @@ class PostAlreadyPublishedError(Exception):
     """El post ya estaba publicado (la ruta lo mapea a HTTP 409)."""
 
 
-async def publish_single_post(
-    post_id: UUID, tenant_id, db: AsyncSession
-) -> tuple[ScheduledPost, bool] | None:
+async def publish_single_post(post_id: UUID, tenant_id, db: AsyncSession) -> tuple[ScheduledPost, bool] | None:
     """Publica un post no publicado del tenant. Devuelve `(post, ok)` con el post
     actualizado, o `None` si no existe. Lanza `PostAlreadyPublishedError` si ya estaba
     publicado. El publisher no lanza: deja el resultado en `post.status`/`error_message`.

@@ -68,9 +68,7 @@ async def get_integration(
 
 
 async def list_integrations(tenant_id, db: AsyncSession) -> list[dict]:
-    result = await db.execute(
-        select(TenantIntegration).where(TenantIntegration.tenant_id == tenant_id)
-    )
+    result = await db.execute(select(TenantIntegration).where(TenantIntegration.tenant_id == tenant_id))
     return [
         {
             "integration_type": i.integration_type,
@@ -390,9 +388,7 @@ async def get_recent_files(
 
     try:
         files = (
-            await client.list_files(top=5)
-            if integration_type == "onedrive"
-            else await client.list_files(page_size=5)
+            await client.list_files(top=5) if integration_type == "onedrive" else await client.list_files(page_size=5)
         )
         logger.info("%s/recent returned %d files", integration_type, len(files))
         return files

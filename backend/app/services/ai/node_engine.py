@@ -242,6 +242,7 @@ class NodeEngine:
         """
         try:
             from app.api.ws.notifications import manager as ws_manager
+
             await ws_manager.broadcast_to_tenant(self.tenant_id, payload)
             # Mirror a activity_new para llenar el feed en vivo. Solo eventos
             # terminales — los "started" saturarían el feed.
@@ -279,18 +280,8 @@ class NodeEngine:
         # Extraer info legible del nodo para el frontend
         node_data = node.get("data", {}) or {}
         node_label = node_data.get("label") or node_data.get("description") or node_type
-        node_agent = (
-            node_data.get("domain")
-            or node_data.get("agent")
-            or node_data.get("skill")
-            or node_type
-        )
-        node_instruction = (
-            node_data.get("instruction")
-            or node_data.get("description")
-            or node_data.get("label")
-            or ""
-        )
+        node_agent = node_data.get("domain") or node_data.get("agent") or node_data.get("skill") or node_type
+        node_instruction = node_data.get("instruction") or node_data.get("description") or node_data.get("label") or ""
 
         self.node_states[node_id] = {
             "status": RUNNING,
@@ -300,17 +291,19 @@ class NodeEngine:
         }
 
         # Emit "started"
-        await self._emit_node_event({
-            "type": "workflow_node_started",
-            "execution_id": self.execution_id,
-            "workflow_id": self.workflow_id,
-            "node_id": node_id,
-            "node_type": node_type,
-            "label": str(node_label)[:100],
-            "agent": str(node_agent)[:50],
-            "instruction": str(node_instruction)[:200],
-            "started_at": now,
-        })
+        await self._emit_node_event(
+            {
+                "type": "workflow_node_started",
+                "execution_id": self.execution_id,
+                "workflow_id": self.workflow_id,
+                "node_id": node_id,
+                "node_type": node_type,
+                "label": str(node_label)[:100],
+                "agent": str(node_agent)[:50],
+                "instruction": str(node_instruction)[:200],
+                "started_at": now,
+            }
+        )
 
         try:
             if node_type == "skill" or node_type not in (
@@ -332,39 +325,40 @@ class NodeEngine:
                         ensure_pending_approval,
                         response_indicates_approval,
                     )
+
                     output_text = ""
                     if isinstance(output, dict):
-                        output_text = (
-                            output.get("response")
-                            or output.get("summary")
-                            or output.get("result")
-                            or ""
-                        )
+                        output_text = output.get("response") or output.get("summary") or output.get("result") or ""
                     elif isinstance(output, str):
                         output_text = output
                     if output_text and response_indicates_approval(output_text):
                         await ensure_pending_approval(
                             tenant_id=self.tenant_id,
                             execution_id=self.execution_id,
-                            agent_results=[{
-                                "agent": str(node_agent),
-                                "output": {"response": output_text},
-                                "summary": output_text[:200],
-                            }],
+                            agent_results=[
+                                {
+                                    "agent": str(node_agent),
+                                    "output": {"response": output_text},
+                                    "summary": output_text[:200],
+                                }
+                            ],
                         )
                 except Exception:
                     _logger.warning(
                         "Error creando PendingApproval para workflow execution %s",
-                        self.execution_id, exc_info=True,
+                        self.execution_id,
+                        exc_info=True,
                     )
 
-                await self._emit_node_event({
-                    "type": "workflow_node_completed",
-                    "execution_id": self.execution_id,
-                    "node_id": node_id,
-                    "completed_at": completed_at,
-                    "result_summary": str(output)[:200] if output else "",
-                })
+                await self._emit_node_event(
+                    {
+                        "type": "workflow_node_completed",
+                        "execution_id": self.execution_id,
+                        "node_id": node_id,
+                        "completed_at": completed_at,
+                        "result_summary": str(output)[:200] if output else "",
+                    }
+                )
                 return {}
 
             elif node_type == "conditional":
@@ -374,13 +368,15 @@ class NodeEngine:
                 self.node_states[node_id]["output"] = {"branch": branch}
                 self.node_states[node_id]["completed_at"] = completed_at
                 skip_discarded_branch(self.edges, self.node_states, node_id, branch)
-                await self._emit_node_event({
-                    "type": "workflow_node_completed",
-                    "execution_id": self.execution_id,
-                    "node_id": node_id,
-                    "completed_at": completed_at,
-                    "result_summary": f"Rama tomada: {branch}",
-                })
+                await self._emit_node_event(
+                    {
+                        "type": "workflow_node_completed",
+                        "execution_id": self.execution_id,
+                        "node_id": node_id,
+                        "completed_at": completed_at,
+                        "result_summary": f"Rama tomada: {branch}",
+                    }
+                )
                 return {}
 
             elif node_type == "delay":
@@ -393,13 +389,15 @@ class NodeEngine:
                 completed_at = datetime.now(UTC).isoformat()
                 self.node_states[node_id]["status"] = COMPLETED
                 self.node_states[node_id]["completed_at"] = completed_at
-                await self._emit_node_event({
-                    "type": "workflow_node_completed",
-                    "execution_id": self.execution_id,
-                    "node_id": node_id,
-                    "completed_at": completed_at,
-                    "result_summary": "Trigger procesado",
-                })
+                await self._emit_node_event(
+                    {
+                        "type": "workflow_node_completed",
+                        "execution_id": self.execution_id,
+                        "node_id": node_id,
+                        "completed_at": completed_at,
+                        "result_summary": "Trigger procesado",
+                    }
+                )
                 return {}
 
         except Exception as e:
@@ -407,13 +405,15 @@ class NodeEngine:
             self.node_states[node_id]["status"] = FAILED
             self.node_states[node_id]["output"] = {"error": str(e)}
             self.node_states[node_id]["completed_at"] = completed_at
-            await self._emit_node_event({
-                "type": "workflow_node_failed",
-                "execution_id": self.execution_id,
-                "node_id": node_id,
-                "completed_at": completed_at,
-                "error": str(e)[:200],
-            })
+            await self._emit_node_event(
+                {
+                    "type": "workflow_node_failed",
+                    "execution_id": self.execution_id,
+                    "node_id": node_id,
+                    "completed_at": completed_at,
+                    "error": str(e)[:200],
+                }
+            )
 
             try:
                 await log_action(
@@ -428,9 +428,7 @@ class NodeEngine:
                 )
                 await db.flush()
             except Exception:
-                _logger.warning(
-                    "Failed to audit node_execution_failed for node %s", node_id, exc_info=True
-                )
+                _logger.warning("Failed to audit node_execution_failed for node %s", node_id, exc_info=True)
 
             return {}
 

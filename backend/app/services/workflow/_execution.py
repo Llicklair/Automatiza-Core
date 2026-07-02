@@ -159,9 +159,7 @@ async def run_workflow(
     if workflow.ui_nodes and has_advanced_nodes(workflow.ui_nodes, workflow.ui_edges):
         try:
             await dispatch_node_engine(str(execution.id))
-            execution.result_log = (
-                f"Motor de nodos lanzado para ejecucion [{str(execution.id)[:8]}...]."
-            )
+            execution.result_log = f"Motor de nodos lanzado para ejecucion [{str(execution.id)[:8]}...]."
         except Exception as e:
             execution.result_log = f"Error al lanzar el motor de nodos: {e}"
             execution.status = "failed"
@@ -170,11 +168,11 @@ async def run_workflow(
         await _dispatch_deterministic(db, workflow, execution, tenant_id, user_id, "[Determinista]")
 
     else:
-        task = await _dispatch_reasoning(
-            db, workflow, execution, tenant_id, user_id, _build_ai_instruction(workflow)
-        )
+        task = await _dispatch_reasoning(db, workflow, execution, tenant_id, user_id, _build_ai_instruction(workflow))
         if execution.status != "failed":
-            execution.result_log = f"Tarea IA lanzada [{str(task.id)[:8]}...]. El agente esta procesando la instruccion."
+            execution.result_log = (
+                f"Tarea IA lanzada [{str(task.id)[:8]}...]. El agente esta procesando la instruccion."
+            )
 
     await db.commit()
     await db.refresh(execution)
@@ -209,11 +207,7 @@ async def run_workflow_with_context(
         )
 
     base_instruction = _build_ai_instruction(workflow)
-    intent = (
-        f"{base_instruction}\n\nContexto adicional: {context_msg}"
-        if context_msg
-        else base_instruction
-    )
+    intent = f"{base_instruction}\n\nContexto adicional: {context_msg}" if context_msg else base_instruction
 
     execution = models.WorkflowExecution(
         workflow_id=workflow.id,
@@ -280,9 +274,7 @@ async def resume_execution(
         raise ValueError("No se puede determinar el nodo desde el que reanudar")
 
     # Fase 3 (RLS): propagamos tenant_id al worker.
-    await dispatch_resume_node_engine(
-        str(execution_id), execution.current_node_id, tenant_id=str(tenant_id)
-    )
+    await dispatch_resume_node_engine(str(execution_id), execution.current_node_id, tenant_id=str(tenant_id))
     execution.result_log = f"Reanudacion programada desde nodo {execution.current_node_id}."
 
     await db.commit()
@@ -293,9 +285,7 @@ async def resume_execution(
 # ── Deterministic step execution ─────────────────────────────────────────────
 
 
-def _run_deterministic_step(
-    step: dict, idx: int, prev_output: str, tenant_id: str
-) -> tuple[dict, str]:
+def _run_deterministic_step(step: dict, idx: int, prev_output: str, tenant_id: str) -> tuple[dict, str]:
     """Ejecuta un paso tool-directo. Devuelve (resultado, nuevo prev_output)."""
     agent_name = step.get("agent", "")
     tool_name = step.get("tool", "")
@@ -311,8 +301,7 @@ def _run_deterministic_step(
             prev_output,
         )
     tool_params = {
-        k: v.replace("$prev", prev_output) if isinstance(v, str) else v
-        for k, v in step.get("params", {}).items()
+        k: v.replace("$prev", prev_output) if isinstance(v, str) else v for k, v in step.get("params", {}).items()
     }
     tool_params.setdefault("tenant_id", tenant_id)
     try:
@@ -343,9 +332,7 @@ def _run_deterministic_step(
         )
 
 
-async def _run_reasoning_step(
-    step: dict, idx: int, prev_output: str, base_state: dict
-) -> tuple[dict, str]:
+async def _run_reasoning_step(step: dict, idx: int, prev_output: str, base_state: dict) -> tuple[dict, str]:
     """Ejecuta un paso LLM-reasoning. Devuelve (resultado, nuevo prev_output)."""
     agent_name = step.get("agent", "")
     intent = step.get("params", {}).get("intent", "").replace("$prev", prev_output)
@@ -366,9 +353,7 @@ async def _run_reasoning_step(
         # Misma fuente que el orquestador, así los workflows reconocen agentes custom.
         result = await invoke_dispatcher(base_state, subtask, agent_name)
         output_data = result.get("output", {})
-        new_prev = (
-            output_data.get("response", "") if isinstance(output_data, dict) else str(output_data)
-        )
+        new_prev = output_data.get("response", "") if isinstance(output_data, dict) else str(output_data)
         return (
             {
                 "agent": agent_name,

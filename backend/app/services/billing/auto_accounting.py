@@ -141,9 +141,7 @@ async def create_payroll_journal_entry(db, tenant_id, payroll) -> JournalEntry |
     # trabajador. Se lee de cuotas_empresa_json ({cc, at_ep, desempleo, fogasa,
     # fp, mei}); la 476 acreedora recoge worker + empresa (total a pagar a la TGSS).
     cuotas = payroll.cuotas_empresa_json or {}
-    ss_empresa = (
-        sum(float(v or 0) for v in cuotas.values()) if isinstance(cuotas, dict) else 0.0
-    )
+    ss_empresa = sum(float(v or 0) for v in cuotas.values()) if isinstance(cuotas, dict) else 0.0
     irpf = float(payroll.irpf or 0)
     net = float(payroll.net_salary or 0)
 

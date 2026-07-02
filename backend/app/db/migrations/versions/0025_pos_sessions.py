@@ -44,12 +44,8 @@ def upgrade() -> None:
         )
         """
     )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_pos_sessions_tenant_id ON pos_sessions(tenant_id)"
-    )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_pos_sessions_user_id ON pos_sessions(user_id)"
-    )
+    op.execute("CREATE INDEX IF NOT EXISTS ix_pos_sessions_tenant_id ON pos_sessions(tenant_id)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_pos_sessions_user_id ON pos_sessions(user_id)")
     # Único parcial: solo UNA sesión 'open' por (tenant, user). closed/cancelled
     # pueden acumularse libremente.
     op.execute(
@@ -77,14 +73,8 @@ def upgrade() -> None:
         )
         """
     )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_pos_session_lines_session_id "
-        "ON pos_session_lines(session_id)"
-    )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_pos_session_lines_tenant_id "
-        "ON pos_session_lines(tenant_id)"
-    )
+    op.execute("CREATE INDEX IF NOT EXISTS ix_pos_session_lines_session_id " "ON pos_session_lines(session_id)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_pos_session_lines_tenant_id " "ON pos_session_lines(tenant_id)")
 
     # RLS para ambas tablas (Postgres-only).
     bind = op.get_bind()

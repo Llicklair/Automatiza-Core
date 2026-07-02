@@ -18,9 +18,7 @@ from .tools import tools
 
 async def rag_agent_node(state: AgentState):
     if "messages" not in state or not state["messages"]:
-        sys_msg = make_cached_system_message(
-            RAG_SYSTEM_PROMPT.format(tenant_id=state.get("tenant_id", ""))
-        )
+        sys_msg = make_cached_system_message(RAG_SYSTEM_PROMPT.format(tenant_id=state.get("tenant_id", "")))
         user_msg = HumanMessage(content=state["user_intent"])
         extra_init_messages = [sys_msg, user_msg]
         state["messages"] = extra_init_messages
@@ -34,9 +32,7 @@ async def rag_agent_node(state: AgentState):
         step_id=f"rag_step_{datetime.now(UTC).timestamp()}",
         description="Procesando consulta documental...",
         status="completed",
-        action_taken="Buscando en documentos"
-        if response.tool_calls
-        else "Consulta documental completada.",
+        action_taken="Buscando en documentos" if response.tool_calls else "Consulta documental completada.",
     )
 
     if "agent_results" not in state:
@@ -51,9 +47,7 @@ def rag_finalize_node(state: AgentState):
         step_id="rag_final",
         description="Agente RAG ha finalizado.",
         status="completed",
-        action_taken=last_msg.content
-        if isinstance(last_msg.content, str)
-        else "Consulta documental completada.",
+        action_taken=last_msg.content if isinstance(last_msg.content, str) else "Consulta documental completada.",
     )
     return {"status": "done", "agent_results": [final_result.model_dump()]}
 

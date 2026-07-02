@@ -108,9 +108,7 @@ def simulate_modelo_303(quarter: int = 1, year: int = 2026) -> dict:
             "resultado": _round2(resultado),
         },
         "explanation": {
-            "headline": (
-                "Esto es lo que pagarías a Hacienda este trimestre con estos datos ejemplo."
-            ),
+            "headline": ("Esto es lo que pagarías a Hacienda este trimestre con estos datos ejemplo."),
             "bullets": [
                 f"IVA cobrado a clientes: {_round2(total_devengado_quota):.2f}€",
                 f"IVA pagado a proveedores: {_round2(total_deducible_quota):.2f}€",

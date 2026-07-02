@@ -17,12 +17,8 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute(
-        "ALTER TABLE products ADD COLUMN IF NOT EXISTS location VARCHAR(100)"
-    )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_products_location ON products(location)"
-    )
+    op.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS location VARCHAR(100)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_products_location ON products(location)")
 
 
 def downgrade() -> None:

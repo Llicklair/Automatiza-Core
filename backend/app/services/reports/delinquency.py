@@ -58,9 +58,7 @@ async def build_delinquency_data(
     total_days = 0
 
     for inv in overdue_invoices:
-        days = (
-            today - inv.due_date.date() if hasattr(inv.due_date, "date") else today - inv.due_date
-        ).days
+        days = (today - inv.due_date.date() if hasattr(inv.due_date, "date") else today - inv.due_date).days
         amount = float(inv.amount_total or 0)
 
         if days <= 30:

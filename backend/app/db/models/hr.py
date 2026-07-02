@@ -40,9 +40,7 @@ class Employee(Base):
     role = Column(String(100))
     categoria_profesional = Column(String(100))  # dentro del convenio
     grupo_cotizacion = Column(String(2))  # '01'–'11' (RGSS)
-    tipo_contrato = Column(
-        String(10)
-    )  # código SEPE: 100=indefinido, 150=indef. parcial, 401=obra/servicio…
+    tipo_contrato = Column(String(10))  # código SEPE: 100=indefinido, 150=indef. parcial, 401=obra/servicio…
     convenio_colectivo = Column(String(255))
 
     # Jornada
@@ -85,9 +83,7 @@ class Payroll(Base):
         # Una nómina por (tenant, empleado, período): el batch generate_all_payrolls
         # tenía un guard check-then-act (TOCTOU) que dos ejecuciones concurrentes
         # saltaban → nóminas duplicadas. Esta UNIQUE es la barrera real en BD.
-        UniqueConstraint(
-            "tenant_id", "employee_id", "period_start", name="uq_payroll_tenant_emp_period"
-        ),
+        UniqueConstraint("tenant_id", "employee_id", "period_start", name="uq_payroll_tenant_emp_period"),
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -284,9 +280,7 @@ class WorkSchedule(Base):
 
     __tablename__ = "work_schedules"
     # Requerida por el ON CONFLICT del upsert de horarios (services/hr/commands.py)
-    __table_args__ = (
-        UniqueConstraint("employee_id", "day_of_week", name="uq_work_schedule_emp_day"),
-    )
+    __table_args__ = (UniqueConstraint("employee_id", "day_of_week", name="uq_work_schedule_emp_day"),)
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
@@ -294,7 +288,7 @@ class WorkSchedule(Base):
 
     day_of_week = Column(Integer, nullable=False)  # 0=Lunes … 6=Domingo
     start_time = Column(String(5), nullable=False)  # "09:00"
-    end_time = Column(String(5), nullable=False)    # "17:00"
+    end_time = Column(String(5), nullable=False)  # "17:00"
     active = Column(Boolean, default=True, nullable=False)
 
     tenant = relationship("Tenant")

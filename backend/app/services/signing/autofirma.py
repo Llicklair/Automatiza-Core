@@ -29,9 +29,9 @@ class AutoFirmaError(ValueError):
 
 
 class SignatureFormat(str, Enum):
-    PADES = "PAdES"   # PDF
-    XADES = "XAdES"   # XML (compat 303, Facturae, etc.)
-    CADES = "CAdES"   # binarios genéricos
+    PADES = "PAdES"  # PDF
+    XADES = "XAdES"  # XML (compat 303, Facturae, etc.)
+    CADES = "CAdES"  # binarios genéricos
 
     @property
     def autofirma_code(self) -> str:
@@ -41,7 +41,9 @@ class SignatureFormat(str, Enum):
 
 _DEFAULT_ALGO = "SHA512withRSA"
 _VALID_ALGOS = {
-    "SHA256withRSA", "SHA384withRSA", "SHA512withRSA",
+    "SHA256withRSA",
+    "SHA384withRSA",
+    "SHA512withRSA",
 }
 
 
@@ -84,19 +86,12 @@ def build_autofirma_uri(
         "dat": doc_b64,
     }
     if signature_format == SignatureFormat.PADES:
-        config["extraParams"] = (
-            "signatureVisible=true" if visible_signature else "signatureVisible=false"
-        )
+        config["extraParams"] = "signatureVisible=true" if visible_signature else "signatureVisible=false"
 
     config_json = json.dumps(config, separators=(",", ":"))
     config_b64 = base64.urlsafe_b64encode(config_json.encode("utf-8")).decode("ascii")
 
-    uri = (
-        "afirma://sign?ver=1_5"
-        f"&id={quote(session_token, safe='')}"
-        "&j=true"
-        f"&dat={config_b64}"
-    )
+    uri = "afirma://sign?ver=1_5" f"&id={quote(session_token, safe='')}" "&j=true" f"&dat={config_b64}"
     return uri, doc_hash
 
 
@@ -167,9 +162,7 @@ def extract_signature_metadata(signed_bytes: bytes, fmt: SignatureFormat) -> dic
     elif fmt == SignatureFormat.XADES:
         try:
             text = signed_bytes.decode("utf-8", errors="ignore")
-            metadata["has_signature"] = (
-                "<ds:Signature" in text or "<Signature " in text or "<xades:" in text
-            )
+            metadata["has_signature"] = "<ds:Signature" in text or "<Signature " in text or "<xades:" in text
         except Exception:
             metadata["has_signature"] = False
     elif fmt == SignatureFormat.CADES:

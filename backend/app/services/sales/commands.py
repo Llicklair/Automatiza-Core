@@ -90,9 +90,7 @@ async def update_client(
     client_id: UUID,
     data: dict,
 ) -> Client:
-    result = await db.execute(
-        select(Client).where(Client.id == client_id, Client.tenant_id == tenant_id)
-    )
+    result = await db.execute(select(Client).where(Client.id == client_id, Client.tenant_id == tenant_id))
     client = result.scalar_one_or_none()
     if not client:
         raise LookupError("Cliente no encontrado")
@@ -113,9 +111,7 @@ async def delete_client(
     tenant_id: UUID,
     client_id: UUID,
 ) -> None:
-    result = await db.execute(
-        select(Client).where(Client.id == client_id, Client.tenant_id == tenant_id)
-    )
+    result = await db.execute(select(Client).where(Client.id == client_id, Client.tenant_id == tenant_id))
     client = result.scalar_one_or_none()
     if not client:
         raise LookupError("Cliente no encontrado")
@@ -124,9 +120,7 @@ async def delete_client(
         await db.commit()
     except IntegrityError:
         await db.rollback()
-        raise ConflictError(
-            "No se puede eliminar el cliente porque tiene facturas o pedidos asociados"
-        ) from None
+        raise ConflictError("No se puede eliminar el cliente porque tiene facturas o pedidos asociados") from None
     except SQLAlchemyError as e:
         await db.rollback()
         logger.error("Error eliminando cliente %s: %s", client_id, e)
@@ -146,12 +140,8 @@ async def create_product(db: AsyncSession, tenant_id: UUID, data: dict) -> Produ
     return product
 
 
-async def update_product(
-    db: AsyncSession, tenant_id: UUID, product_id: UUID, data: dict
-) -> Product:
-    result = await db.execute(
-        select(Product).where(Product.id == product_id, Product.tenant_id == tenant_id)
-    )
+async def update_product(db: AsyncSession, tenant_id: UUID, product_id: UUID, data: dict) -> Product:
+    result = await db.execute(select(Product).where(Product.id == product_id, Product.tenant_id == tenant_id))
     product = result.scalar_one_or_none()
     if not product:
         raise LookupError("Producto no encontrado")
@@ -163,9 +153,7 @@ async def update_product(
 
 
 async def delete_product(db: AsyncSession, tenant_id: UUID, product_id: UUID) -> None:
-    result = await db.execute(
-        select(Product).where(Product.id == product_id, Product.tenant_id == tenant_id)
-    )
+    result = await db.execute(select(Product).where(Product.id == product_id, Product.tenant_id == tenant_id))
     product = result.scalar_one_or_none()
     if not product:
         raise LookupError("Producto no encontrado")
@@ -173,15 +161,11 @@ async def delete_product(db: AsyncSession, tenant_id: UUID, product_id: UUID) ->
     await db.commit()
 
 
-async def create_stock_movement(
-    db: AsyncSession, tenant_id: UUID, product_id: UUID, data: dict
-) -> StockMovement:
+async def create_stock_movement(db: AsyncSession, tenant_id: UUID, product_id: UUID, data: dict) -> StockMovement:
     # Row-level FOR UPDATE serializes concurrent stock movements of the same
     # product at the DB; products locked in sorted order to avoid deadlock.
     result = await db.execute(
-        select(Product)
-        .where(Product.id == product_id, Product.tenant_id == tenant_id)
-        .with_for_update()
+        select(Product).where(Product.id == product_id, Product.tenant_id == tenant_id).with_for_update()
     )
     product = result.scalar_one_or_none()
     if not product:
@@ -304,16 +288,12 @@ async def update_quote(
     for field, value in update_data.items():
         setattr(quote, field, value)
     await db.commit()
-    result = await db.execute(
-        _quote_query_with_rels().where(Quote.id == quote_id, Quote.tenant_id == tenant_id)
-    )
+    result = await db.execute(_quote_query_with_rels().where(Quote.id == quote_id, Quote.tenant_id == tenant_id))
     return result.scalar_one()
 
 
 async def delete_quote(db: AsyncSession, quote_id: UUID, tenant_id: UUID) -> None:
-    result = await db.execute(
-        select(Quote).where(Quote.id == quote_id, Quote.tenant_id == tenant_id)
-    )
+    result = await db.execute(select(Quote).where(Quote.id == quote_id, Quote.tenant_id == tenant_id))
     quote = result.scalar_one_or_none()
     if not quote:
         raise LookupError("Quote not found")
@@ -322,9 +302,7 @@ async def delete_quote(db: AsyncSession, quote_id: UUID, tenant_id: UUID) -> Non
         await db.commit()
     except IntegrityError:
         await db.rollback()
-        raise ConflictError(
-            "No se puede eliminar el presupuesto porque tiene registros asociados"
-        ) from None
+        raise ConflictError("No se puede eliminar el presupuesto porque tiene registros asociados") from None
 
 
 async def convert_to_invoice(
@@ -338,9 +316,7 @@ async def convert_to_invoice(
     if quote.status == "accepted":
         raise ValueError("Este presupuesto ya fue convertido en factura")
 
-    count_res = await db.execute(
-        select(func.count(Invoice.id)).where(Invoice.tenant_id == tenant_id)
-    )
+    count_res = await db.execute(select(func.count(Invoice.id)).where(Invoice.tenant_id == tenant_id))
     invoice_count = (count_res.scalar() or 0) + 1
     now = datetime.now(UTC)
     invoice_number = f"FAC-{now.year}-{invoice_count:04d}"
@@ -418,10 +394,7 @@ async def convert_to_invoice(
 
 async def _next_albaran_number(tenant_id: UUID, db: AsyncSession) -> str:
     result = await db.execute(
-        select(DeliveryNote)
-        .where(DeliveryNote.tenant_id == tenant_id)
-        .order_by(desc(DeliveryNote.created_at))
-        .limit(1)
+        select(DeliveryNote).where(DeliveryNote.tenant_id == tenant_id).order_by(desc(DeliveryNote.created_at)).limit(1)
     )
     last = result.scalar_one_or_none()
     if last and last.albaran_number:
@@ -485,9 +458,7 @@ async def create_albaran(
 
     await db.commit()
     result = await db.execute(
-        select(DeliveryNote)
-        .where(DeliveryNote.id == note.id)
-        .options(selectinload(DeliveryNote.lines))
+        select(DeliveryNote).where(DeliveryNote.id == note.id).options(selectinload(DeliveryNote.lines))
     )
     return result.scalar_one()
 
@@ -505,9 +476,7 @@ def _albaran_stock_reverse_reference(albaran_id: UUID) -> str:
     return f"DELIVERY_NOTE_REVERSED:{albaran_id}"
 
 
-async def _deduct_stock_for_albaran(
-    db: AsyncSession, note: DeliveryNote, user_id: UUID | None
-) -> None:
+async def _deduct_stock_for_albaran(db: AsyncSession, note: DeliveryNote, user_id: UUID | None) -> None:
     """Generate StockMovement(salida) rows for each line with a product_id.
 
     Idempotent: if any movement with reference=DELIVERY_NOTE:<id> already
@@ -552,8 +521,7 @@ async def _deduct_stock_for_albaran(
         new_stock = int(product.stock_quantity) - qty
         if new_stock < 0:
             raise ValueError(
-                f"Stock insuficiente para '{product.name}' "
-                f"(disponible {product.stock_quantity}, solicitado {qty})"
+                f"Stock insuficiente para '{product.name}' " f"(disponible {product.stock_quantity}, solicitado {qty})"
             )
         product.stock_quantity = new_stock
         from app.services.inventory import lot_service
@@ -575,9 +543,7 @@ async def _deduct_stock_for_albaran(
         )
 
 
-async def _revert_stock_for_albaran(
-    db: AsyncSession, note: DeliveryNote, user_id: UUID | None
-) -> None:
+async def _revert_stock_for_albaran(db: AsyncSession, note: DeliveryNote, user_id: UUID | None) -> None:
     """Generate StockMovement(entrada) rows to compensate a prior deduction.
 
     Mirror of `_deduct_stock_for_albaran`: sums back the quantities that were
@@ -692,9 +658,7 @@ async def update_albaran_status(
     return note
 
 
-async def delete_albaran(
-    albaran_id: UUID, tenant_id: UUID, db: AsyncSession, *, user_id: UUID | None = None
-) -> None:
+async def delete_albaran(albaran_id: UUID, tenant_id: UUID, db: AsyncSession, *, user_id: UUID | None = None) -> None:
     result = await db.execute(
         select(DeliveryNote)
         .where(DeliveryNote.id == albaran_id, DeliveryNote.tenant_id == tenant_id)
@@ -716,9 +680,7 @@ async def delete_albaran(
 # ---------------------------------------------------------------------------
 
 
-async def create_purchase_order(
-    db: AsyncSession, tenant_id: UUID, data: dict, lines_data: list[dict]
-) -> PurchaseOrder:
+async def create_purchase_order(db: AsyncSession, tenant_id: UUID, data: dict, lines_data: list[dict]) -> PurchaseOrder:
     order_number = data.pop("order_number", None) or f"PC-{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}"
 
     amount_base = 0.0
@@ -764,13 +726,9 @@ async def create_purchase_order(
     return result.unique().scalar_one()
 
 
-async def update_purchase_order(
-    db: AsyncSession, tenant_id: UUID, order_id: UUID, data: dict
-) -> PurchaseOrder:
+async def update_purchase_order(db: AsyncSession, tenant_id: UUID, order_id: UUID, data: dict) -> PurchaseOrder:
     result = await db.execute(
-        select(PurchaseOrder).where(
-            PurchaseOrder.id == order_id, PurchaseOrder.tenant_id == tenant_id
-        )
+        select(PurchaseOrder).where(PurchaseOrder.id == order_id, PurchaseOrder.tenant_id == tenant_id)
     )
     order = result.scalar_one_or_none()
     if not order:
@@ -788,9 +746,7 @@ async def update_purchase_order(
 
 async def delete_purchase_order(db: AsyncSession, tenant_id: UUID, order_id: UUID) -> None:
     result = await db.execute(
-        select(PurchaseOrder).where(
-            PurchaseOrder.id == order_id, PurchaseOrder.tenant_id == tenant_id
-        )
+        select(PurchaseOrder).where(PurchaseOrder.id == order_id, PurchaseOrder.tenant_id == tenant_id)
     )
     order = result.scalar_one_or_none()
     if not order:
@@ -800,9 +756,7 @@ async def delete_purchase_order(db: AsyncSession, tenant_id: UUID, order_id: UUI
         await db.commit()
     except IntegrityError:
         await db.rollback()
-        raise ConflictError(
-            "No se puede eliminar el pedido de compra porque tiene registros asociados"
-        ) from None
+        raise ConflictError("No se puede eliminar el pedido de compra porque tiene registros asociados") from None
 
 
 # ---------------------------------------------------------------------------
@@ -810,12 +764,8 @@ async def delete_purchase_order(db: AsyncSession, tenant_id: UUID, order_id: UUI
 # ---------------------------------------------------------------------------
 
 
-async def create_sales_order(
-    db: AsyncSession, tenant_id: UUID, data: dict, lines_data: list[dict]
-) -> SalesOrder:
-    order_number = (
-        data.pop("order_number", None) or f"PED-{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}"
-    )
+async def create_sales_order(db: AsyncSession, tenant_id: UUID, data: dict, lines_data: list[dict]) -> SalesOrder:
+    order_number = data.pop("order_number", None) or f"PED-{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}"
 
     amount_base = 0.0
     tax_amount = 0.0
@@ -861,12 +811,8 @@ async def create_sales_order(
     return result.unique().scalar_one()
 
 
-async def update_sales_order(
-    db: AsyncSession, tenant_id: UUID, order_id: UUID, data: dict
-) -> SalesOrder:
-    result = await db.execute(
-        select(SalesOrder).where(SalesOrder.id == order_id, SalesOrder.tenant_id == tenant_id)
-    )
+async def update_sales_order(db: AsyncSession, tenant_id: UUID, order_id: UUID, data: dict) -> SalesOrder:
+    result = await db.execute(select(SalesOrder).where(SalesOrder.id == order_id, SalesOrder.tenant_id == tenant_id))
     order = result.scalar_one_or_none()
     if not order:
         raise LookupError("Pedido no encontrado")
@@ -882,9 +828,7 @@ async def update_sales_order(
 
 
 async def delete_sales_order(db: AsyncSession, tenant_id: UUID, order_id: UUID) -> None:
-    result = await db.execute(
-        select(SalesOrder).where(SalesOrder.id == order_id, SalesOrder.tenant_id == tenant_id)
-    )
+    result = await db.execute(select(SalesOrder).where(SalesOrder.id == order_id, SalesOrder.tenant_id == tenant_id))
     order = result.scalar_one_or_none()
     if not order:
         raise LookupError("Pedido no encontrado")
@@ -893,6 +837,4 @@ async def delete_sales_order(db: AsyncSession, tenant_id: UUID, order_id: UUID) 
         await db.commit()
     except IntegrityError:
         await db.rollback()
-        raise ConflictError(
-            "No se puede eliminar el pedido porque tiene registros asociados"
-        ) from None
+        raise ConflictError("No se puede eliminar el pedido porque tiene registros asociados") from None

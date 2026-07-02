@@ -190,8 +190,18 @@ async def generate_image_endpoint(
 
 
 _ZERNIO_PLATFORMS = {
-    "instagram", "facebook", "linkedin", "twitter", "tiktok", "youtube",
-    "threads", "pinterest", "bluesky", "reddit", "snapchat", "googlebusiness",
+    "instagram",
+    "facebook",
+    "linkedin",
+    "twitter",
+    "tiktok",
+    "youtube",
+    "threads",
+    "pinterest",
+    "bluesky",
+    "reddit",
+    "snapchat",
+    "googlebusiness",
 }
 
 
@@ -330,7 +340,10 @@ async def list_zernio_configs(
     items = await list_configs_with_counts(db, current_user.tenant_id)
     return [
         ZernioConfigOut(
-            id=c.id, label=c.label, default_profile_id=c.default_profile_id, num_accounts=c.num_accounts,
+            id=c.id,
+            label=c.label,
+            default_profile_id=c.default_profile_id,
+            num_accounts=c.num_accounts,
         )
         for c in items
     ]
@@ -355,7 +368,10 @@ async def add_zernio_config_endpoint(
     except ZernioError as e:
         raise HTTPException(status_code=400, detail=f"La API key no es válida: {e}") from e
     return ZernioConfigOut(
-        id=cfg.id, label=cfg.label, default_profile_id=cfg.default_profile_id, num_accounts=cfg.num_accounts,
+        id=cfg.id,
+        label=cfg.label,
+        default_profile_id=cfg.default_profile_id,
+        num_accounts=cfg.num_accounts,
     )
 
 
@@ -483,9 +499,7 @@ async def bulk_delete_posts(
     """
     from app.services.marketing.posts import delete_posts_bulk
 
-    deleted = await delete_posts_bulk(
-        current_user.tenant_id, db, ids=body.ids, status_filter=body.status
-    )
+    deleted = await delete_posts_bulk(current_user.tenant_id, db, ids=body.ids, status_filter=body.status)
     return {"deleted": deleted}
 
 

@@ -25,9 +25,7 @@ async def _dispatch_billing(state: OrchestratorState, subtask: dict) -> AgentRes
     from app.agents.billing import graph
 
     tenant_id = state["tenant_id"]
-    intent = subtask.get("params", {}).get(
-        "intent", state.get("current_intent", state["user_intent"])
-    )
+    intent = subtask.get("params", {}).get("intent", state.get("current_intent", state["user_intent"]))
 
     try:
         # Ejecutar el grafo autónomo del agente de facturación
@@ -63,15 +61,34 @@ async def _dispatch_billing(state: OrchestratorState, subtask: dict) -> AgentRes
         intent_says_query = any(
             kw in _intent_lower
             for kw in [
-                "lista", "listar", "muestra", "muéstra", "muestrame",
-                "muéstrame", "cuáles", "cuántas", "cuántos",
-                "qué facturas", "qué albaranes", "ver facturas", "ver albaranes",
-                "buscar", "busca ",
+                "lista",
+                "listar",
+                "muestra",
+                "muéstra",
+                "muestrame",
+                "muéstrame",
+                "cuáles",
+                "cuántas",
+                "cuántos",
+                "qué facturas",
+                "qué albaranes",
+                "ver facturas",
+                "ver albaranes",
+                "buscar",
+                "busca ",
             ]
         )
         intent_says_create = any(
             kw in _intent_lower
-            for kw in ["crea ", "crear ", "genera factura", "emite factura", "nueva factura", "nuevo albarán", "crea albarán"]
+            for kw in [
+                "crea ",
+                "crear ",
+                "genera factura",
+                "emite factura",
+                "nueva factura",
+                "nuevo albarán",
+                "crea albarán",
+            ]
         )
 
         is_approval = "aprobación requerida" in _lower
@@ -80,16 +97,17 @@ async def _dispatch_billing(state: OrchestratorState, subtask: dict) -> AgentRes
         )
         is_creation = (intent_says_create and not intent_says_query) or (
             not is_query
-            and any(kw in _lower for kw in ["factura creada", "borrador creado", "se ha creado la factura", "albarán creado"])
+            and any(
+                kw in _lower
+                for kw in ["factura creada", "borrador creado", "se ha creado la factura", "albarán creado"]
+            )
         )
 
         # Detección ESTRUCTURADA de fallo (señal principal: intent de acción pero
         # ninguna herramienta invocada). strict_not_found=not is_query: en una
         # consulta "no hay facturas" es resultado válido; en una acción "el
         # cliente no existe" es fallo. La aprobación pendiente nunca es fallo.
-        is_error, error_text = detect_failure(
-            messages, final_text, intent, strict_not_found=not is_query
-        )
+        is_error, error_text = detect_failure(messages, final_text, intent, strict_not_found=not is_query)
         is_error = is_error and not is_approval
         success = not is_error
 

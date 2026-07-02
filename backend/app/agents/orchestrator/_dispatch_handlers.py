@@ -129,9 +129,7 @@ async def _invoke_dynamic_employee(
                 (
                     msg.content
                     for msg in reversed(messages)
-                    if hasattr(msg, "content")
-                    and isinstance(msg.content, str)
-                    and msg.content.strip()
+                    if hasattr(msg, "content") and isinstance(msg.content, str) and msg.content.strip()
                 ),
                 "",
             )
@@ -140,10 +138,9 @@ async def _invoke_dynamic_employee(
             # tools de "finalizar" que no existen). Sin esto, un PDF creado se marca
             # como failed solo porque el LLM emitió un mensaje final desorientado.
             successful_tool_calls = [
-                m for m in messages
-                if isinstance(m, ToolMessage)
-                and m.content
-                and not str(m.content).lower().startswith("error")
+                m
+                for m in messages
+                if isinstance(m, ToolMessage) and m.content and not str(m.content).lower().startswith("error")
             ]
             if successful_tool_calls:
                 success = True
@@ -175,9 +172,7 @@ async def _invoke_dynamic_employee(
             # propagarse porque el commit post-timeout esperaba locks de
             # sesiones internas del graph.
             await _release_employee(db, employee, label="timeout")
-            logger.exception(
-                "Timeout (180s) en dynamic employee '%s'", employee.name
-            )
+            logger.exception("Timeout (180s) en dynamic employee '%s'", employee.name)
             return _make_error_result(
                 subtask,
                 agent_name,
@@ -193,35 +188,33 @@ async def _invoke_dynamic_employee(
             await _release_employee(db, employee, label="error")
             logger.exception("Error en dynamic employee '%s'", employee.name)
             msg = str(e).strip() or f"{type(e).__name__} (sin mensaje)"
-            return _make_error_result(
-                subtask, agent_name, action="failed", error=msg
-            )
+            return _make_error_result(subtask, agent_name, action="failed", error=msg)
 
 
-async def _invoke_dispatcher_impl(
-    enriched_state: dict, subtask: dict, agent_name: str
-) -> AgentResult:
+async def _invoke_dispatcher_impl(enriched_state: dict, subtask: dict, agent_name: str) -> AgentResult:
     """Routing: DISPATCHER_MAP → skill → AIEmployee dinámico → fallback."""
     # Defensa multi-tenant: re-setear ContextVar antes de invocar cualquier
     # dispatcher por si el flujo asyncio lo perdió en el camino.
     _tid = enriched_state.get("tenant_id")
     if _tid:
         from app.agents.tenant_context import set_active_tenant
+
         set_active_tenant(_tid)
 
         # Tope de gasto LLM agregado por tenant. Solo consulta la DB si el tope
         # está configurado (por defecto desactivado → cero overhead).
         from app.core.config import settings
+
         if settings.TENANT_MONTHLY_LLM_BUDGET_USD:
             from app.services.agent_budget import check_tenant_budget
+
             async with AsyncSessionLocal() as _db:
                 if not await check_tenant_budget(_tid, _db):
                     return _make_error_result(
                         subtask,
                         agent_name,
                         action="failed",
-                        error="Presupuesto mensual de IA del tenant agotado. "
-                        "Contacta con tu administrador.",
+                        error="Presupuesto mensual de IA del tenant agotado. " "Contacta con tu administrador.",
                     )
 
     dispatcher_fn = DISPATCHER_MAP.get(agent_name)
@@ -244,8 +237,7 @@ async def _invoke_dispatcher_impl(
             logger.warning("Error en dynamic employee routing para '%s': %s", agent_name, e)
 
     logger.warning(
-        "[DISPATCH] Agente '%s' sin dispatcher ni empleado dinámico (revisar "
-        "plan/blueprint: ¿nodo sin 'domain'?)",
+        "[DISPATCH] Agente '%s' sin dispatcher ni empleado dinámico (revisar " "plan/blueprint: ¿nodo sin 'domain'?)",
         agent_name,
     )
     # FALLO, no éxito: no hay handler para este agente, así que el paso NO se
@@ -267,9 +259,7 @@ async def _invoke_dispatcher_impl(
     }
 
 
-async def invoke_dispatcher(
-    enriched_state: dict, subtask: dict, agent_name: str
-) -> AgentResult:
+async def invoke_dispatcher(enriched_state: dict, subtask: dict, agent_name: str) -> AgentResult:
     """Entrada pública del Coordinador para invocar un agente (builtin/dinámico).
 
     Es la superficie pública que consumen las capas de orquestación
@@ -302,9 +292,7 @@ async def invoke_dispatcher(
 _TRACE_STATUS_MAP = {"success": "ok", "failed": "error", "timeout": "error"}
 
 
-async def _persist_agent_trace(
-    enriched_state: dict, agent_name: str, dispatch_status: str, elapsed_s: float
-) -> None:
+async def _persist_agent_trace(enriched_state: dict, agent_name: str, dispatch_status: str, elapsed_s: float) -> None:
     """Graba una traza append-only de la invocación. Nunca propaga errores."""
     try:
         from app.services.observability import record_agent_execution
@@ -314,9 +302,7 @@ async def _persist_agent_trace(
             return  # sin tenant no hay RLS válida; nada que registrar
 
         task_id_raw = enriched_state.get("task_id")
-        execution_id_raw = (enriched_state.get("additional_metadata") or {}).get(
-            "execution_id"
-        )
+        execution_id_raw = (enriched_state.get("additional_metadata") or {}).get("execution_id")
 
         def _as_uuid(val):
             if not val:
@@ -342,9 +328,7 @@ async def _persist_agent_trace(
         logger.warning("No se pudo persistir agent_execution_trace para '%s': %s", agent_name, e)
 
 
-async def _execute_one(
-    idx: int, subtask: dict, state: dict, exec_ctx
-) -> "tuple[int, dict, AgentResult]":
+async def _execute_one(idx: int, subtask: dict, state: dict, exec_ctx) -> "tuple[int, dict, AgentResult]":
     """Ejecuta un paso individual con retry para errores transitorios."""
     agent_name = subtask["agent"]
     step_instruction = subtask.get("params", {}).get("intent")
@@ -365,9 +349,7 @@ async def _execute_one(
             return idx, subtask, result
         except TimeoutError:
             if attempt == 0:
-                logger.warning(
-                    "[ORCHESTRATOR] Timeout en agente '%s', reintentando (1/1)...", agent_name
-                )
+                logger.warning("[ORCHESTRATOR] Timeout en agente '%s', reintentando (1/1)...", agent_name)
                 await asyncio.sleep(2)
                 continue
             result = _make_error_result(
@@ -379,9 +361,7 @@ async def _execute_one(
             )
         except _TRANSIENT_ERRORS as e:
             err_str = str(e)
-            is_rate_limit = (
-                "429" in err_str or "rate" in err_str.lower() or "quota" in err_str.lower()
-            )
+            is_rate_limit = "429" in err_str or "rate" in err_str.lower() or "quota" in err_str.lower()
             if attempt == 0 and (isinstance(e, ConnectionError | OSError) or is_rate_limit):
                 wait = 5 if is_rate_limit else 2
                 logger.warning(
@@ -438,23 +418,15 @@ def _process_gathered_results(
         updated_plan[idx] = {**subtask, "status": "done" if result["success"] else "failed"}
 
         action_str = (
-            result.get("output", {}).get("action", "unknown_action")
-            if result.get("output")
-            else "unknown_action"
+            result.get("output", {}).get("action", "unknown_action") if result.get("output") else "unknown_action"
         )
 
-        _audit_tasks.append(
-            asyncio.create_task(_audit_log_result(state, result, subtask, agent_name, action_str))
-        )
+        _audit_tasks.append(asyncio.create_task(_audit_log_result(state, result, subtask, agent_name, action_str)))
 
-        _bc_task = asyncio.create_task(
-            _broadcast_progress(state, result, agent_name, idx + 1, len(plan))
-        )
+        _bc_task = asyncio.create_task(_broadcast_progress(state, result, agent_name, idx + 1, len(plan)))
         _bc_task.add_done_callback(
             lambda t: (
-                logger.debug("[WS] Broadcast error: %s", t.exception())
-                if not t.cancelled() and t.exception()
-                else None
+                logger.debug("[WS] Broadcast error: %s", t.exception()) if not t.cancelled() and t.exception() else None
             )
         )
 
@@ -464,13 +436,9 @@ def _process_gathered_results(
 
         if not result["success"]:
             _default_non_critical = {"excel", "documents"}
-            is_non_critical = (
-                subtask.get("critical") is False or agent_name in _default_non_critical
-            )
+            is_non_critical = subtask.get("critical") is False or agent_name in _default_non_critical
             if is_non_critical:
-                logger.warning(
-                    "[ORCHESTRATOR] Agente no crítico '%s' falló, continuando.", agent_name
-                )
+                logger.warning("[ORCHESTRATOR] Agente no crítico '%s' falló, continuando.", agent_name)
                 new_results.append(
                     {
                         "subtask_id": f"{subtask['id']}_warning",
@@ -582,14 +550,12 @@ async def dispatch_node(state: OrchestratorState) -> OrchestratorState:
             len(ready),
             [s["id"] for _, s in ready],
         )
-        gathered = list(
-            await asyncio.gather(*[_execute_one(idx, step, state, exec_ctx) for idx, step in ready])
-        )
+        gathered = list(await asyncio.gather(*[_execute_one(idx, step, state, exec_ctx) for idx, step in ready]))
 
     # Procesar resultados, emitir audit/broadcast, y recopilar tareas de audit
     _audit_tasks: list[asyncio.Task] = []
-    has_critical_failure, critical_error, has_approval, approval_results = (
-        _process_gathered_results(gathered, state, plan, updated_plan, new_results, _audit_tasks)
+    has_critical_failure, critical_error, has_approval, approval_results = _process_gathered_results(
+        gathered, state, plan, updated_plan, new_results, _audit_tasks
     )
 
     # Esperar a que los audit logs se escriban (máx 5s) antes de devolver estado
@@ -601,9 +567,7 @@ async def dispatch_node(state: OrchestratorState) -> OrchestratorState:
             if t.exception():
                 logger.error("Error en audit log: %s", t.exception())
 
-    next_pending = next(
-        (i for i, s in enumerate(updated_plan) if s.get("status") == "pending"), len(updated_plan)
-    )
+    next_pending = next((i for i, s in enumerate(updated_plan) if s.get("status") == "pending"), len(updated_plan))
 
     if has_approval:
         first_approval = approval_results[0]

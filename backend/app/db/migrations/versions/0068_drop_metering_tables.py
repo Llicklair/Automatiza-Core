@@ -58,6 +58,5 @@ def downgrade() -> None:
         """
     )
     op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_cron_usage_tenant_year_month "
-        "ON cron_execution_usage(tenant_id, year, month)"
+        "CREATE INDEX IF NOT EXISTS ix_cron_usage_tenant_year_month " "ON cron_execution_usage(tenant_id, year, month)"
     )

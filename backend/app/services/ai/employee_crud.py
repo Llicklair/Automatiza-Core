@@ -317,9 +317,7 @@ async def instruct_employee(
 
         status = await get_budget_status(str(employee.id), db)
         if status and status["state"] == "exhausted":
-            raise ValueError(
-                f"budget_exceeded:{status['spend_usd']:.4f}/{float(status['limit_usd']):.2f}"
-            )
+            raise ValueError(f"budget_exceeded:{status['spend_usd']:.4f}/{float(status['limit_usd']):.2f}")
 
     task = Task(
         id=uuid.uuid4(),
@@ -357,6 +355,7 @@ async def instruct_employee(
     # Fase 3 (RLS): propagamos tenant_id al worker para fijar el ContextVar
     # antes de la SELECT de bootstrap de la Task.
     from app.services.workflow.task_dispatch import dispatch_orchestrator
+
     await dispatch_orchestrator(str(task.id), tenant_id=str(tenant_id))
 
     return {"task_id": str(task.id), "status": "queued", "employee": employee.name}
@@ -449,15 +448,17 @@ async def record_token_usage(
     db: AsyncSession,
 ) -> None:
     """Append an immutable cost record to the TokenLedger for an AI employee."""
-    db.add(TokenLedger(
-        tenant_id=_uuid.UUID(tenant_id),
-        employee_id=_uuid.UUID(employee_id),
-        task_id=_uuid.UUID(task_id),
-        prompt_tokens=tokens_in,
-        completion_tokens=tokens_out,
-        cost_usd=Decimal(str(round(cost_usd, 6))),
-        llm_provider=provider,
-    ))
+    db.add(
+        TokenLedger(
+            tenant_id=_uuid.UUID(tenant_id),
+            employee_id=_uuid.UUID(employee_id),
+            task_id=_uuid.UUID(task_id),
+            prompt_tokens=tokens_in,
+            completion_tokens=tokens_out,
+            cost_usd=Decimal(str(round(cost_usd, 6))),
+            llm_provider=provider,
+        )
+    )
 
 
 def _to_uuid(val) -> _uuid.UUID:

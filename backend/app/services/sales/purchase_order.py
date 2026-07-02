@@ -1,4 +1,5 @@
 """Backward-compatibility shim — implementation in queries.py / commands.py."""
+
 from app.services.sales.commands import (
     create_purchase_order,
     delete_purchase_order,

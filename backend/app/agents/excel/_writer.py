@@ -23,9 +23,7 @@ def _hex_to_lighter(hex_color: str, factor: float = 0.4) -> str:
     return f"{r:02X}{g:02X}{b:02X}"
 
 
-def _write_excel(
-    sheets: dict[str, pd.DataFrame], output_path: str, theme: dict | None = None
-) -> None:
+def _write_excel(sheets: dict[str, pd.DataFrame], output_path: str, theme: dict | None = None) -> None:
     _theme = theme or {}
     accent_hex = _theme.get("accent_color", "#1F4E79").lstrip("#")
     table_style = _theme.get("table_style", "striped")
@@ -59,9 +57,7 @@ def _write_excel(
         for row_idx, row in enumerate(df.itertuples(index=False), start=2):
             fill = alt_fill if (alt_fill and row_idx % 2 == 0) else None
             for col_idx, value in enumerate(row, start=1):
-                cell = ws.cell(
-                    row=row_idx, column=col_idx, value=sanitize_spreadsheet_cell(value)
-                )
+                cell = ws.cell(row=row_idx, column=col_idx, value=sanitize_spreadsheet_cell(value))
                 cell.border = cell_border
                 cell.alignment = Alignment(horizontal="left", vertical="center")
                 if fill:

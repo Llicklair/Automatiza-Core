@@ -26,7 +26,17 @@ _DOMAIN_KEYWORDS: dict[str, tuple[str, ...]] = {
     "rag": ("consulta interna", "knowledge base", "politica interna", "política interna"),
     "recruitment": ("cv", "candidato", "candidata", "posicion abierta", "posición abierta"),
     "marketing": ("campaña", "campana", "catalogo", "catálogo de productos"),
-    "inventory": ("stock", "inventario", "almacén", "almacen", "existencias", "recuento", "merma", "stock mínimo", "stock minimo"),
+    "inventory": (
+        "stock",
+        "inventario",
+        "almacén",
+        "almacen",
+        "existencias",
+        "recuento",
+        "merma",
+        "stock mínimo",
+        "stock minimo",
+    ),
 }
 
 
@@ -157,9 +167,7 @@ async def validate_node(state: OrchestratorState) -> OrchestratorState:
     custom_unresolved = [
         s["id"]
         for s in plan
-        if s.get("agent") == "custom"
-        and not s.get("params", {}).get("employee_id")
-        and not addressed
+        if s.get("agent") == "custom" and not s.get("params", {}).get("employee_id") and not addressed
     ]
     if custom_unresolved:
         return {

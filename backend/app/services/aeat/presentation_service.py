@@ -154,9 +154,7 @@ async def submit_presentation(
     if not sign_result.signed and not dry_run:
         p.status = "error"
         p.error_code = "SIGN_STUB"
-        p.error_message = (
-            "Firma stub no aceptable en producción. Instala signxml + xmlsec en el backend."
-        )
+        p.error_message = "Firma stub no aceptable en producción. Instala signxml + xmlsec en el backend."
         await db.commit()
         await db.refresh(p)
         return p
@@ -164,8 +162,10 @@ async def submit_presentation(
     # 4. Enviar
     try:
         result = await submit_signed_xml(
-            p.model_code, sign_result.signed_xml,
-            environment=p.environment, dry_run=dry_run,
+            p.model_code,
+            sign_result.signed_xml,
+            environment=p.environment,
+            dry_run=dry_run,
             confirmed=confirmed_by_user_id is not None,
         )
     except SedeError as e:
@@ -199,9 +199,7 @@ async def submit_presentation(
     return p
 
 
-async def get_presentation(
-    db: AsyncSession, tenant_id: UUID, presentation_id: UUID
-) -> AeatPresentation | None:
+async def get_presentation(db: AsyncSession, tenant_id: UUID, presentation_id: UUID) -> AeatPresentation | None:
     res = await db.execute(
         select(AeatPresentation)
         .where(AeatPresentation.id == presentation_id)
@@ -248,7 +246,10 @@ def build_acuse_text(p: AeatPresentation) -> str:
 
 
 async def list_presentations(
-    db: AsyncSession, tenant_id: UUID, *, limit: int = 50,
+    db: AsyncSession,
+    tenant_id: UUID,
+    *,
+    limit: int = 50,
 ) -> list[AeatPresentation]:
     res = await db.execute(
         select(AeatPresentation)

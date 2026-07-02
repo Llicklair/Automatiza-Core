@@ -46,9 +46,7 @@ def file_sha256(image_bytes: bytes) -> str:
 # ─── Cache de archivos ──────────────────────────────────────────────────
 
 
-async def lookup_cached(
-    db: AsyncSession, tenant_id: UUID, file_hash: str
-) -> dict | None:
+async def lookup_cached(db: AsyncSession, tenant_id: UUID, file_hash: str) -> dict | None:
     res = await db.execute(
         sa.select(InvoiceScanCache).where(
             InvoiceScanCache.tenant_id == tenant_id,
@@ -112,9 +110,7 @@ async def save_to_cache(
 # ─── Template por NIF ───────────────────────────────────────────────────
 
 
-async def get_template(
-    db: AsyncSession, tenant_id: UUID, supplier_nif: str
-) -> SupplierInvoiceTemplate | None:
+async def get_template(db: AsyncSession, tenant_id: UUID, supplier_nif: str) -> SupplierInvoiceTemplate | None:
     nif = (supplier_nif or "").strip().upper()
     if not nif:
         return None
@@ -127,9 +123,7 @@ async def get_template(
     return res.scalar_one_or_none()
 
 
-def apply_template_overrides(
-    extraction: dict, template: SupplierInvoiceTemplate | None
-) -> dict:
+def apply_template_overrides(extraction: dict, template: SupplierInvoiceTemplate | None) -> dict:
     """Aplica los overrides aprendidos sobre el dict de extracción.
 
     No muta el original — devuelve un dict nuevo. Usa coincidencia
@@ -174,15 +168,12 @@ def build_few_shot_block(template: SupplierInvoiceTemplate | None) -> str:
             for ln in (last.get("lines") or [])[:3]
         ],
         "default_tax_percentage": (
-            float(template.default_tax_percentage)
-            if template.default_tax_percentage is not None
-            else None
+            float(template.default_tax_percentage) if template.default_tax_percentage is not None else None
         ),
     }
     return (
         "Contexto del proveedor (extracción anterior, sólo orientativa, "
-        "respeta la imagen actual si difiere):\n"
-        + json.dumps(last_clean, ensure_ascii=False, indent=2)
+        "respeta la imagen actual si difiere):\n" + json.dumps(last_clean, ensure_ascii=False, indent=2)
     )
 
 
@@ -256,10 +247,7 @@ def diff_corrections(original: dict, corrected: dict) -> dict[str, Any]:
     # el tax_percentage al mismo valor.
     same_len = len(o_lines) == len(c_lines) and o_lines
     if same_len:
-        rates_diff = [
-            (o.get("tax_percentage"), c.get("tax_percentage"))
-            for o, c in zip(o_lines, c_lines, strict=True)
-        ]
+        rates_diff = [(o.get("tax_percentage"), c.get("tax_percentage")) for o, c in zip(o_lines, c_lines, strict=True)]
         if all(c is not None and o != c for o, c in rates_diff):
             new_rates = {c for _, c in rates_diff}
             if len(new_rates) == 1:
@@ -307,9 +295,7 @@ async def save_correction(
         db.add(template)
 
     if "default_tax_percentage" in overrides:
-        template.default_tax_percentage = Decimal(
-            str(overrides["default_tax_percentage"])
-        )
+        template.default_tax_percentage = Decimal(str(overrides["default_tax_percentage"]))
     if "description_overrides" in overrides:
         merged = dict(template.description_overrides or {})
         merged.update(overrides["description_overrides"])

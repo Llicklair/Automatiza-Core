@@ -50,7 +50,7 @@ class LLMToolFormatError(RuntimeError):
 
 
 TIMEOUT = 290  # segundos — 10s antes que el dispatcher (300s) para que el
-              # error útil "CLI no respondió" aparezca primero, no el del wrapper.
+# error útil "CLI no respondió" aparezca primero, no el del wrapper.
 
 
 def _resolve_claude_bin() -> str:
@@ -222,8 +222,18 @@ _NO_TOOL_FORMAT_RETRY_INSTRUCTION = (
 # distinguir un resumen legítimo (ya se ejecutó una escritura) de un "leí y narro el
 # create sin emitirlo" — en este último el write aún NO ocurrió y conviene reintentar.
 _WRITE_NAME_MARKERS = (
-    "create", "update", "delete", "remove", "send", "register",
-    "add", "upsert", "approve", "reconcile", "propose", "import",
+    "create",
+    "update",
+    "delete",
+    "remove",
+    "send",
+    "register",
+    "add",
+    "upsert",
+    "approve",
+    "reconcile",
+    "propose",
+    "import",
 )
 
 
@@ -361,14 +371,14 @@ def _parse_tool_response(text: str) -> AIMessage:
         cleaned = _escape_control_chars_in_json_strings(raw_json)
         try:
             parsed = json.loads(cleaned)
-            _log.info(
-                "[ClaudeCode] JSON parseado tras escapar control chars (LLM emitió newlines literales)"
-            )
+            _log.info("[ClaudeCode] JSON parseado tras escapar control chars (LLM emitió newlines literales)")
         except json.JSONDecodeError as second_err:
             _log.warning(
                 "[ClaudeCode] JSON malformado en tool_call, fallback a texto. "
                 "Primer error: %s | Segundo error tras escapar: %s | head: %s",
-                first_err, second_err, raw_json[:300],
+                first_err,
+                second_err,
+                raw_json[:300],
             )
             return AIMessage(content=text)
 
@@ -386,10 +396,7 @@ def _parse_tool_response(text: str) -> AIMessage:
         tool_calls.append(
             {
                 "name": tc["name"],
-                "args": {
-                    k: str(v) if isinstance(v, bool) and not isinstance(v, int) else v
-                    for k, v in args.items()
-                },
+                "args": {k: str(v) if isinstance(v, bool) and not isinstance(v, int) else v for k, v in args.items()},
                 "id": f"call_{uuid.uuid4().hex[:8]}",
                 "type": "tool_call",
             }
@@ -481,9 +488,7 @@ class ClaudeCodeChatModel(BaseChatModel):
             return ""
         return _build_tool_system_prompt(self._bound_tools)
 
-    def _process_response(
-        self, text: str, usage: dict | None = None, write_already_done: bool = False
-    ) -> ChatResult:
+    def _process_response(self, text: str, usage: dict | None = None, write_already_done: bool = False) -> ChatResult:
         if self._bound_tools:
             msg = _parse_tool_response(text)
             if not msg.tool_calls and self._bound_tools:
@@ -506,7 +511,8 @@ class ClaudeCodeChatModel(BaseChatModel):
                     if refusal:
                         _log.error(
                             "[ClaudeCode] LLM REFUSED tool use. Mentioned %s. Head: %s",
-                            mentioned, text[:300],
+                            mentioned,
+                            text[:300],
                         )
                         raise LLMRefusedToolUseError(
                             f"LLM mencionó tools {mentioned} pero rehusó invocarlas: {text[:200]}"
@@ -546,8 +552,7 @@ class ClaudeCodeChatModel(BaseChatModel):
     ) -> ChatResult:
         prompt = _messages_to_prompt(messages, self._get_tool_system())
         write_done = any(
-            getattr(m, "type", None) == "tool" and _is_write_tool_name(getattr(m, "name", ""))
-            for m in messages
+            getattr(m, "type", None) == "tool" and _is_write_tool_name(getattr(m, "name", "")) for m in messages
         )
         text, usage = self._call_cli(prompt)
         try:
@@ -617,8 +622,7 @@ class ClaudeCodeChatModel(BaseChatModel):
     ) -> ChatResult:
         prompt = _messages_to_prompt(messages, self._get_tool_system())
         write_done = any(
-            getattr(m, "type", None) == "tool" and _is_write_tool_name(getattr(m, "name", ""))
-            for m in messages
+            getattr(m, "type", None) == "tool" and _is_write_tool_name(getattr(m, "name", "")) for m in messages
         )
         text, usage = await self._acall_cli(prompt)
         try:
@@ -740,7 +744,7 @@ class ClaudeCodeChatModel(BaseChatModel):
             parsed = None
             for m in re.finditer(r"\{", clean):
                 try:
-                    candidate, _ = decoder.raw_decode(clean[m.start():])
+                    candidate, _ = decoder.raw_decode(clean[m.start() :])
                     parsed = candidate
                     break
                 except json.JSONDecodeError:

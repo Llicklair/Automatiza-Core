@@ -332,6 +332,7 @@ def get_calendario_fiscal(year: int) -> list[dict]:
 
     # Seguridad Social — TC1/TC2 mensual (último día del mes siguiente)
     import calendar as _cal
+
     for mes in range(1, 13):
         mes_siguiente = mes + 1 if mes < 12 else 1
         anyo_siguiente = year if mes < 12 else year + 1

@@ -55,9 +55,7 @@ class EmbedderUnavailableError(Exception):
     """No hay proveedor de embeddings configurado (la ruta lo mapea a HTTP 503)."""
 
 
-async def semantic_search(
-    query: str, limit: int, tenant_id: uuid.UUID, db: AsyncSession
-) -> list[dict[str, Any]]:
+async def semantic_search(query: str, limit: int, tenant_id: uuid.UUID, db: AsyncSession) -> list[dict[str, Any]]:
     """Búsqueda semántica RAG (coseno en Python) sobre los documentos del tenant.
 
     Devuelve hits ordenados por similitud, ya con el nombre de archivo resuelto.
@@ -262,9 +260,7 @@ async def upload_bulk(
         try:
             ext = validate_upload(original_name, len(extracted_data))
         except ValueError as e:
-            logger.warning(
-                "upload_bulk: entrada ZIP rechazada %s: %s", original_name, e
-            )
+            logger.warning("upload_bulk: entrada ZIP rechazada %s: %s", original_name, e)
             continue
         file_path = save_file_to_disk(extracted_data, ext)
 
@@ -435,9 +431,7 @@ async def _regenerate_ai_invoice_pdf(
     """Regenera un PDF de factura IA a partir de los datos de la Task asociada."""
     extracted_data = None
     if doc.task_id:
-        task_result = await db.execute(
-            select(Task).where(Task.id == doc.task_id, Task.tenant_id == tenant_id)
-        )
+        task_result = await db.execute(select(Task).where(Task.id == doc.task_id, Task.tenant_id == tenant_id))
         task = task_result.scalar_one_or_none()
         if task and task.agent_results:
             for r in task.agent_results or []:
@@ -465,9 +459,7 @@ async def _regenerate_ai_invoice_pdf(
     tenant_result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
     tenant_obj = tenant_result.scalar_one_or_none()
     company_name = tenant_obj.name if tenant_obj else "Mi Empresa S.L."
-    company_nif = extracted_data.get("issuer_nif") or (
-        tenant_obj.nif if tenant_obj else "B00000000"
-    )
+    company_nif = extracted_data.get("issuer_nif") or (tenant_obj.nif if tenant_obj else "B00000000")
     company_address = extracted_data.get("issuer_address") or "Calle Principal, 1 Â· Madrid"
     company_email = extracted_data.get("issuer_email") or ""
 
@@ -503,9 +495,7 @@ async def _regenerate_ai_invoice_pdf(
     if extracted_data.get("notes"):
         invoice_data["notes"] = extracted_data["notes"]
     if extracted_data.get("payment_terms") or extracted_data.get("payment_method"):
-        invoice_data["payment_terms"] = extracted_data.get("payment_terms") or extracted_data.get(
-            "payment_method"
-        )
+        invoice_data["payment_terms"] = extracted_data.get("payment_terms") or extracted_data.get("payment_method")
 
     pdf_bytes = generate_invoice_pdf(invoice_data)
     if not pdf_bytes.startswith(b"%PDF-"):
@@ -530,17 +520,13 @@ async def update_content(
 ) -> TenantDocument:
     """Actualiza el contenido textual de un documento. Lanza ValueError si es PDF."""
     if doc.file_type and "pdf" in doc.file_type.lower():
-        raise ValueError(
-            "No se puede modificar directamente un PDF. Modifica los datos originales y regenera el PDF."
-        )
+        raise ValueError("No se puede modificar directamente un PDF. Modifica los datos originales y regenera el PDF.")
 
     if doc.file_path and os.path.exists(doc.file_path):
         mode = "a" if append else "w"
         with open(doc.file_path, mode, encoding="utf-8") as f:
             if append:
-                f.write(
-                    f"\n\n--- Modificacion {datetime.now(UTC).strftime('%d/%m/%Y %H:%M')} ---\n"
-                )
+                f.write(f"\n\n--- Modificacion {datetime.now(UTC).strftime('%d/%m/%Y %H:%M')} ---\n")
             f.write(new_content)
         doc.file_size = os.path.getsize(doc.file_path)
     else:

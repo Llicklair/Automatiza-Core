@@ -146,9 +146,7 @@ async def download_employee_document(
     )
 
 
-@router.delete(
-    "/employees/{employee_id}/documents/{doc_id}", status_code=status.HTTP_204_NO_CONTENT
-)
+@router.delete("/employees/{employee_id}/documents/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_employee_document(
     employee_id: UUID,
     doc_id: UUID,
@@ -171,9 +169,7 @@ async def generate_finiquito_pdf_endpoint(
     current_user: User = Depends(require_role("admin")),
 ):
     try:
-        emp, tenant = await svc.load_employee_and_tenant(
-            payload.employee_id, current_user.tenant_id, db
-        )
+        emp, tenant = await svc.load_employee_and_tenant(payload.employee_id, current_user.tenant_id, db)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
 
@@ -201,9 +197,7 @@ async def generate_liquidacion_finiquito_pdf_endpoint(
     current_user: User = Depends(require_role("admin")),
 ):
     try:
-        emp, tenant = await svc.load_employee_and_tenant(
-            payload.employee_id, current_user.tenant_id, db
-        )
+        emp, tenant = await svc.load_employee_and_tenant(payload.employee_id, current_user.tenant_id, db)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
 
@@ -224,9 +218,7 @@ async def generate_registro_jornada_pdf_endpoint(
     current_user: User = Depends(require_role("admin")),
 ):
     try:
-        emp, tenant = await svc.load_employee_and_tenant(
-            payload.employee_id, current_user.tenant_id, db
-        )
+        emp, tenant = await svc.load_employee_and_tenant(payload.employee_id, current_user.tenant_id, db)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
 

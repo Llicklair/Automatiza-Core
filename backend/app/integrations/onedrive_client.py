@@ -94,8 +94,6 @@ class OneDriveClient:
         """Upload a document from the internal system to OneDrive."""
         return await self.upload_file(name, content, folder_path)
 
-    async def backup_invoice(
-        self, invoice_name: str, pdf_bytes: bytes, folder_path: str = "root"
-    ) -> dict:
+    async def backup_invoice(self, invoice_name: str, pdf_bytes: bytes, folder_path: str = "root") -> dict:
         """Backup an invoice PDF to OneDrive."""
         return await self.upload_file(invoice_name, pdf_bytes, folder_path)

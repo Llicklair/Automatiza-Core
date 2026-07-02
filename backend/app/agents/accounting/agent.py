@@ -65,9 +65,7 @@ async def accounting_agent_node(state: AgentState):
         description="Procesando solicitud de contabilidad...",
         status="completed",
         action_taken=(
-            "Invocando herramientas de contabilidad"
-            if response.tool_calls
-            else "Asistencia contable completada."
+            "Invocando herramientas de contabilidad" if response.tool_calls else "Asistencia contable completada."
         ),
     )
 
@@ -85,11 +83,7 @@ def accounting_finalize_node(state: AgentState):
         step_id="accounting_final",
         description="Agente de Contabilidad ha finalizado.",
         status="completed",
-        action_taken=(
-            last_msg.content
-            if isinstance(last_msg.content, str)
-            else "Operación contable completada."
-        ),
+        action_taken=(last_msg.content if isinstance(last_msg.content, str) else "Operación contable completada."),
     )
     return {"status": "done", "agent_results": [final_result.model_dump()]}
 
@@ -100,9 +94,7 @@ workflow.add_node("tools", ToolNode(tools))
 workflow.add_node("finalize", accounting_finalize_node)
 
 workflow.set_entry_point("accounting_agent")
-workflow.add_conditional_edges(
-    "accounting_agent", tools_condition, {"tools": "tools", "__end__": "finalize"}
-)
+workflow.add_conditional_edges("accounting_agent", tools_condition, {"tools": "tools", "__end__": "finalize"})
 workflow.add_edge("tools", "accounting_agent")
 workflow.add_edge("finalize", END)
 

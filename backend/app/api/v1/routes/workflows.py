@@ -139,9 +139,7 @@ async def cancel_execution(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        execution = await svc.cancel_execution(
-            execution_id, workflow_id, current_user.tenant_id, db
-        )
+        execution = await svc.cancel_execution(execution_id, workflow_id, current_user.tenant_id, db)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     if not execution:
@@ -186,9 +184,7 @@ async def resume_execution(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        execution = await svc.resume_execution(
-            execution_id, workflow_id, current_user.tenant_id, db
-        )
+        execution = await svc.resume_execution(execution_id, workflow_id, current_user.tenant_id, db)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as exc:

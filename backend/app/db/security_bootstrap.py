@@ -63,23 +63,14 @@ def ensure_app_role(connection: Connection, app_password: str = "pyme_pass") -> 
     )
     connection.execute(text(f"GRANT USAGE ON SCHEMA public TO {APP_ROLE};"))
     connection.execute(text(f"GRANT {_DML} ON ALL TABLES IN SCHEMA public TO {APP_ROLE};"))
-    connection.execute(
-        text(f"GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO {APP_ROLE};")
-    )
+    connection.execute(text(f"GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO {APP_ROLE};"))
     connection.execute(text(f"GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO {APP_ROLE};"))
     # Privilegios por defecto para objetos FUTUROS (creados por el rol admin actual).
+    connection.execute(text(f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT {_DML} ON TABLES TO {APP_ROLE};"))
     connection.execute(
-        text(f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT {_DML} ON TABLES TO {APP_ROLE};")
+        text("ALTER DEFAULT PRIVILEGES IN SCHEMA public " f"GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO {APP_ROLE};")
     )
-    connection.execute(
-        text(
-            "ALTER DEFAULT PRIVILEGES IN SCHEMA public "
-            f"GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO {APP_ROLE};"
-        )
-    )
-    connection.execute(
-        text(f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO {APP_ROLE};")
-    )
+    connection.execute(text(f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO {APP_ROLE};"))
 
 
 def ensure_rls_policies(connection: Connection) -> None:

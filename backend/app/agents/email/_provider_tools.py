@@ -32,9 +32,7 @@ def build_real_tools(
     provider_desc = ", ".join(f'"{p}"' for p in providers)
 
     @tool
-    async def check_inbox_real(
-        tenant_id: str, provider: str = default_provider, max_results: int = 10
-    ) -> str:
+    async def check_inbox_real(tenant_id: str, provider: str = default_provider, max_results: int = 10) -> str:
         """Lee los correos más recientes de la bandeja de entrada.
         Args:
             tenant_id: ID del tenant
@@ -83,9 +81,7 @@ def build_real_tools(
             return f"Error al leer bandeja ({provider}): {e}"
 
     @tool
-    async def check_unread_real(
-        tenant_id: str, provider: str = default_provider, max_results: int = 10
-    ) -> str:
+    async def check_unread_real(tenant_id: str, provider: str = default_provider, max_results: int = 10) -> str:
         """Lee solo los correos NO LEÍDOS de la bandeja de entrada.
         Args:
             tenant_id: ID del tenant
@@ -166,8 +162,7 @@ def build_real_tools(
             f"Borrador de correo ({provider}):\n"
             f"  Para: {to}\n"
             f"  Asunto: {subject}\n"
-            f"  Cuerpo:\n{body}"
-            + (f"\n  Adjuntos: {len(attachment_ids)} documento(s)" if attachment_ids else "")
+            f"  Cuerpo:\n{body}" + (f"\n  Adjuntos: {len(attachment_ids)} documento(s)" if attachment_ids else "")
         )
         if not confirm:
             return f"{preview}\n\n¿Confirmas el envío? Responde 'sí, envía' para proceder o 'no' para cancelar."
@@ -178,18 +173,14 @@ def build_real_tools(
             if provider == "gmail":
                 client = GmailClient(providers["gmail"])
                 try:
-                    await client.send_message(
-                        to=to, subject=subject, body=body, attachments=attachments or None
-                    )
+                    await client.send_message(to=to, subject=subject, body=body, attachments=attachments or None)
                     return f"Correo enviado via Gmail{attach_msg}\nAsunto: {subject}\nPara: {to}"
                 finally:
                     await client.close()
             elif provider == "outlook":
                 client = OutlookClient(providers["outlook"])
                 try:
-                    await client.send_message(
-                        to=to, subject=subject, body=body, attachments=attachments or None
-                    )
+                    await client.send_message(to=to, subject=subject, body=body, attachments=attachments or None)
                     return f"Correo enviado via Outlook{attach_msg}\nAsunto: {subject}\nPara: {to}"
                 finally:
                     await client.close()
@@ -199,9 +190,7 @@ def build_real_tools(
                     imap_creds, to=to, subject=subject, body=body, attachment_paths=attachment_paths
                 )
                 if result["success"]:
-                    return (
-                        f"Correo enviado via IMAP/SMTP{attach_msg}\nAsunto: {subject}\nPara: {to}"
-                    )
+                    return f"Correo enviado via IMAP/SMTP{attach_msg}\nAsunto: {subject}\nPara: {to}"
                 else:
                     return f"Error SMTP: {result['message']}"
         except Exception as e:
@@ -249,9 +238,7 @@ def build_real_tools(
             return f"Error al responder correo ({provider}): {e}"
 
     @tool
-    async def mark_read_real(
-        tenant_id: str, message_id: str, provider: str = default_provider
-    ) -> str:
+    async def mark_read_real(tenant_id: str, message_id: str, provider: str = default_provider) -> str:
         """Marca un correo como leído.
         Args:
             tenant_id: ID del tenant

@@ -58,9 +58,7 @@ def _build_graph(tools_list, mode_note: str = ""):
     async def agent_node(state: AgentState):
         extra_init_messages = []
         if "messages" not in state or not state["messages"]:
-            sys_msg = SystemMessage(
-                content=build_system_prompt(mode_note, state.get("tenant_id", ""))
-            )
+            sys_msg = SystemMessage(content=build_system_prompt(mode_note, state.get("tenant_id", "")))
             user_msg = HumanMessage(content=state.get("current_intent", state["user_intent"]))
             extra_init_messages = [sys_msg, user_msg]
             state["messages"] = extra_init_messages
@@ -74,11 +72,7 @@ def _build_graph(tools_list, mode_note: str = ""):
             action_taken=(
                 "Invocando herramientas de correo"
                 if response.tool_calls
-                else (
-                    response.content
-                    if isinstance(response.content, str)
-                    else "Operación de email completada."
-                )
+                else (response.content if isinstance(response.content, str) else "Operación de email completada.")
             ),
         )
 
@@ -97,9 +91,7 @@ def _build_graph(tools_list, mode_note: str = ""):
             description="Agente Email ha finalizado sus operaciones.",
             status="completed",
             action_taken=(
-                last_msg.content
-                if isinstance(last_msg.content, str)
-                else "Operaciones de email completadas."
+                last_msg.content if isinstance(last_msg.content, str) else "Operaciones de email completadas."
             ),
         )
         return {"status": "done", "agent_results": [final_result.model_dump()]}

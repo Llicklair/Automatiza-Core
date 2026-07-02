@@ -69,7 +69,9 @@ async def upload_cert(
     content = await file.read()
     try:
         cert = await store_certificate(
-            db, current_user.tenant_id, current_user.id,
+            db,
+            current_user.tenant_id,
+            current_user.id,
             label=label,
             pfx_bytes=content,
             password=password,
@@ -117,7 +119,9 @@ async def create_presentation_endpoint(
     """Registra una presentación en estado pending con el XML sin firmar."""
     try:
         p = await create_presentation(
-            db, current_user.tenant_id, current_user.id,
+            db,
+            current_user.tenant_id,
+            current_user.id,
             model_code=payload.model_code,
             year=payload.year,
             period=payload.period,
@@ -157,9 +161,14 @@ async def create_303_from_quarter(
     )
     try:
         p = await create_presentation(
-            db, current_user.tenant_id, current_user.id,
-            model_code="303", year=year, period=f"{quarter}T",
-            xml_unsigned=xml_str, environment=environment,
+            db,
+            current_user.tenant_id,
+            current_user.id,
+            model_code="303",
+            year=year,
+            period=f"{quarter}T",
+            xml_unsigned=xml_str,
+            environment=environment,
         )
     except PresentationError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -181,7 +190,12 @@ _YEARLY_BUILDERS = {
 
 
 async def _build_xml_generic(
-    db, tenant_id, model_code: str, year: int, period: str, quarter: int | None,
+    db,
+    tenant_id,
+    model_code: str,
+    year: int,
+    period: str,
+    quarter: int | None,
 ) -> str:
     """Construye XML auxiliar reusando los builders de services.reports.modelos_aeat."""
     from app.services.aeat import build_modelo_xml_generic
@@ -200,7 +214,10 @@ async def _build_xml_generic(
 
     tenant = data.get("tenant") if isinstance(data, dict) else None
     return build_modelo_xml_generic(
-        modelo=model_code, year=year, period=period, data=data,
+        modelo=model_code,
+        year=year,
+        period=period,
+        data=data,
         tenant_name=(tenant or {}).get("name", ""),
         tenant_nif=(tenant or {}).get("nif", ""),
     )
@@ -222,12 +239,22 @@ async def create_quarterly_presentation(
         raise HTTPException(status_code=400, detail=f"Modelo trimestral no soportado: {model_code}")
     try:
         xml_str = await _build_xml_generic(
-            db, current_user.tenant_id, model_code, year, f"{quarter}T", quarter,
+            db,
+            current_user.tenant_id,
+            model_code,
+            year,
+            f"{quarter}T",
+            quarter,
         )
         p = await create_presentation(
-            db, current_user.tenant_id, current_user.id,
-            model_code=model_code, year=year, period=f"{quarter}T",
-            xml_unsigned=xml_str, environment=environment,
+            db,
+            current_user.tenant_id,
+            current_user.id,
+            model_code=model_code,
+            year=year,
+            period=f"{quarter}T",
+            xml_unsigned=xml_str,
+            environment=environment,
         )
     except PresentationError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -249,12 +276,22 @@ async def create_yearly_presentation(
         raise HTTPException(status_code=400, detail=f"Modelo anual no soportado: {model_code}")
     try:
         xml_str = await _build_xml_generic(
-            db, current_user.tenant_id, model_code, year, "A", None,
+            db,
+            current_user.tenant_id,
+            model_code,
+            year,
+            "A",
+            None,
         )
         p = await create_presentation(
-            db, current_user.tenant_id, current_user.id,
-            model_code=model_code, year=year, period="A",
-            xml_unsigned=xml_str, environment=environment,
+            db,
+            current_user.tenant_id,
+            current_user.id,
+            model_code=model_code,
+            year=year,
+            period="A",
+            xml_unsigned=xml_str,
+            environment=environment,
         )
     except PresentationError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -278,7 +315,10 @@ async def submit_presentation_endpoint(
     """
     try:
         p = await submit_presentation(
-            db, current_user.tenant_id, presentation_id, dry_run=dry_run,
+            db,
+            current_user.tenant_id,
+            presentation_id,
+            dry_run=dry_run,
             confirmed_by_user_id=None if dry_run else current_user.id,
         )
     except LookupError as e:
@@ -298,6 +338,7 @@ async def list_presentations_endpoint(
 ):
     items = await list_presentations(db, current_user.tenant_id, limit=limit)
     return {"items": [presentation_to_dict(p) for p in items]}
+
 
 @router.get("/presentations/{presentation_id}/acuse")
 @limiter.limit("30/minute")
@@ -322,4 +363,3 @@ async def download_acuse(
         media_type="text/plain; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
-

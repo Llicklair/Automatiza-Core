@@ -50,9 +50,7 @@ async def _read_upload_capped(file, max_bytes: int) -> bytes:
             break
         total += len(chunk)
         if total > max_bytes:
-            raise HTTPException(
-                status_code=413, detail="El archivo supera los 100 MB permitidos"
-            )
+            raise HTTPException(status_code=413, detail="El archivo supera los 100 MB permitidos")
         chunks.append(chunk)
     return b"".join(chunks)
 
@@ -60,9 +58,7 @@ async def _read_upload_capped(file, max_bytes: int) -> bytes:
 def _parse_db_url(url: str) -> dict:
     """Extrae host, port, user, password y dbname de DATABASE_URL."""
     # Normaliza asyncpg → psycopg2 scheme para parsear
-    clean = url.replace("postgresql+asyncpg://", "postgresql://").replace(
-        "postgresql+psycopg2://", "postgresql://"
-    )
+    clean = url.replace("postgresql+asyncpg://", "postgresql://").replace("postgresql+psycopg2://", "postgresql://")
     parsed = urllib.parse.urlparse(clean)
     return {
         "host": parsed.hostname or "localhost",
@@ -159,9 +155,7 @@ async def restore_backup(
     # Validación mínima: debe contener SQL típico de pg_dump
     snippet = content[:2048].decode("utf-8", errors="ignore")
     if not re.search(r"(PostgreSQL|SET|CREATE|INSERT|COPY|--)", snippet):
-        raise HTTPException(
-            status_code=400, detail="El archivo no parece un backup de PostgreSQL válido"
-        )
+        raise HTTPException(status_code=400, detail="El archivo no parece un backup de PostgreSQL válido")
 
     db_info = _parse_db_url(settings.DATABASE_URL)
     env = {"PGPASSWORD": db_info["password"]}
@@ -188,9 +182,7 @@ async def restore_backup(
         )
         stdout, stderr = await asyncio.wait_for(proc.communicate(input=content), timeout=300)
     except TimeoutError as exc:
-        raise HTTPException(
-            status_code=504, detail="La restauración tardó demasiado (timeout 5min)"
-        ) from exc
+        raise HTTPException(status_code=504, detail="La restauración tardó demasiado (timeout 5min)") from exc
     except FileNotFoundError as exc:
         # Dependencia ausente (no es un crash del servidor) → 503, no 500.
         raise HTTPException(status_code=503, detail="psql no está disponible en el servidor") from exc
@@ -227,7 +219,9 @@ async def invalidate_llm_cache(
     removed = await llm_cache.flush_prefix(prefix)
     logger.info(
         "LLM cache invalidado por admin %s: prefix=%r entradas=%d",
-        current_user.email, prefix, removed,
+        current_user.email,
+        prefix,
+        removed,
     )
     return {"ok": True, "prefix": prefix, "removed": removed}
 
@@ -268,9 +262,7 @@ async def db_status(
         import app.db
 
         cfg = Config()
-        cfg.set_main_option(
-            "script_location", str(Path(app.db.__file__).resolve().parent / "migrations")
-        )
+        cfg.set_main_option("script_location", str(Path(app.db.__file__).resolve().parent / "migrations"))
         head = ScriptDirectory.from_config(cfg).get_current_head()
     except Exception as e:
         logger.warning("db-status: no se pudo resolver el head de Alembic: %s", e)

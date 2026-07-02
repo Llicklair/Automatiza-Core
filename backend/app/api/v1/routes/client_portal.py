@@ -1,4 +1,5 @@
 """Portal externo de clientes — autenticación por token + vista de facturas."""
+
 import logging
 from uuid import UUID
 
@@ -39,6 +40,7 @@ class PortalAuthRequest(BaseModel):
 
 
 # ── Admin: generar / revocar token para un cliente ───────────────────────────
+
 
 @router.get("/admin/tokens/{client_id}", tags=["client-portal"])
 @limiter.limit("30/minute")
@@ -112,6 +114,7 @@ async def revoke_portal_token(
 
 # ── Público: intercambiar token → JWT ────────────────────────────────────────
 
+
 @router.post("/auth", tags=["client-portal"])
 @limiter.limit("10/minute")
 async def authenticate_portal(
@@ -125,13 +128,12 @@ async def authenticate_portal(
     except PortalAuthError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
-    access_token = create_client_portal_access_token(
-        str(portal_token.client_id), str(portal_token.tenant_id)
-    )
+    access_token = create_client_portal_access_token(str(portal_token.client_id), str(portal_token.tenant_id))
     return {"access_token": access_token, "token_type": "bearer"}
 
 
 # ── Autenticado (client_portal JWT) ─────────────────────────────────────────
+
 
 @router.get("/me", tags=["client-portal"])
 @limiter.limit("60/minute")
@@ -156,9 +158,7 @@ async def portal_download_invoice_pdf(
         raise HTTPException(status_code=404, detail="Factura no encontrada")
 
     try:
-        pdf_bytes, file_name = await invoice_svc.build_invoice_pdf(
-            invoice_id, client.tenant_id, db
-        )
+        pdf_bytes, file_name = await invoice_svc.build_invoice_pdf(invoice_id, client.tenant_id, db)
     except ValueError as e:
         logger.warning("[PORTAL] Error generando PDF factura %s: %s", invoice_id, e)
         raise HTTPException(status_code=404, detail="No se pudo generar el PDF de la factura") from e

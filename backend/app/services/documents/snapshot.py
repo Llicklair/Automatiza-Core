@@ -71,9 +71,7 @@ async def list_snapshot_reports(tenant_id, db: AsyncSession) -> list[TenantDocum
     return list(result.scalars().all())
 
 
-async def get_snapshot_report(
-    report_id: uuid.UUID, tenant_id, db: AsyncSession
-) -> TenantDocument | None:
+async def get_snapshot_report(report_id: uuid.UUID, tenant_id, db: AsyncSession) -> TenantDocument | None:
     """Obtiene un informe por ID, verificando pertenencia al tenant."""
     result = await db.execute(
         select(TenantDocument).where(
@@ -112,9 +110,7 @@ async def delete_snapshot_report(report_id: uuid.UUID, tenant_id, db: AsyncSessi
             try:
                 os.remove(path_candidate)
             except OSError:
-                logger.debug(
-                    "Failed to delete report file from disk: %s", path_candidate, exc_info=True
-                )
+                logger.debug("Failed to delete report file from disk: %s", path_candidate, exc_info=True)
             break
 
     await db.delete(doc)

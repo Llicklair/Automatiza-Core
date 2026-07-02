@@ -185,8 +185,8 @@ def _encadenamiento(parent: Element, huella_anterior: Optional[str], prev_record
 
 @dataclass(frozen=True)
 class _Detalle:
-    tipo: Optional[str]   # TipoImpositivo (ej. "21"); None si no aplica
-    base: str             # BaseImponibleOimporteNoSujeto
+    tipo: Optional[str]  # TipoImpositivo (ej. "21"); None si no aplica
+    base: str  # BaseImponibleOimporteNoSujeto
     cuota: Optional[str]  # CuotaRepercutida
 
 
@@ -215,9 +215,7 @@ def _detalles(invoice, lines) -> list[_Detalle]:
             base_sum = sum((b for _, b in items), Decimal("0"))
             rate = items[0][0]
             cuota = base_sum * rate / Decimal("100")
-            detalles.append(
-                _Detalle(tipo=tipo, base=_fmt_importe(base_sum), cuota=_fmt_importe(cuota))
-            )
+            detalles.append(_Detalle(tipo=tipo, base=_fmt_importe(base_sum), cuota=_fmt_importe(cuota)))
         if detalles:
             return detalles[:12]
 
@@ -406,14 +404,10 @@ async def generate_alta_xml(db, *, record: "VerifactuRecord", sistema=None) -> s
     from app.db.models.auth import Tenant
     from app.db.models.billing import Invoice, VerifactuRecord
 
-    res = await db.execute(
-        select(Invoice).options(selectinload(Invoice.lines)).where(Invoice.id == record.invoice_id)
-    )
+    res = await db.execute(select(Invoice).options(selectinload(Invoice.lines)).where(Invoice.id == record.invoice_id))
     invoice = res.scalar_one_or_none()
     if invoice is None:
-        raise ValueError(
-            f"Factura {record.invoice_id} no encontrada al generar el alta VeriFactu"
-        )
+        raise ValueError(f"Factura {record.invoice_id} no encontrada al generar el alta VeriFactu")
     tenant = await db.get(Tenant, record.tenant_id)
 
     prev_record = None
@@ -429,9 +423,7 @@ async def generate_alta_xml(db, *, record: "VerifactuRecord", sistema=None) -> s
     # Rectificativa: cargar la factura original para poblar FacturasRectificadas.
     rectified_invoice = None
     if getattr(invoice, "rectifies_invoice_id", None):
-        ri = await db.execute(
-            select(Invoice).where(Invoice.id == invoice.rectifies_invoice_id)
-        )
+        ri = await db.execute(select(Invoice).where(Invoice.id == invoice.rectifies_invoice_id))
         rectified_invoice = ri.scalar_one_or_none()
 
     return build_registro_alta_xml(

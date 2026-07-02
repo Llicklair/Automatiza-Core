@@ -13,15 +13,9 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute(
-        "ALTER TABLE invoices ADD COLUMN IF NOT EXISTS fiscal_regime VARCHAR(30)"
-    )
-    op.execute(
-        "ALTER TABLE invoices ADD COLUMN IF NOT EXISTS retencion_irpf_rate NUMERIC(5, 2)"
-    )
-    op.execute(
-        "ALTER TABLE invoices ADD COLUMN IF NOT EXISTS retencion_irpf_amount NUMERIC(10, 2)"
-    )
+    op.execute("ALTER TABLE invoices ADD COLUMN IF NOT EXISTS fiscal_regime VARCHAR(30)")
+    op.execute("ALTER TABLE invoices ADD COLUMN IF NOT EXISTS retencion_irpf_rate NUMERIC(5, 2)")
+    op.execute("ALTER TABLE invoices ADD COLUMN IF NOT EXISTS retencion_irpf_amount NUMERIC(10, 2)")
 
 
 def downgrade() -> None:

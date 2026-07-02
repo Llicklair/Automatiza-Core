@@ -74,9 +74,7 @@ async def _update_invoice_status_async(tenant_id: str, invoice_id: str, new_stat
                     },
                 )
             except Exception:
-                logger.debug(
-                    "Failed to emit invoice_%s event for %s", new_status, invoice_id, exc_info=True
-                )
+                logger.debug("Failed to emit invoice_%s event for %s", new_status, invoice_id, exc_info=True)
 
             return f"Factura {invoice.invoice_number} actualizada: {old_status} → {new_status}."
     except Exception as e:
@@ -128,9 +126,7 @@ async def _update_invoice_async(
                 from app.db.models.billing import VerifactuRecord
 
                 vf = await db.execute(
-                    select(VerifactuRecord.id)
-                    .where(VerifactuRecord.invoice_id == invoice.id)
-                    .limit(1)
+                    select(VerifactuRecord.id).where(VerifactuRecord.invoice_id == invoice.id).limit(1)
                 )
                 if vf.scalar_one_or_none() is not None:
                     return (
@@ -171,9 +167,7 @@ async def _update_invoice_async(
                     changes.append(f"IVA={new_vat}%")
 
             if concept or wants_fiscal_change:
-                lines_result = await db.execute(
-                    select(InvoiceLine).where(InvoiceLine.invoice_id == invoice.id)
-                )
+                lines_result = await db.execute(select(InvoiceLine).where(InvoiceLine.invoice_id == invoice.id))
                 first_line = lines_result.scalar_one_or_none()
                 if first_line:
                     if concept:

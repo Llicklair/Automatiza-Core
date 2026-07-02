@@ -42,34 +42,67 @@ logger = logging.getLogger("onboarding.seed")
 # Pyme de servicios genérica. Nombres con "(demo)" para que se reconozcan como
 # ejemplo incluso sin badge. NIFs en un rango claramente ficticio.
 _DEMO_CLIENTS: tuple[dict, ...] = (
-    {"name": "Construcciones Vega SL (demo)", "nif": "B00000010",
-     "email": "vega@ejemplo.test", "client_type": "customer", "city": "Madrid"},
-    {"name": "Estudio Lúa SL (demo)", "nif": "B00000011",
-     "email": "lua@ejemplo.test", "client_type": "customer", "city": "Valencia"},
-    {"name": "Carmen Ruiz (demo)", "nif": "00000012Z",
-     "email": "carmen@ejemplo.test", "client_type": "customer", "city": "Sevilla"},
-    {"name": "Suministros Iberia SL (demo)", "nif": "B00000013",
-     "email": "iberia@ejemplo.test", "client_type": "supplier", "city": "Bilbao"},
+    {
+        "name": "Construcciones Vega SL (demo)",
+        "nif": "B00000010",
+        "email": "vega@ejemplo.test",
+        "client_type": "customer",
+        "city": "Madrid",
+    },
+    {
+        "name": "Estudio Lúa SL (demo)",
+        "nif": "B00000011",
+        "email": "lua@ejemplo.test",
+        "client_type": "customer",
+        "city": "Valencia",
+    },
+    {
+        "name": "Carmen Ruiz (demo)",
+        "nif": "00000012Z",
+        "email": "carmen@ejemplo.test",
+        "client_type": "customer",
+        "city": "Sevilla",
+    },
+    {
+        "name": "Suministros Iberia SL (demo)",
+        "nif": "B00000013",
+        "email": "iberia@ejemplo.test",
+        "client_type": "supplier",
+        "city": "Bilbao",
+    },
 )
 
 _DEMO_PRODUCTS: tuple[dict, ...] = (
-    {"name": "Consultoría (hora) (demo)", "item_type": "service",
-     "price": 60, "tax_percentage": 21, "stock_quantity": 0, "unit": "h"},
-    {"name": "Mantenimiento mensual (demo)", "item_type": "service",
-     "price": 250, "tax_percentage": 21, "stock_quantity": 0},
-    {"name": "Informe técnico (demo)", "item_type": "service",
-     "price": 400, "tax_percentage": 21, "stock_quantity": 0},
-    {"name": "Material de oficina (demo)", "item_type": "product",
-     "price": 12.5, "tax_percentage": 21, "stock_quantity": 120},
+    {
+        "name": "Consultoría (hora) (demo)",
+        "item_type": "service",
+        "price": 60,
+        "tax_percentage": 21,
+        "stock_quantity": 0,
+        "unit": "h",
+    },
+    {
+        "name": "Mantenimiento mensual (demo)",
+        "item_type": "service",
+        "price": 250,
+        "tax_percentage": 21,
+        "stock_quantity": 0,
+    },
+    {"name": "Informe técnico (demo)", "item_type": "service", "price": 400, "tax_percentage": 21, "stock_quantity": 0},
+    {
+        "name": "Material de oficina (demo)",
+        "item_type": "product",
+        "price": 12.5,
+        "tax_percentage": 21,
+        "stock_quantity": 120,
+    },
 )
 
 
 async def _demo_counts(db: AsyncSession, tenant_id: UUID) -> dict[str, int]:
     async def _count(model) -> int:
         res = await db.execute(
-            select(func.count())
-            .select_from(model)
-            .where(model.tenant_id == tenant_id, model.is_demo.is_(True))
+            select(func.count()).select_from(model).where(model.tenant_id == tenant_id, model.is_demo.is_(True))
         )
         return int(res.scalar() or 0)
 
@@ -125,9 +158,7 @@ async def _build_demo_invoice(
     return inv
 
 
-async def seed_demo_data(
-    db: AsyncSession, *, tenant_id: UUID, user_id: UUID
-) -> dict:
+async def seed_demo_data(db: AsyncSession, *, tenant_id: UUID, user_id: UUID) -> dict:
     """Siembra la pyme de ejemplo en el tenant. Idempotente.
 
     Devuelve ``{"already_seeded": bool, "clients": int, "products": int,
@@ -160,37 +191,64 @@ async def seed_demo_data(
         # tiempo para que el dashboard tenga una curva. Casi todas "paid" (no
         # morosas → no disparan recordatorios de cobro sobre datos falsos).
         await _build_demo_invoice(
-            db, tenant_id=tenant_id, number="DEMO-0001", invoice_type="issued",
-            client_id=clients[0].id, lines_data=[_line(products[0], 10)],
-            date=now - timedelta(days=92), status="paid",
+            db,
+            tenant_id=tenant_id,
+            number="DEMO-0001",
+            invoice_type="issued",
+            client_id=clients[0].id,
+            lines_data=[_line(products[0], 10)],
+            date=now - timedelta(days=92),
+            status="paid",
         )
         await _build_demo_invoice(
-            db, tenant_id=tenant_id, number="DEMO-0002", invoice_type="issued",
+            db,
+            tenant_id=tenant_id,
+            number="DEMO-0002",
+            invoice_type="issued",
             client_id=clients[1].id,
             lines_data=[_line(products[1], 1), _line(products[3], 5)],
-            date=now - timedelta(days=61), status="paid",
+            date=now - timedelta(days=61),
+            status="paid",
         )
         await _build_demo_invoice(
-            db, tenant_id=tenant_id, number="DEMO-0003", invoice_type="issued",
-            client_id=clients[2].id, lines_data=[_line(products[2], 1)],
-            date=now - timedelta(days=30), status="paid",
+            db,
+            tenant_id=tenant_id,
+            number="DEMO-0003",
+            invoice_type="issued",
+            client_id=clients[2].id,
+            lines_data=[_line(products[2], 1)],
+            date=now - timedelta(days=30),
+            status="paid",
         )
         await _build_demo_invoice(
-            db, tenant_id=tenant_id, number="DEMO-0004", invoice_type="issued",
-            client_id=clients[0].id, lines_data=[_line(products[1], 1)],
-            date=now - timedelta(days=8), status="pending",
+            db,
+            tenant_id=tenant_id,
+            number="DEMO-0004",
+            invoice_type="issued",
+            client_id=clients[0].id,
+            lines_data=[_line(products[1], 1)],
+            date=now - timedelta(days=8),
+            status="pending",
             due_date=now + timedelta(days=22),
         )
         # Una factura RECIBIDA (proveedor) para que "gastos" no salga a cero.
         await _build_demo_invoice(
-            db, tenant_id=tenant_id, number="PROV-DEMO-0001", invoice_type="received",
+            db,
+            tenant_id=tenant_id,
+            number="PROV-DEMO-0001",
+            invoice_type="received",
             client_id=clients[3].id,
-            lines_data=[{
-                "description": "Suministros varios (demo)",
-                "quantity": 1, "unit_price": 180.0,
-                "discount_percentage": 0.0, "tax_percentage": 21,
-            }],
-            date=now - timedelta(days=40), status="paid",
+            lines_data=[
+                {
+                    "description": "Suministros varios (demo)",
+                    "quantity": 1,
+                    "unit_price": 180.0,
+                    "discount_percentage": 0.0,
+                    "tax_percentage": 21,
+                }
+            ],
+            date=now - timedelta(days=40),
+            status="paid",
         )
 
         await db.flush()
@@ -212,25 +270,13 @@ async def clear_demo_data(db: AsyncSession, *, tenant_id: UUID) -> dict:
         counts = await _demo_counts(db, tenant_id)
 
         # Facturas: delete por objeto para que el cascade ORM borre las líneas.
-        inv_res = await db.execute(
-            select(Invoice).where(
-                Invoice.tenant_id == tenant_id, Invoice.is_demo.is_(True)
-            )
-        )
+        inv_res = await db.execute(select(Invoice).where(Invoice.tenant_id == tenant_id, Invoice.is_demo.is_(True)))
         for inv in inv_res.scalars().all():
             await db.delete(inv)
         await db.flush()
 
-        await db.execute(
-            delete(Product).where(
-                Product.tenant_id == tenant_id, Product.is_demo.is_(True)
-            )
-        )
-        await db.execute(
-            delete(Client).where(
-                Client.tenant_id == tenant_id, Client.is_demo.is_(True)
-            )
-        )
+        await db.execute(delete(Product).where(Product.tenant_id == tenant_id, Product.is_demo.is_(True)))
+        await db.execute(delete(Client).where(Client.tenant_id == tenant_id, Client.is_demo.is_(True)))
         await db.commit()
         logger.info("Datos demo borrados para tenant %s: %s", tenant_id, counts)
         return {"deleted": counts}

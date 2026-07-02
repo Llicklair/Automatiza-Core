@@ -195,8 +195,13 @@ async def close_accounting_period(
     """Cierra un periodo contable. A partir de aquí los asientos del rango quedan bloqueados."""
     try:
         period = await close_period(
-            db, current_user.tenant_id, current_user.id,
-            payload.year, payload.kind, payload.period_index, payload.notes,
+            db,
+            current_user.tenant_id,
+            current_user.id,
+            payload.year,
+            payload.kind,
+            payload.period_index,
+            payload.notes,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -254,8 +259,9 @@ async def libro_diario_pdf(
     s, e = _parse_range(start, end)
     pdf = await generate_libro_diario_pdf(db, current_user.tenant_id, s, e)
     fname = f"LibroDiario_{s.isoformat()}_{e.isoformat()}.pdf"
-    return Response(content=pdf, media_type="application/pdf",
-                    headers={"Content-Disposition": f'attachment; filename="{fname}"'})
+    return Response(
+        content=pdf, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{fname}"'}
+    )
 
 
 @router.get("/libro-mayor.pdf")
@@ -271,8 +277,9 @@ async def libro_mayor_pdf(
     s, e = _parse_range(start, end)
     pdf = await generate_libro_mayor_pdf(db, current_user.tenant_id, s, e)
     fname = f"LibroMayor_{s.isoformat()}_{e.isoformat()}.pdf"
-    return Response(content=pdf, media_type="application/pdf",
-                    headers={"Content-Disposition": f'attachment; filename="{fname}"'})
+    return Response(
+        content=pdf, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{fname}"'}
+    )
 
 
 @router.get("/cuentas-anuales.pdf")
@@ -288,5 +295,6 @@ async def cuentas_anuales_pdf(
     s, e = _parse_range(start, end)
     pdf = await generate_balance_pyg_pdf(db, current_user.tenant_id, s, e)
     fname = f"CuentasAnuales_{s.isoformat()}_{e.isoformat()}.pdf"
-    return Response(content=pdf, media_type="application/pdf",
-                    headers={"Content-Disposition": f'attachment; filename="{fname}"'})
+    return Response(
+        content=pdf, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{fname}"'}
+    )

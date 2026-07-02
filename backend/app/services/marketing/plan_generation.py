@@ -22,9 +22,8 @@ _logger = logging.getLogger(__name__)
 
 # ── Image helper (route-local, moved here; used only by generate_plan) ─────────
 
-async def _search_images_bounded(
-    queries: list[str], *, timeout: float = 15.0
-) -> list[Optional[str]]:
+
+async def _search_images_bounded(queries: list[str], *, timeout: float = 15.0) -> list[Optional[str]]:
     """Busca imágenes en paralelo con un timeout GLOBAL.
 
     Devuelve una lista alineada con `queries`; cada elemento es la URL o None.
@@ -113,6 +112,7 @@ _DRAFT_FLOW_DIRECTIVE = (
 
 # ── Public service function ─────────────────────────────────────────────────────
 
+
 async def generate_plan(
     db: AsyncSession,
     tenant_id: UUID,
@@ -166,8 +166,7 @@ async def generate_plan(
         # Reintenta UNA vez forzando la acción (algunos modelos ignoran la regla
         # del system prompt según el fraseo del usuario).
         forced = (
-            agent_prompt
-            + "\n\n[INSTRUCCIÓN OBLIGATORIA] No preguntes ni ofrezcas opciones: crea "
+            agent_prompt + "\n\n[INSTRUCCIÓN OBLIGATORIA] No preguntes ni ofrezcas opciones: crea "
             "YA los posts con create_post para TODAS las cuentas conectadas. "
             "Debes dejar los borradores creados."
         )
@@ -193,10 +192,7 @@ async def generate_plan(
             # que el usuario nombró. Antes se cogían los 3 más NUEVOS a ciegas,
             # ignorando el texto (bug: "pido Switch Pro y salen otros productos").
             prod_res = await db.execute(
-                select(Product)
-                .where(Product.tenant_id == tenant_id)
-                .order_by(Product.created_at.desc())
-                .limit(200)
+                select(Product).where(Product.tenant_id == tenant_id).order_by(Product.created_at.desc()).limit(200)
             )
             catalog = prod_res.scalars().all()
             matched = _match_products_to_prompt(catalog, prompt)
@@ -221,21 +217,25 @@ async def generate_plan(
                     hook = desc[:180] if desc else "La solución que tu empresa necesita para dar el siguiente paso."
                     tag = "".join(ch for ch in (prod.name.split()[0] if prod.name else "") if ch.isalnum()).lower()
                     cuerpo = (
-                        f"✨ {prod.name}" + (f" · {price}" if price else "") + "\n\n"
+                        f"✨ {prod.name}"
+                        + (f" · {price}" if price else "")
+                        + "\n\n"
                         + f"{hook}\n\n"
                         + "👉 Escríbenos y te asesoramos sin compromiso.\n\n"
                         + f"#pyme #negocio{(' #' + tag) if tag else ''}"
                     )
                     for acc in accounts:
-                        db.add(ScheduledPost(
-                            tenant_id=tenant_id,
-                            social_account_id=acc.id,
-                            platform=acc.platform,
-                            content=cuerpo[:280] if acc.platform == "twitter" else cuerpo[:2200],
-                            image_url=img,
-                            scheduled_at=run_started + datetime.timedelta(days=day, hours=10),
-                            status="draft",
-                        ))
+                        db.add(
+                            ScheduledPost(
+                                tenant_id=tenant_id,
+                                social_account_id=acc.id,
+                                platform=acc.platform,
+                                content=cuerpo[:280] if acc.platform == "twitter" else cuerpo[:2200],
+                                image_url=img,
+                                scheduled_at=run_started + datetime.timedelta(days=day, hours=10),
+                                status="draft",
+                            )
+                        )
                 await db.commit()
                 created = await _created_since()
                 fallback_used = bool(created)

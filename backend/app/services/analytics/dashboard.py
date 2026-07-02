@@ -46,12 +46,32 @@ DEMO_TX_PREFIX = "[DEMO]"
 # correctamente en ingresos/IVA/top-clientes; excluirlas sobreestimaba las cifras (B8).
 _EMITTED = ("issued", "rectificativa")
 _MONTHS_ES = [
-    "Ene", "Feb", "Mar", "Abr", "May", "Jun",
-    "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
+    "Ene",
+    "Feb",
+    "Mar",
+    "Abr",
+    "May",
+    "Jun",
+    "Jul",
+    "Ago",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dic",
 ]
 _MONTHS_ES_FULL = [
-    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+    "Enero",
+    "Febrero",
+    "Marzo",
+    "Abril",
+    "Mayo",
+    "Junio",
+    "Julio",
+    "Agosto",
+    "Septiembre",
+    "Octubre",
+    "Noviembre",
+    "Diciembre",
 ]
 
 
@@ -150,28 +170,26 @@ async def get_dashboard(
         func.date(Invoice.date) >= start,
         func.date(Invoice.date) <= end,
     )
-    ingresos_periodo_t, emitidas_periodo, issued_sum_t, issued_count = (
-        await db.execute(issued_period_q)
-    ).one()
+    ingresos_periodo_t, emitidas_periodo, issued_sum_t, issued_count = (await db.execute(issued_period_q)).one()
     gastos_periodo_t, recibidas_periodo = (await db.execute(received_period_q)).one()
     ingresos_periodo = float(ingresos_periodo_t or 0)
     gastos_periodo = float(gastos_periodo_t or 0)
     beneficio_periodo = ingresos_periodo - gastos_periodo
-    margen_periodo_pct = (
-        round((beneficio_periodo / ingresos_periodo) * 100, 1)
-        if ingresos_periodo > 0
-        else 0.0
-    )
+    margen_periodo_pct = round((beneficio_periodo / ingresos_periodo) * 100, 1) if ingresos_periodo > 0 else 0.0
 
     # ── Facturas: agregaciones acumuladas (todo el histórico) ────────────
-    status_breakdown_q = select(
-        Invoice.status,
-        func.count(),
-        func.coalesce(func.sum(Invoice.amount_total), 0),
-    ).where(
-        Invoice.tenant_id == tenant_id,
-        Invoice.invoice_type.in_(_EMITTED),
-    ).group_by(Invoice.status)
+    status_breakdown_q = (
+        select(
+            Invoice.status,
+            func.count(),
+            func.coalesce(func.sum(Invoice.amount_total), 0),
+        )
+        .where(
+            Invoice.tenant_id == tenant_id,
+            Invoice.invoice_type.in_(_EMITTED),
+        )
+        .group_by(Invoice.status)
+    )
     status_rows = (await db.execute(status_breakdown_q)).all()
 
     status_counts: dict[str, int] = {}
@@ -202,18 +220,12 @@ async def get_dashboard(
     beneficio = total_ingresos - total_gastos
     margen_pct = round((beneficio / total_ingresos) * 100, 1) if total_ingresos > 0 else 0.0
 
-    emitidas_count = (
-        pagadas_count + pendientes_count + borradores_count + canceladas_count
-    )
-    received_count_q = select(func.count()).where(
-        Invoice.tenant_id == tenant_id, Invoice.invoice_type == "received"
-    )
+    emitidas_count = pagadas_count + pendientes_count + borradores_count + canceladas_count
+    received_count_q = select(func.count()).where(Invoice.tenant_id == tenant_id, Invoice.invoice_type == "received")
     recibidas_count = int((await db.execute(received_count_q)).scalar() or 0)
 
     # ── Próximas a vencer (pendientes de cobro + due_date <= hoy+7) ──────
-    due_soon_q = select(
-        func.count(), func.coalesce(func.sum(Invoice.amount_total), 0)
-    ).where(
+    due_soon_q = select(func.count(), func.coalesce(func.sum(Invoice.amount_total), 0)).where(
         Invoice.tenant_id == tenant_id,
         Invoice.invoice_type.in_(_EMITTED),
         Invoice.status.in_(["pending", "sent"]),
@@ -243,12 +255,14 @@ async def get_dashboard(
         )
         ing = float((await db.execute(ing_q)).scalar() or 0)
         gas = float((await db.execute(gas_q)).scalar() or 0)
-        cashflow.append({
-            "month": label,
-            "ingresos": round(ing, 2),
-            "gastos": round(gas, 2),
-            "beneficio": round(ing - gas, 2),
-        })
+        cashflow.append(
+            {
+                "month": label,
+                "ingresos": round(ing, 2),
+                "gastos": round(gas, 2),
+                "beneficio": round(ing - gas, 2),
+            }
+        )
 
     # ── Top clientes del periodo ─────────────────────────────────────────
     top_q = (
@@ -266,8 +280,7 @@ async def get_dashboard(
         .limit(5)
     )
     top_clientes = [
-        {"name": name or "Desconocido", "total": float(total)}
-        for name, total in (await db.execute(top_q)).all()
+        {"name": name or "Desconocido", "total": float(total)} for name, total in (await db.execute(top_q)).all()
     ]
 
     # ── Estado de facturas (para pie chart, sólo emitidas con importe) ───
@@ -283,9 +296,7 @@ async def get_dashboard(
             estado_facturas.append({"name": label, "value": round(val, 2)})
 
     # ── RRHH ─────────────────────────────────────────────────────────────
-    emp_q = select(func.count()).where(
-        Employee.tenant_id == tenant_id, Employee.status == "active"
-    )
+    emp_q = select(func.count()).where(Employee.tenant_id == tenant_id, Employee.status == "active")
     empleados_activos = int((await db.execute(emp_q)).scalar() or 0)
 
     payroll_periodo_q = select(
@@ -339,9 +350,7 @@ async def get_dashboard(
     has_demo_data = int((await db.execute(has_demo_q)).scalar() or 0) > 0
 
     # ── IA / Tasks ───────────────────────────────────────────────────────
-    tasks_total_q = select(Task.status, func.count()).where(
-        Task.tenant_id == tenant_id
-    ).group_by(Task.status)
+    tasks_total_q = select(Task.status, func.count()).where(Task.tenant_id == tenant_id).group_by(Task.status)
     tasks_rows = (await db.execute(tasks_total_q)).all()
     tasks_by_status: dict[str, int] = {st: int(c) for st, c in tasks_rows}
     tasks_done = tasks_by_status.get("done", 0)
@@ -354,9 +363,7 @@ async def get_dashboard(
     )
     tasks_total = sum(tasks_by_status.values())
     tasks_terminadas = tasks_done + tasks_failed
-    tasks_success_rate = (
-        round((tasks_done / tasks_terminadas) * 100) if tasks_terminadas > 0 else 0
-    )
+    tasks_success_rate = round((tasks_done / tasks_terminadas) * 100) if tasks_terminadas > 0 else 0
 
     tasks_periodo_q = select(func.count()).where(
         Task.tenant_id == tenant_id,
@@ -381,9 +388,7 @@ async def get_dashboard(
     # no es una "venta" y contarlo infravaloraba el ticket (5 fras de 1000€ + 1
     # rectificativa -200€ daba 4800/6=800€ en vez de 5000/5=1000€).
     ticket_medio_periodo = (
-        round(float(issued_sum_t or 0) / int(issued_count or 0), 2)
-        if int(issued_count or 0) > 0
-        else 0.0
+        round(float(issued_sum_t or 0) / int(issued_count or 0), 2) if int(issued_count or 0) > 0 else 0.0
     )
 
     # IVA breakdown: agrupado por tax_percentage (sólo facturas emitidas del periodo)
@@ -527,19 +532,11 @@ async def get_dashboard(
     # ── DSO / DPO (días) ─────────────────────────────────────────────────
     dias_periodo = (end - start).days + 1
     importe_pendiente_pago = sum(v["importe"] for v in aging_pagos.values())
-    dso_dias = (
-        round((importe_pendiente_cobro / ingresos_periodo) * dias_periodo, 1)
-        if ingresos_periodo > 0 else 0.0
-    )
-    dpo_dias = (
-        round((importe_pendiente_pago / gastos_periodo) * dias_periodo, 1)
-        if gastos_periodo > 0 else 0.0
-    )
+    dso_dias = round((importe_pendiente_cobro / ingresos_periodo) * dias_periodo, 1) if ingresos_periodo > 0 else 0.0
+    dpo_dias = round((importe_pendiente_pago / gastos_periodo) * dias_periodo, 1) if gastos_periodo > 0 else 0.0
 
     # ── RRHH detalle ─────────────────────────────────────────────────────
-    coste_medio_empleado = (
-        round(coste_nominas / empleados_activos, 2) if empleados_activos > 0 else 0.0
-    )
+    coste_medio_empleado = round(coste_nominas / empleados_activos, 2) if empleados_activos > 0 else 0.0
 
     dept_q = (
         select(
@@ -604,8 +601,7 @@ async def get_dashboard(
             func.coalesce(func.sum(func.abs(StockMovement.quantity)), 0),
             func.coalesce(
                 func.sum(
-                    func.abs(StockMovement.quantity)
-                    * func.coalesce(StockMovement.unit_cost, Product.cost_price, 0)
+                    func.abs(StockMovement.quantity) * func.coalesce(StockMovement.unit_cost, Product.cost_price, 0)
                 ),
                 0,
             ),
@@ -637,9 +633,7 @@ async def get_dashboard(
     stock_q = select(
         func.count(Product.id),
         func.coalesce(func.sum(Product.stock_quantity), 0),
-        func.coalesce(
-            func.sum(Product.stock_quantity * func.coalesce(Product.cost_price, 0)), 0
-        ),
+        func.coalesce(func.sum(Product.stock_quantity * func.coalesce(Product.cost_price, 0)), 0),
     ).where(Product.tenant_id == tenant_id, Product.is_active.is_(True))
     productos_activos, unidades_stock, valor_stock = (await db.execute(stock_q)).one()
 
@@ -670,15 +664,17 @@ async def get_dashboard(
     for agent, n, ok_n, tin, tout, cost, avg_ms in (await db.execute(agent_q)).all():
         n_int = int(n or 0)
         ok_int = int(ok_n or 0)
-        ia_por_agente.append({
-            "agent": agent or "desconocido",
-            "ejecuciones": n_int,
-            "exito_pct": round((ok_int / n_int) * 100, 1) if n_int > 0 else 0.0,
-            "tokens_in": int(tin or 0),
-            "tokens_out": int(tout or 0),
-            "coste_eur": round(float(cost or 0), 4),
-            "duracion_media_ms": int(float(avg_ms or 0)),
-        })
+        ia_por_agente.append(
+            {
+                "agent": agent or "desconocido",
+                "ejecuciones": n_int,
+                "exito_pct": round((ok_int / n_int) * 100, 1) if n_int > 0 else 0.0,
+                "tokens_in": int(tin or 0),
+                "tokens_out": int(tout or 0),
+                "coste_eur": round(float(cost or 0), 4),
+                "duracion_media_ms": int(float(avg_ms or 0)),
+            }
+        )
         tokens_total_periodo += int(tin or 0) + int(tout or 0)
         coste_total_periodo += float(cost or 0)
         tiempo_total_ms += float(avg_ms or 0) * n_int
@@ -703,10 +699,7 @@ async def get_dashboard(
         .order_by(desc("n"))
         .limit(5)
     )
-    top_errores_ia = [
-        {"error": ec or "desconocido", "count": int(n or 0)}
-        for ec, n in (await db.execute(err_q)).all()
-    ]
+    top_errores_ia = [{"error": ec or "desconocido", "count": int(n or 0)} for ec, n in (await db.execute(err_q)).all()]
 
     # ── Empty-state flag (no hay facturas registradas) ───────────────────
     is_empty = emitidas_count == 0 and recibidas_count == 0

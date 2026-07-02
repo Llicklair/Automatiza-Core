@@ -68,9 +68,7 @@ def find_ready_nodes(
 
         predecessors = get_predecessors(edges, nid)
         if predecessors:
-            if all(
-                node_states.get(p, {}).get("status") in (COMPLETED, SKIPPED) for p in predecessors
-            ):
+            if all(node_states.get(p, {}).get("status") in (COMPLETED, SKIPPED) for p in predecessors):
                 ready.append(node)
         else:
             # No predecessors and not a trigger — skip orphan nodes
@@ -90,10 +88,7 @@ def all_leaf_nodes_completed(
     leaf_nodes = [n for n in nodes if not get_successors(edges, n["id"])]
     if not leaf_nodes:
         return False
-    return all(
-        node_states.get(n["id"], {}).get("status") in (COMPLETED, SKIPPED, FAILED)
-        for n in leaf_nodes
-    )
+    return all(node_states.get(n["id"], {}).get("status") in (COMPLETED, SKIPPED, FAILED) for n in leaf_nodes)
 
 
 def has_suspended_nodes(node_states: dict[str, dict]) -> bool:
@@ -139,9 +134,7 @@ def skip_discarded_branch(
         visited.add(nid)
         node_states[nid] = {
             "status": SKIPPED,
-            "output": {
-                "reason": f"Skipped: branch '{discarded_branch}' from {conditional_node_id}"
-            },
+            "output": {"reason": f"Skipped: branch '{discarded_branch}' from {conditional_node_id}"},
             "started_at": datetime.now(UTC).isoformat(),
             "completed_at": datetime.now(UTC).isoformat(),
         }
@@ -177,9 +170,7 @@ def build_skill_dispatch(
             output = ns.get("output", {})
             if isinstance(output, dict):
                 summary = ", ".join(
-                    f"{k}: {v}"
-                    for k, v in output.items()
-                    if not isinstance(v, dict | list) or len(str(v)) < 200
+                    f"{k}: {v}" for k, v in output.items() if not isinstance(v, dict | list) or len(str(v)) < 200
                 )
                 ctx_parts.append(f"Nodo {nid}: {summary}")
     enriched_intent = "\n".join(ctx_parts)

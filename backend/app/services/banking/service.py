@@ -50,11 +50,7 @@ async def get_summary(db: AsyncSession, tenant_id: uuid.UUID) -> dict:
 
 async def list_transactions(db: AsyncSession, tenant_id: uuid.UUID) -> list:
     """Return all bank transactions for the tenant, newest first."""
-    query = (
-        select(BankTransaction)
-        .where(BankTransaction.tenant_id == tenant_id)
-        .order_by(desc(BankTransaction.date))
-    )
+    query = select(BankTransaction).where(BankTransaction.tenant_id == tenant_id).order_by(desc(BankTransaction.date))
     result = await db.execute(query)
     return list(result.scalars().all())
 
@@ -82,8 +78,7 @@ async def sync_transactions(db: AsyncSession, tenant_id: uuid.UUID, user_id: uui
                 "Importa el extracto bancario (Norma 43) desde Banca."
             )
         raise BankSyncNotAvailableError(
-            "PSD2 no configurado. Conecta tu banco en Integraciones "
-            "o importa el extracto bancario (Norma 43)."
+            "PSD2 no configurado. Conecta tu banco en Integraciones " "o importa el extracto bancario (Norma 43)."
         )
 
     descriptions = [
@@ -163,9 +158,7 @@ async def reconcile_transaction(
 ) -> dict:
     """Reconcile a bank transaction against an invoice."""
     result = await db.execute(
-        select(BankTransaction).where(
-            BankTransaction.id == tx_id, BankTransaction.tenant_id == tenant_id
-        )
+        select(BankTransaction).where(BankTransaction.id == tx_id, BankTransaction.tenant_id == tenant_id)
     )
     tx = result.scalars().first()
     if not tx:
@@ -178,15 +171,10 @@ async def reconcile_transaction(
     # que `unreconcile` primero. auto_reconcile ya filtra status=="unreconciled"
     # en SQL, así que este guard no le afecta.
     if tx.status == "reconciled" or tx.journal_entry_id is not None:
-        raise ValueError(
-            "Esta transacción ya está conciliada; deshaz la conciliación antes "
-            "de volver a conciliar."
-        )
+        raise ValueError("Esta transacción ya está conciliada; deshaz la conciliación antes " "de volver a conciliar.")
 
     result_inv = await db.execute(
-        select(Invoice).where(
-            Invoice.id == uuid.UUID(invoice_id_str), Invoice.tenant_id == tenant_id
-        )
+        select(Invoice).where(Invoice.id == uuid.UUID(invoice_id_str), Invoice.tenant_id == tenant_id)
     )
     invoice = result_inv.scalars().first()
     if not invoice:
@@ -218,9 +206,7 @@ async def reconcile_transaction(
     return {"message": "Conciliado correctamente", "status": "ok"}
 
 
-async def ignore_transaction(
-    db: AsyncSession, tenant_id: uuid.UUID, tx_id: uuid.UUID
-) -> dict:
+async def ignore_transaction(db: AsyncSession, tenant_id: uuid.UUID, tx_id: uuid.UUID) -> dict:
     """Mark a bank transaction as ignored (no matching invoice)."""
     result = await db.execute(
         select(BankTransaction).where(BankTransaction.id == tx_id, BankTransaction.tenant_id == tenant_id)
@@ -232,17 +218,13 @@ async def ignore_transaction(
     # (journal_entry_id) huerfano con la tx marcada "ignored" -> incoherencia.
     # Primero hay que deshacer la conciliacion (unreconcile_transaction).
     if tx.status == "reconciled" or tx.journal_entry_id is not None:
-        raise ValueError(
-            "No se puede ignorar una transacción conciliada; deshaz la conciliación primero."
-        )
+        raise ValueError("No se puede ignorar una transacción conciliada; deshaz la conciliación primero.")
     tx.status = "ignored"
     await db.commit()
     return {"message": "Transacción ignorada", "status": "ok"}
 
 
-async def unreconcile_transaction(
-    db: AsyncSession, tenant_id: uuid.UUID, tx_id: uuid.UUID
-) -> dict:
+async def unreconcile_transaction(db: AsyncSession, tenant_id: uuid.UUID, tx_id: uuid.UUID) -> dict:
     """Undo a reconciliation: revert tx to unreconciled and invoice to sent."""
     result = await db.execute(
         select(BankTransaction).where(BankTransaction.id == tx_id, BankTransaction.tenant_id == tenant_id)
@@ -251,9 +233,7 @@ async def unreconcile_transaction(
     if not tx:
         raise LookupError("Transacción no encontrada")
     if tx.invoice_id:
-        inv_res = await db.execute(
-            select(Invoice).where(Invoice.id == tx.invoice_id, Invoice.tenant_id == tenant_id)
-        )
+        inv_res = await db.execute(select(Invoice).where(Invoice.id == tx.invoice_id, Invoice.tenant_id == tenant_id))
         invoice = inv_res.scalars().first()
         if invoice and invoice.status == "paid":
             invoice.status = "sent"
@@ -301,23 +281,17 @@ def _explain_match(tx, inv, tx_amount: float) -> tuple[int, list[dict]]:
       - Número factura aparece en el concepto: +20
     """
     score = 50
-    reasons: list[dict] = [
-        {"code": "amount_exact", "label": f"Importe exacto ({tx_amount:.2f} €)", "points": 50}
-    ]
+    reasons: list[dict] = [{"code": "amount_exact", "label": f"Importe exacto ({tx_amount:.2f} €)", "points": 50}]
     desc = (tx.description or "").lower()
 
     if inv.date and tx.date:
         days = abs((_as_date(tx.date) - _as_date(inv.date)).days)
         if days <= 15:
             score += 30
-            reasons.append(
-                {"code": "date_within_15d", "label": f"Fecha próxima ({days} día(s))", "points": 30}
-            )
+            reasons.append({"code": "date_within_15d", "label": f"Fecha próxima ({days} día(s))", "points": 30})
         elif days <= 45:
             score += 15
-            reasons.append(
-                {"code": "date_within_45d", "label": f"Fecha aceptable ({days} día(s))", "points": 15}
-            )
+            reasons.append({"code": "date_within_45d", "label": f"Fecha aceptable ({days} día(s))", "points": 15})
 
     if inv.client and inv.client.name:
         client_name = _normalize_client_name(inv.client.name)
@@ -332,7 +306,11 @@ def _explain_match(tx, inv, tx_amount: float) -> tuple[int, list[dict]]:
             elif matched_token:
                 score += 30
                 reasons.append(
-                    {"code": "client_token_match", "label": f"Cliente reconocido por '{matched_token}' en el concepto", "points": 30}
+                    {
+                        "code": "client_token_match",
+                        "label": f"Cliente reconocido por '{matched_token}' en el concepto",
+                        "points": 30,
+                    }
                 )
 
     if inv.invoice_number:
@@ -340,7 +318,11 @@ def _explain_match(tx, inv, tx_amount: float) -> tuple[int, list[dict]]:
         if inv_num and inv_num in desc:
             score += 20
             reasons.append(
-                {"code": "invoice_number_match", "label": f"Nº factura {inv.invoice_number} en el concepto", "points": 20}
+                {
+                    "code": "invoice_number_match",
+                    "label": f"Nº factura {inv.invoice_number} en el concepto",
+                    "points": 20,
+                }
             )
 
     return min(score, 100), reasons
@@ -376,9 +358,7 @@ def _candidates_for(tx, invoices, used_ids: set[str]) -> list:
     return cands
 
 
-async def get_reconciliation_suggestions(
-    db: AsyncSession, tenant_id: uuid.UUID
-) -> list[dict]:
+async def get_reconciliation_suggestions(db: AsyncSession, tenant_id: uuid.UUID) -> list[dict]:
     """Sugerencias de conciliación rankeadas por score (importe + fecha + cliente + nº factura)."""
     tx_res = await db.execute(
         select(BankTransaction)
@@ -428,21 +408,21 @@ async def get_reconciliation_suggestions(
             }
             for inv, score, reasons in ranked
         ]
-        out.append({
-            "tx": {
-                "id": str(tx.id),
-                "date": tx.date.isoformat(),
-                "description": tx.description,
-                "amount": float(tx.amount),
-            },
-            "suggestions": matched,
-        })
+        out.append(
+            {
+                "tx": {
+                    "id": str(tx.id),
+                    "date": tx.date.isoformat(),
+                    "description": tx.description,
+                    "amount": float(tx.amount),
+                },
+                "suggestions": matched,
+            }
+        )
     return out
 
 
-async def auto_reconcile(
-    db: AsyncSession, tenant_id: uuid.UUID, user_id: uuid.UUID
-) -> dict:
+async def auto_reconcile(db: AsyncSession, tenant_id: uuid.UUID, user_id: uuid.UUID) -> dict:
     """Auto-concilia movimientos con candidato claramente ganador.
 
     Casa cuando:
@@ -569,8 +549,7 @@ async def reject_reconciliation_suggestion(
 async def get_analytics(db: AsyncSession, tenant_id: uuid.UUID) -> dict:
     """Return real cashflow data and dynamic insights for the Home Page."""
     today = local_today()
-    month_names = ["Ene", "Feb", "Mar", "Abr", "May", "Jun",
-                   "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+    month_names = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
 
     cashflow_data = []
     for i in range(5, -1, -1):
@@ -591,11 +570,13 @@ async def get_analytics(db: AsyncSession, tenant_id: uuid.UUID) -> dict:
         )
         ingresos = float((await db.execute(issued_q)).scalar())
         gastos = float((await db.execute(received_q)).scalar())
-        cashflow_data.append({
-            "month": month_names[m - 1],
-            "ingresos": round(ingresos, 2),
-            "gastos": round(gastos, 2),
-        })
+        cashflow_data.append(
+            {
+                "month": month_names[m - 1],
+                "ingresos": round(ingresos, 2),
+                "gastos": round(gastos, 2),
+            }
+        )
 
     total_ingresos = sum(c["ingresos"] for c in cashflow_data)
     total_gastos = sum(c["gastos"] for c in cashflow_data)
@@ -618,43 +599,63 @@ async def get_analytics(db: AsyncSession, tenant_id: uuid.UUID) -> dict:
         if prev > 0:
             pct = round(((curr - prev) / prev) * 100, 1)
             if pct > 0:
-                ai_insights.append({
-                    "id": "1", "type": "success",
-                    "title": "Crecimiento detectado",
-                    "message": f"Los ingresos de {cashflow_data[-1]['month']} crecieron un {pct}% respecto al mes anterior.",
-                    "action_text": "Ver informes", "action_url": "/banca",
-                })
+                ai_insights.append(
+                    {
+                        "id": "1",
+                        "type": "success",
+                        "title": "Crecimiento detectado",
+                        "message": f"Los ingresos de {cashflow_data[-1]['month']} crecieron un {pct}% respecto al mes anterior.",
+                        "action_text": "Ver informes",
+                        "action_url": "/banca",
+                    }
+                )
             elif pct < -5:
-                ai_insights.append({
-                    "id": "1", "type": "warning",
-                    "title": "Descenso de ingresos",
-                    "message": f"Los ingresos de {cashflow_data[-1]['month']} bajaron un {abs(pct)}% respecto al mes anterior.",
-                    "action_text": "Ver informes", "action_url": "/banca",
-                })
+                ai_insights.append(
+                    {
+                        "id": "1",
+                        "type": "warning",
+                        "title": "Descenso de ingresos",
+                        "message": f"Los ingresos de {cashflow_data[-1]['month']} bajaron un {abs(pct)}% respecto al mes anterior.",
+                        "action_text": "Ver informes",
+                        "action_url": "/banca",
+                    }
+                )
 
     if pending_count > 0:
-        ai_insights.append({
-            "id": "2", "type": "warning",
-            "title": f"{pending_count} facturas próximas a vencer",
-            "message": f"Tienes {pending_count} facturas emitidas por {pending_amount:,.2f}€ que vencen esta semana.",
-            "action_text": "Revisar facturas", "action_url": "/ventas/facturas",
-        })
+        ai_insights.append(
+            {
+                "id": "2",
+                "type": "warning",
+                "title": f"{pending_count} facturas próximas a vencer",
+                "message": f"Tienes {pending_count} facturas emitidas por {pending_amount:,.2f}€ que vencen esta semana.",
+                "action_text": "Revisar facturas",
+                "action_url": "/ventas/facturas",
+            }
+        )
 
     if total_gastos > 0:
         margen = round((neto / total_ingresos) * 100, 1) if total_ingresos > 0 else 0
-        ai_insights.append({
-            "id": "3", "type": "info" if margen > 20 else "warning",
-            "title": f"Margen del periodo: {margen}%",
-            "message": f"Ingresos: {total_ingresos:,.2f}€ | Gastos: {total_gastos:,.2f}€ | Beneficio: {neto:,.2f}€ en los últimos 6 meses.",
-            "action_text": "Analizar costes", "action_url": "/analitica",
-        })
+        ai_insights.append(
+            {
+                "id": "3",
+                "type": "info" if margen > 20 else "warning",
+                "title": f"Margen del periodo: {margen}%",
+                "message": f"Ingresos: {total_ingresos:,.2f}€ | Gastos: {total_gastos:,.2f}€ | Beneficio: {neto:,.2f}€ en los últimos 6 meses.",
+                "action_text": "Analizar costes",
+                "action_url": "/analitica",
+            }
+        )
 
     if not ai_insights:
-        ai_insights.append({
-            "id": "1", "type": "info",
-            "title": "Sin datos suficientes",
-            "message": "Crea facturas emitidas y recibidas para ver insights automáticos aquí.",
-            "action_text": "Crear factura", "action_url": "/ventas/facturas",
-        })
+        ai_insights.append(
+            {
+                "id": "1",
+                "type": "info",
+                "title": "Sin datos suficientes",
+                "message": "Crea facturas emitidas y recibidas para ver insights automáticos aquí.",
+                "action_text": "Crear factura",
+                "action_url": "/ventas/facturas",
+            }
+        )
 
     return {"cashflow": cashflow_data, "insights": ai_insights}

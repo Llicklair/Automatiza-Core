@@ -47,9 +47,7 @@ class UserUpdate(BaseModel):
 
 
 def _user_out(u: User) -> UserOut:
-    return UserOut(
-        id=str(u.id), email=u.email, full_name=u.full_name, role=u.role, is_active=u.is_active
-    )
+    return UserOut(id=str(u.id), email=u.email, full_name=u.full_name, role=u.role, is_active=u.is_active)
 
 
 @router.get("", response_model=list[UserOut])
@@ -110,6 +108,7 @@ class InvitationCreateResponse(InvitationOut):
 
 class InvitationPublic(BaseModel):
     """Datos públicos de la invitación, devueltos en /by-token para mostrar al invitado."""
+
     email: str
     role: str
     expires_at: datetime
@@ -164,11 +163,7 @@ async def create_invitation(
 ):
     # Reject if there's already an active user with that email in the tenant
     email_norm = payload.email.strip().lower()
-    existing = await db.execute(
-        select(User).where(
-            User.tenant_id == current_user.tenant_id, User.email == email_norm
-        )
-    )
+    existing = await db.execute(select(User).where(User.tenant_id == current_user.tenant_id, User.email == email_norm))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Ya existe un usuario con ese email")
 
@@ -203,9 +198,7 @@ async def revoke_invitation(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role("admin")),
 ):
-    inv = await user_service.get_invitation(
-        uuid.UUID(invitation_id), current_user.tenant_id, db
-    )
+    inv = await user_service.get_invitation(uuid.UUID(invitation_id), current_user.tenant_id, db)
     if not inv:
         raise HTTPException(status_code=404, detail="Invitación no encontrada")
     await user_service.revoke_invitation(inv, db)

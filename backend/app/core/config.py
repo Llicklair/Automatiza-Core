@@ -37,8 +37,7 @@ class Settings(BaseSettings):
     def check_secrets(self):
         if self.SECRET_KEY == _DEFAULT_SECRET:
             raise ValueError(
-                "SECRET_KEY no puede ser el valor por defecto. "
-                "Genera una clave segura con: openssl rand -hex 32"
+                "SECRET_KEY no puede ser el valor por defecto. " "Genera una clave segura con: openssl rand -hex 32"
             )
         if self.TENANT_ENCRYPTION_KEY == _DEFAULT_ENCRYPTION:
             raise ValueError(
@@ -57,9 +56,7 @@ class Settings(BaseSettings):
     ADMIN_DATABASE_URL: str = "postgresql+asyncpg://pyme_user:pyme_pass@localhost:5433/pyme_db"
 
     # LLM
-    DEFAULT_LLM_PROVIDER: str = (
-        "claude_code"  # claude_code | anthropic | openai | groq | openrouter
-    )
+    DEFAULT_LLM_PROVIDER: str = "claude_code"  # claude_code | anthropic | openai | groq | openrouter
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o-mini"
     ANTHROPIC_API_KEY: str = ""
@@ -179,6 +176,7 @@ def frontend_origin() -> str:
     # en vez de devolver una cadena vacía indetectable.
     _logger.warning(
         "FRONTEND_URL ('%s') no es un origen válido; usando %s para postMessage/OAuth",
-        settings.FRONTEND_URL, _DEFAULT_FRONTEND_URL,
+        settings.FRONTEND_URL,
+        _DEFAULT_FRONTEND_URL,
     )
     return first or _DEFAULT_FRONTEND_URL

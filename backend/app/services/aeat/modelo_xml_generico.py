@@ -31,9 +31,7 @@ def _to_xml(parent: Element, name: str, value) -> None:
             _to_xml(node, "Item", v)
         return
     if isinstance(value, (int, float)):
-        SubElement(parent, name).text = (
-            f"{value:.2f}" if isinstance(value, float) else str(value)
-        )
+        SubElement(parent, name).text = f"{value:.2f}" if isinstance(value, float) else str(value)
         return
     if isinstance(value, bool):
         SubElement(parent, name).text = "true" if value else "false"
@@ -64,14 +62,17 @@ def build_modelo_xml_generic(
     tenant_nif: str = "",
 ) -> str:
     """Genera XML auxiliar para un modelo AEAT a partir del dict pre-calculado."""
-    root = Element("Modelo", attrib={
-        "codigo": str(modelo),
-        "version": "1.0",
-        "ejercicio": str(year),
-        "periodo": str(period),
-        "generador": "AutomatizaCore",
-        "tipo": "auxiliar",
-    })
+    root = Element(
+        "Modelo",
+        attrib={
+            "codigo": str(modelo),
+            "version": "1.0",
+            "ejercicio": str(year),
+            "periodo": str(period),
+            "generador": "AutomatizaCore",
+            "tipo": "auxiliar",
+        },
+    )
 
     decl = SubElement(root, "Declarante")
     SubElement(decl, "NIF").text = tenant_nif or ""

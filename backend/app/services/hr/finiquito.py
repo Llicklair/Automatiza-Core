@@ -120,15 +120,11 @@ def calc_finiquito(
 
     conceptos = []
     if vacaciones_importe:
-        conceptos.append(
-            {"concepto": f"Vacaciones no disfrutadas ({vac_dias:g} días)", "importe": vacaciones_importe}
-        )
+        conceptos.append({"concepto": f"Vacaciones no disfrutadas ({vac_dias:g} días)", "importe": vacaciones_importe})
     if prorrata_extra:
         conceptos.append({"concepto": "Prorrata pagas extra devengada", "importe": prorrata_extra})
     if indemnizacion:
-        conceptos.append(
-            {"concepto": f"Indemnización ({dias_anio} días/año)", "importe": indemnizacion}
-        )
+        conceptos.append({"concepto": f"Indemnización ({dias_anio} días/año)", "importe": indemnizacion})
     if deduccion_ss:
         conceptos.append({"concepto": "Seguridad Social (deducción)", "importe": -deduccion_ss})
     if deduccion_irpf:

@@ -19,9 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 @tool
-async def calculate_and_create_payroll(
-    tenant_id: str, nif: str, month: int, year: int, deductions: float = 0.0
-) -> str:
+async def calculate_and_create_payroll(tenant_id: str, nif: str, month: int, year: int, deductions: float = 0.0) -> str:
     """
     Calcula la nómina de UN empleado específico (por NIF), creándola en estado DRAFT.
     Args:
@@ -42,9 +40,7 @@ async def calculate_and_create_payroll(
     return await _create_payroll_async(tenant_id, nif, month, year, deductions)
 
 
-async def _create_payroll_async(
-    tenant_id: str, nif: str, month: int, year: int, deductions: float
-) -> str:
+async def _create_payroll_async(tenant_id: str, nif: str, month: int, year: int, deductions: float) -> str:
     try:
         async with AsyncSessionLocal() as db:
             result = await db.execute(
@@ -68,8 +64,12 @@ async def _create_payroll_async(
             # parcial, pagas extra, baja IT) que el resto de la app, evitando
             # que la nómina creada por la IA difiera de la creada vía API.
             calc = calc_payroll_for_employee(
-                employee, base_salary, irpf_rate, year=year,
-                period_start=start_date, period_end=end_date,
+                employee,
+                base_salary,
+                irpf_rate,
+                year=year,
+                period_start=start_date,
+                period_end=end_date,
             )
             ss_cc = calc["ss_contingencias_comunes"]
             ss_des = calc["ss_desempleo"]
@@ -235,17 +235,19 @@ async def _generate_all_payrolls_async(tenant_id: str, month: int, year: int) ->
         async with AsyncSessionLocal() as db:
             for emp in employees:
                 if emp.id in existing_employee_ids:
-                    skipped_lines.append(
-                        f"- {emp.name}: ya tenía nómina para {month:02d}/{year}, no se crea duplicado"
-                    )
+                    skipped_lines.append(f"- {emp.name}: ya tenía nómina para {month:02d}/{year}, no se crea duplicado")
                     continue
 
                 base_salary = float(emp.base_salary) if emp.base_salary else 0
                 irpf_rate = float(emp.irpf_rate) if emp.irpf_rate is not None else 15.0
 
                 calc = calc_payroll_for_employee(
-                    emp, base_salary, irpf_rate, year=year,
-                    period_start=start_date, period_end=end_date,
+                    emp,
+                    base_salary,
+                    irpf_rate,
+                    year=year,
+                    period_start=start_date,
+                    period_end=end_date,
                 )
                 ss_cc = calc["ss_contingencias_comunes"]
                 ss_des = calc["ss_desempleo"]
@@ -299,9 +301,7 @@ async def _generate_all_payrolls_async(tenant_id: str, month: int, year: int) ->
                 if pdf_err:
                     logger.warning("Error PDF nómina masiva para %s: %s", emp.name, pdf_err)
 
-                summary_lines.append(
-                    f"- {emp.name}: Bruto {base_salary:.2f}€ → Neto {net_salary:.2f}€"
-                )
+                summary_lines.append(f"- {emp.name}: Bruto {base_salary:.2f}€ → Neto {net_salary:.2f}€")
                 created_count += 1
 
             try:
@@ -326,9 +326,7 @@ async def _generate_all_payrolls_async(tenant_id: str, month: int, year: int) ->
                     context={"count": len(employees), "month": month, "year": year},
                 )
         except Exception as e:
-            logger.warning(
-                "Error al emitir evento payrolls_bulk_created para tenant %s: %s", tenant_id, e
-            )
+            logger.warning("Error al emitir evento payrolls_bulk_created para tenant %s: %s", tenant_id, e)
 
         if created_count == 0:
             return (

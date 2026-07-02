@@ -66,6 +66,5 @@ async def _resolve_client(
                 "Especifica el NIF del cliente para evitar facturar al equivocado."
             )
     return (
-        f"Error: No se encontró el cliente '{client_name}'. "
-        "Comprueba el nombre o proporciona el NIF directamente."
+        f"Error: No se encontró el cliente '{client_name}'. " "Comprueba el nombre o proporciona el NIF directamente."
     )

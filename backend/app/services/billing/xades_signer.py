@@ -1,4 +1,5 @@
 """XAdES-BES digital signature for FacturaE 3.2.2."""
+
 import base64
 import hashlib
 from datetime import UTC, datetime
@@ -78,9 +79,7 @@ def sign_xml(xml_bytes: bytes, p12_path: str, password: str) -> bytes:
         nsmap={"xades": XADES, "ds": DS},
         attrib={"Target": f"#{sig_id}"},
     )
-    signed_props = etree.SubElement(
-        qualifying, _t(XADES, "SignedProperties"), attrib={"Id": signed_props_id}
-    )
+    signed_props = etree.SubElement(qualifying, _t(XADES, "SignedProperties"), attrib={"Id": signed_props_id})
     ssp = etree.SubElement(signed_props, _t(XADES, "SignedSignatureProperties"))
     etree.SubElement(ssp, _t(XADES, "SigningTime")).text = signing_time
 
@@ -101,16 +100,15 @@ def sign_xml(xml_bytes: bytes, p12_path: str, password: str) -> bytes:
     etree.SubElement(signed_info, _t(DS, "CanonicalizationMethod"), attrib={"Algorithm": C14N_ALG})
     etree.SubElement(signed_info, _t(DS, "SignatureMethod"), attrib={"Algorithm": RSA_SHA256})
 
-    ref_doc = etree.SubElement(
-        signed_info, _t(DS, "Reference"), attrib={"Id": "Reference-Invoice", "URI": ""}
-    )
+    ref_doc = etree.SubElement(signed_info, _t(DS, "Reference"), attrib={"Id": "Reference-Invoice", "URI": ""})
     transforms = etree.SubElement(ref_doc, _t(DS, "Transforms"))
     etree.SubElement(transforms, _t(DS, "Transform"), attrib={"Algorithm": ENVELOPED})
     etree.SubElement(ref_doc, _t(DS, "DigestMethod"), attrib={"Algorithm": SHA256_ALG})
     etree.SubElement(ref_doc, _t(DS, "DigestValue")).text = doc_digest
 
     ref_props = etree.SubElement(
-        signed_info, _t(DS, "Reference"),
+        signed_info,
+        _t(DS, "Reference"),
         attrib={
             "Id": "Reference-SignedProperties",
             "URI": f"#{signed_props_id}",

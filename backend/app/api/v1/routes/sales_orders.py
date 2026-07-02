@@ -32,9 +32,7 @@ async def list_sales_orders(
     return await svc.list_sales_orders(db, current_user.tenant_id)
 
 
-@router.post(
-    "/orders", response_model=SalesOrderResponse, status_code=status.HTTP_201_CREATED, tags=["erp"]
-)
+@router.post("/orders", response_model=SalesOrderResponse, status_code=status.HTTP_201_CREATED, tags=["erp"])
 @limiter.limit("30/minute")
 async def create_sales_order(
     request: Request,

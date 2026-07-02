@@ -26,9 +26,7 @@ async def run_node_engine(execution_id: str, tenant_id: str | None = None):
 
     try:
         result = await _run_node_engine(execution_id, tenant_id)
-        await guard.mark_executed(
-            "run_node_engine", execution_id, {"status": result.get("status", "unknown")}
-        )
+        await guard.mark_executed("run_node_engine", execution_id, {"status": result.get("status", "unknown")})
         return result
     except Exception as exc:
         logger.exception("Error en run_node_engine:%s", execution_id)
@@ -45,7 +43,9 @@ async def run_node_engine(execution_id: str, tenant_id: str | None = None):
                     return result
                 except Exception:
                     logger.debug(
-                        "Reintento %d de run_node_engine:%s falló", attempt + 1, execution_id,
+                        "Reintento %d de run_node_engine:%s falló",
+                        attempt + 1,
+                        execution_id,
                         exc_info=True,
                     )
                     continue
@@ -66,9 +66,7 @@ async def resume_node_engine(execution_id: str, from_node_id: str, tenant_id: st
 
     try:
         result = await _resume_node_engine(execution_id, from_node_id, tenant_id)
-        await guard.mark_executed(
-            "resume_node_engine", idempotency_key, {"status": result.get("status", "unknown")}
-        )
+        await guard.mark_executed("resume_node_engine", idempotency_key, {"status": result.get("status", "unknown")})
         return result
     except Exception as exc:
         logger.exception("Error en resume_node_engine:%s", idempotency_key)
@@ -86,7 +84,9 @@ async def resume_node_engine(execution_id: str, from_node_id: str, tenant_id: st
                     return result
                 except Exception:
                     logger.debug(
-                        "Reintento %d de resume_node_engine:%s falló", attempt + 1, idempotency_key,
+                        "Reintento %d de resume_node_engine:%s falló",
+                        attempt + 1,
+                        idempotency_key,
                         exc_info=True,
                     )
                     continue
@@ -109,9 +109,7 @@ async def _run_node_engine(execution_id: str, tenant_id: str | None = None):
         set_current_tenant(tenant_id)
 
     async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            select(WorkflowExecution).where(WorkflowExecution.id == _uuid.UUID(execution_id))
-        )
+        result = await db.execute(select(WorkflowExecution).where(WorkflowExecution.id == _uuid.UUID(execution_id)))
         execution = result.scalar_one_or_none()
         if not execution:
             return {"status": "failed", "error": "Execution not found"}
@@ -146,9 +144,7 @@ async def _resume_node_engine(execution_id: str, from_node_id: str, tenant_id: s
         set_current_tenant(tenant_id)
 
     async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            select(WorkflowExecution).where(WorkflowExecution.id == _uuid.UUID(execution_id))
-        )
+        result = await db.execute(select(WorkflowExecution).where(WorkflowExecution.id == _uuid.UUID(execution_id)))
         execution = result.scalar_one_or_none()
         if not execution:
             return {"status": "failed", "error": "Execution not found"}

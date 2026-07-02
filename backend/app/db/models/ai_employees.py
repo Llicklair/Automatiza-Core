@@ -21,9 +21,7 @@ class AIEmployee(Base):
     __tablename__ = "ai_employees"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(
-        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
-    )
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True)
     name = Column(String(100), nullable=False)  # e.g., "Ana Valdés"
     role = Column(String(100), nullable=False)  # e.g., "Directora Financiera"
     domain = Column(String(50), nullable=False)  # e.g., "billing", "hr" — usado para routing
@@ -32,12 +30,8 @@ class AIEmployee(Base):
     status = Column(String(20), nullable=False, default="idle")  # idle | working | paused | blocked
     is_builtin = Column(Boolean, nullable=False, default=False)  # True = agente pre-instalado
     icon = Column(String(10), nullable=True)  # emoji personalizado del agente
-    avatar_color = Column(
-        String(20), nullable=True
-    )  # color del círculo avatar: violet, amber, blue…
-    doc_folder = Column(
-        String(200), nullable=True
-    )  # carpeta de documentación asignada por el coordinador
+    avatar_color = Column(String(20), nullable=True)  # color del círculo avatar: violet, amber, blue…
+    doc_folder = Column(String(200), nullable=True)  # carpeta de documentación asignada por el coordinador
 
     # Contrato mínimo del custom (≥2 de 4 capacidades verificables —
     # aplicación en capa de servicios, no a nivel BD).
@@ -106,12 +100,8 @@ class TokenLedger(Base):
     __tablename__ = "token_ledger"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(
-        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
-    )
-    employee_id = Column(
-        UUID(as_uuid=True), ForeignKey("ai_employees.id", ondelete="SET NULL"), nullable=True
-    )
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True)
+    employee_id = Column(UUID(as_uuid=True), ForeignKey("ai_employees.id", ondelete="SET NULL"), nullable=True)
     task_id = Column(UUID(as_uuid=True), nullable=True)
     prompt_tokens = Column(Integer, nullable=False)
     completion_tokens = Column(Integer, nullable=False)
@@ -127,12 +117,8 @@ class ActivityEntry(Base):
     __tablename__ = "activity_feed"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(
-        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
-    )
-    employee_id = Column(
-        UUID(as_uuid=True), ForeignKey("ai_employees.id", ondelete="SET NULL"), nullable=True
-    )
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True)
+    employee_id = Column(UUID(as_uuid=True), ForeignKey("ai_employees.id", ondelete="SET NULL"), nullable=True)
     task_id = Column(UUID(as_uuid=True), nullable=True)
     category = Column(String(30), nullable=False)  # "billing", "hr", "inventory", "system"
     icon = Column(String(10), nullable=False, default="📋")

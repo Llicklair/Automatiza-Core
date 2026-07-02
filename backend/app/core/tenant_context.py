@@ -18,17 +18,13 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 
-_current_tenant_ctx: ContextVar[str | None] = ContextVar(
-    "current_tenant", default=None
-)
+_current_tenant_ctx: ContextVar[str | None] = ContextVar("current_tenant", default=None)
 
 # Task activo (paralelo a tenant). Lo setea el TaskRunner del orquestador
 # antes de invocar agentes, para que tools que necesiten scoping por task
 # (e.g. dedup cross-dispatcher de documentos) puedan consultarlo sin
 # tener que recibir task_id como argumento explícito desde el LLM.
-_current_task_ctx: ContextVar[str | None] = ContextVar(
-    "current_task", default=None
-)
+_current_task_ctx: ContextVar[str | None] = ContextVar("current_task", default=None)
 
 # Bypass explícito de la RLS (SEC.RLS fail-closed). Cuando es True, el listener
 # de `app.db.rls` setea `app.rls_bypass = 'on'` y la policy de Postgres deja

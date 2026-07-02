@@ -1,4 +1,4 @@
-﻿"""Payroll CRUD, calculation preview, PDF generation and persistence."""
+"""Payroll CRUD, calculation preview, PDF generation and persistence."""
 
 import asyncio
 import logging
@@ -206,16 +206,12 @@ async def update_payroll(payroll_id: UUID, payload, tenant_id, db: AsyncSession)
         setattr(payroll, field, value)
     await db.commit()
 
-    result = await db.execute(
-        select(Payroll).options(joinedload(Payroll.employee)).where(Payroll.id == payroll_id)
-    )
+    result = await db.execute(select(Payroll).options(joinedload(Payroll.employee)).where(Payroll.id == payroll_id))
     return result.unique().scalar_one()
 
 
 async def delete_payroll(payroll_id: UUID, tenant_id, db: AsyncSession) -> bool:
-    result = await db.execute(
-        select(Payroll).where(Payroll.id == payroll_id, Payroll.tenant_id == tenant_id)
-    )
+    result = await db.execute(select(Payroll).where(Payroll.id == payroll_id, Payroll.tenant_id == tenant_id))
     payroll = result.scalar_one_or_none()
     if not payroll:
         return False

@@ -51,9 +51,7 @@ async def get_last_execution(db: AsyncSession, workflow_id) -> WorkflowExecution
     return result.scalars().first()
 
 
-async def create_execution(
-    db: AsyncSession, workflow: Workflow, trigger_payload: dict
-) -> WorkflowExecution:
+async def create_execution(db: AsyncSession, workflow: Workflow, trigger_payload: dict) -> WorkflowExecution:
     """Insert a new WorkflowExecution and flush (no commit)."""
     execution = WorkflowExecution(
         workflow_id=workflow.id,
@@ -102,9 +100,7 @@ async def get_stuck_executions(db: AsyncSession, cutoff: datetime) -> list[Workf
     return list(result.scalars().all())
 
 
-async def mark_executions_failed(
-    db: AsyncSession, executions: list[WorkflowExecution], note: str
-) -> None:
+async def mark_executions_failed(db: AsyncSession, executions: list[WorkflowExecution], note: str) -> None:
     """Mark a list of executions as failed (no commit)."""
     now = datetime.now(UTC)
     for ex in executions:

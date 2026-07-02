@@ -43,8 +43,7 @@ def upgrade() -> None:
         """
     )
     op.execute(
-        "CREATE UNIQUE INDEX IF NOT EXISTS ix_autonomy_policy_tenant_domain "
-        "ON autonomy_policy(tenant_id, domain)"
+        "CREATE UNIQUE INDEX IF NOT EXISTS ix_autonomy_policy_tenant_domain " "ON autonomy_policy(tenant_id, domain)"
     )
 
 

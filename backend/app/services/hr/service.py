@@ -1,4 +1,5 @@
 """Backward-compatibility shim — implementation in queries.py / commands.py."""
+
 from app.services.hr.commands import (
     approve_expense,
     approve_leave_request,

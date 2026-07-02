@@ -48,10 +48,7 @@ def upgrade() -> None:
     )
 
     # 2. Convertir el tipo de la columna a uuid.
-    op.execute(
-        "ALTER TABLE document_embeddings "
-        "ALTER COLUMN document_id TYPE uuid USING document_id::uuid"
-    )
+    op.execute("ALTER TABLE document_embeddings " "ALTER COLUMN document_id TYPE uuid USING document_id::uuid")
 
     # 3. Añadir el FK con ON DELETE CASCADE (idempotente).
     op.execute(
@@ -72,7 +69,4 @@ def downgrade() -> None:
     if bind.dialect.name != "postgresql":
         return
     op.execute(f"ALTER TABLE document_embeddings DROP CONSTRAINT IF EXISTS {_FK}")
-    op.execute(
-        "ALTER TABLE document_embeddings "
-        "ALTER COLUMN document_id TYPE varchar USING document_id::text"
-    )
+    op.execute("ALTER TABLE document_embeddings " "ALTER COLUMN document_id TYPE varchar USING document_id::text")

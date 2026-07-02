@@ -11,6 +11,7 @@ Overrides por entorno (los fija el desktop si hace falta):
   - `AUTOMATIZA_DATA_DIR`  → ruta absoluta completa del directorio de datos.
   - `AUTOMATIZA_APPDIR`    → solo el nombre de la subcarpeta (default AutomatizaPyme).
 """
+
 from __future__ import annotations
 
 import os

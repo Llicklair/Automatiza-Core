@@ -106,18 +106,18 @@ _MARKDOWN_LABELS: dict[str, str] = {
 # Detecta "<Etiqueta>: <valor>" en texto plano o markdown ("**Factura:** IA-001").
 # Acepta opcional **/__/* a ambos lados de la etiqueta, ":" o "—" como separador.
 _MD_KV_RE = re.compile(
-    r"(?:^|\n|[•\-]\s*)"                # inicio de línea o bullet
-    r"[\*_]{0,2}\s*"                    # opcional negrita/cursiva apertura
-    r"([A-Za-zÁÉÍÓÚáéíóúÑñ ºª]+?)"     # etiqueta
-    r"\s*[\*_]{0,2}\s*"                 # opcional negrita/cursiva cierre
-    r"[:–—]"                            # separador: SOLO ":" o guion largo. El guion
-                                        # plano "-" se excluyó: dentro de un ID
-                                        # ("Factura IA-001") se tomaba como separador
-                                        # y extraía una entidad basura.
-    r"\s*[\*_]{0,2}\s*"                 # opcional negrita post-separador (**Factura:** valor)
-    r"([^\n]+?)"                        # valor
-    r"(?=\n|$|\.\s)",                   # corta en fin de línea o límite de frase (". "),
-                                        # para no tragarse la oración siguiente.
+    r"(?:^|\n|[•\-]\s*)"  # inicio de línea o bullet
+    r"[\*_]{0,2}\s*"  # opcional negrita/cursiva apertura
+    r"([A-Za-zÁÉÍÓÚáéíóúÑñ ºª]+?)"  # etiqueta
+    r"\s*[\*_]{0,2}\s*"  # opcional negrita/cursiva cierre
+    r"[:–—]"  # separador: SOLO ":" o guion largo. El guion
+    # plano "-" se excluyó: dentro de un ID
+    # ("Factura IA-001") se tomaba como separador
+    # y extraía una entidad basura.
+    r"\s*[\*_]{0,2}\s*"  # opcional negrita post-separador (**Factura:** valor)
+    r"([^\n]+?)"  # valor
+    r"(?=\n|$|\.\s)",  # corta en fin de línea o límite de frase (". "),
+    # para no tragarse la oración siguiente.
 )
 
 # UUID v4-ish (acepta cualquier forma estándar 8-4-4-4-12 hex).
@@ -299,7 +299,8 @@ class ExecutionContext:
                 "ExecutionContext: el paso '%s' (action=%s) devolvió respuesta pero "
                 "no aportó entidades estructuradas; los pasos siguientes dependen "
                 "solo del preview en prosa.",
-                agent, action,
+                agent,
+                action,
             )
 
         summary = {

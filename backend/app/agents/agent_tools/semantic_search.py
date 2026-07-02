@@ -10,6 +10,7 @@ trae todos los embeddings filtrados por tenant_id (y opcionalmente
 jurisdiction) y rankea en memoria. Para volúmenes mayores, migrar a
 pgvector y/o limitar por categoría/fecha antes del ranking.
 """
+
 from __future__ import annotations
 
 import logging
@@ -143,13 +144,10 @@ def is_missing_table_or_extension(exc: Exception) -> bool:
     semántica (tabla document_embeddings o extensión vector) no está
     instalada — código sqlstate 42P01 (UndefinedTable) o 42704
     (UndefinedObject)."""
-    sqlstate = getattr(exc, "sqlstate", None) or getattr(
-        getattr(exc, "orig", None), "sqlstate", None
-    )
+    sqlstate = getattr(exc, "sqlstate", None) or getattr(getattr(exc, "orig", None), "sqlstate", None)
     if sqlstate in ("42P01", "42704"):
         return True
     err = str(exc).lower()
-    return (
-        "document_embeddings" in err
-        and ("does not exist" in err or "no existe la relaci" in err)
-    ) or ('type "vector"' in err and "does not exist" in err)
+    return ("document_embeddings" in err and ("does not exist" in err or "no existe la relaci" in err)) or (
+        'type "vector"' in err and "does not exist" in err
+    )

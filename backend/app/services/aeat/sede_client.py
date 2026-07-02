@@ -148,7 +148,9 @@ async def submit_signed_xml(
 
     if r.status_code >= 500:
         return SubmissionResult(
-            accepted=False, csv=None, response_body=r.text[:4000],
+            accepted=False,
+            csv=None,
+            response_body=r.text[:4000],
             error_code=f"HTTP_{r.status_code}",
             error_message=f"SEDE devolvió error de servidor ({r.status_code}).",
         )

@@ -45,7 +45,9 @@ def upgrade() -> None:
             server_default=sa.func.now(),
         ),
         sa.UniqueConstraint(
-            "tenant_id", "transaction_id", "invoice_id",
+            "tenant_id",
+            "transaction_id",
+            "invoice_id",
             name="uq_reconciliation_rejection_pair",
         ),
     )

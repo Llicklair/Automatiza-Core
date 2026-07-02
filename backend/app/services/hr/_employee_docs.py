@@ -1,4 +1,4 @@
-﻿"""Employee document management â€” upload, list, get, delete, read."""
+"""Employee document management â€” upload, list, get, delete, read."""
 
 import asyncio
 import os

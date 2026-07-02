@@ -53,10 +53,7 @@ def parse_tabular_file(file_path: str, file_name: str) -> tuple[list[str], list[
         if not rows_raw:
             return [], [], "excel"
         columns = [str(c) if c else f"col_{i}" for i, c in enumerate(rows_raw[0])]
-        rows = [
-            {columns[j]: cell for j, cell in enumerate(row) if j < len(columns)}
-            for row in rows_raw[1:]
-        ]
+        rows = [{columns[j]: cell for j, cell in enumerate(row) if j < len(columns)} for row in rows_raw[1:]]
         return columns, rows, "excel"
 
     elif ext == ".json":
@@ -71,9 +68,7 @@ def parse_tabular_file(file_path: str, file_name: str) -> tuple[list[str], list[
             for _key, val in data.items():
                 if isinstance(val, list) and len(val) > 0 and isinstance(val[0], dict):
                     if len(val) > MAX_TABULAR_ROWS:
-                        raise ValueError(
-                            f"El archivo supera el máximo de {MAX_TABULAR_ROWS} filas"
-                        )
+                        raise ValueError(f"El archivo supera el máximo de {MAX_TABULAR_ROWS} filas")
                     columns = list(val[0].keys())
                     return columns, val, "json"
             columns = list(data.keys())
@@ -92,9 +87,7 @@ def auto_classify_tabular(columns: list[str]) -> str:
         return "nominas"
     if any(k in cols_lower for k in ("correo", "email", "asunto", "subject", "inbox", "bandeja")):
         return "correos"
-    if any(
-        k in cols_lower for k in ("cliente", "customer", "telefono", "empresa", "lead", "contacto")
-    ):
+    if any(k in cols_lower for k in ("cliente", "customer", "telefono", "empresa", "lead", "contacto")):
         return "crm"
     if any(k in cols_lower for k in ("banco", "iban", "movimiento", "saldo", "transferencia")):
         return "bancos"

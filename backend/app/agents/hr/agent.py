@@ -80,11 +80,7 @@ async def hr_agent_node(state: AgentState):
         step_id=f"hr_step_{datetime.now(UTC).timestamp()}",
         description="Procesando solicitud de RRHH...",
         status="completed",
-        action_taken=(
-            "Invocando herramientas de RRHH"
-            if response.tool_calls
-            else "Asistencia RRHH completada."
-        ),
+        action_taken=("Invocando herramientas de RRHH" if response.tool_calls else "Asistencia RRHH completada."),
     )
 
     if "agent_results" not in state:
@@ -102,11 +98,7 @@ def hr_finalize_node(state: AgentState):
         step_id="hr_final",
         description="Agente RRHH ha finalizado.",
         status="completed",
-        action_taken=(
-            last_msg.content
-            if isinstance(last_msg.content, str)
-            else "Borradores generados localmente."
-        ),
+        action_taken=(last_msg.content if isinstance(last_msg.content, str) else "Borradores generados localmente."),
     )
 
     return {"status": "done", "agent_results": [final_result.model_dump()]}
@@ -120,9 +112,7 @@ workflow.add_node("tools", ToolNode(tools))
 workflow.add_node("finalize", hr_finalize_node)
 
 workflow.set_entry_point("hr_agent")
-workflow.add_conditional_edges(
-    "hr_agent", tools_condition, {"tools": "tools", "__end__": "finalize"}
-)
+workflow.add_conditional_edges("hr_agent", tools_condition, {"tools": "tools", "__end__": "finalize"})
 workflow.add_edge("tools", "hr_agent")
 workflow.add_edge("finalize", END)
 

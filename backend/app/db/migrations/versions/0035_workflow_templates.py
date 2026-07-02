@@ -51,9 +51,7 @@ def upgrade() -> None:
             server_default=sa.func.now(),
         ),
     )
-    op.create_index(
-        "ix_workflow_templates_category", "workflow_templates", ["category"]
-    )
+    op.create_index("ix_workflow_templates_category", "workflow_templates", ["category"])
 
 
 def downgrade() -> None:

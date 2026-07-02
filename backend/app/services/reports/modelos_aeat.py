@@ -110,17 +110,13 @@ async def build_modelo_130_data(
     gastos = sum((Decimal(inv.amount_base or 0) for inv in received), Decimal("0"))
     beneficio = ingresos - gastos
 
-    pago_fraccionado_bruto = (beneficio * Decimal("0.20")).quantize(
-        Decimal("0.01"), rounding=ROUND_HALF_UP
-    )
+    pago_fraccionado_bruto = (beneficio * Decimal("0.20")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     if pago_fraccionado_bruto < 0:
         pago_fraccionado_bruto = Decimal("0.00")
 
     # N4: retenciones de IRPF que los clientes han practicado sobre las facturas
     # EMITIDAS (acumuladas desde el 1-ene) → casilla 06; reducen el pago fraccionado.
-    retenciones = sum(
-        (Decimal(inv.retencion_irpf_amount or 0) for inv in issued), Decimal("0")
-    )
+    retenciones = sum((Decimal(inv.retencion_irpf_amount or 0) for inv in issued), Decimal("0"))
     resultado = pago_fraccionado_bruto - retenciones
     if resultado < 0:
         resultado = Decimal("0.00")
@@ -180,7 +176,7 @@ async def build_modelo_347_data(
     for inv in issued:
         client = clients_by_id.get(inv.client_id)
         nif = (client.nif if client else None) or "SIN_NIF"
-        name = (client.name if client else "Cliente desconocido")
+        name = client.name if client else "Cliente desconocido"
         entry = by_nif.setdefault(
             nif, {"nif": nif, "nombre": name, "emitidas": Decimal("0"), "recibidas": Decimal("0")}
         )
@@ -191,7 +187,7 @@ async def build_modelo_347_data(
         # porque en el modelo actual la contraparte vive en la misma tabla `clients`.
         client = clients_by_id.get(inv.client_id)
         nif = (client.nif if client else None) or "SIN_NIF"
-        name = (client.name if client else "Proveedor desconocido")
+        name = client.name if client else "Proveedor desconocido"
         entry = by_nif.setdefault(
             nif, {"nif": nif, "nombre": name, "emitidas": Decimal("0"), "recibidas": Decimal("0")}
         )
@@ -202,12 +198,14 @@ async def build_modelo_347_data(
         emitidas = entry["emitidas"]
         recibidas = entry["recibidas"]
         if max(emitidas, recibidas) >= MODELO_347_THRESHOLD:
-            declarables.append({
-                "nif": entry["nif"],
-                "nombre": entry["nombre"],
-                "importe_emitidas": float(emitidas),
-                "importe_recibidas": float(recibidas),
-            })
+            declarables.append(
+                {
+                    "nif": entry["nif"],
+                    "nombre": entry["nombre"],
+                    "importe_emitidas": float(emitidas),
+                    "importe_recibidas": float(recibidas),
+                }
+            )
 
     declarables.sort(key=lambda d: d["nif"])
 
@@ -296,9 +294,7 @@ async def build_modelo_111_data(
 
     # Enriquecer con datos del empleado
     if by_employee:
-        emp_q = await db.execute(
-            select(Employee).where(Employee.id.in_(list(by_employee.keys())))
-        )
+        emp_q = await db.execute(select(Employee).where(Employee.id.in_(list(by_employee.keys()))))
         for emp in emp_q.scalars().all():
             entry = by_employee.get(emp.id)
             if entry is not None:
@@ -354,9 +350,7 @@ async def build_modelo_111_data(
         entry["num_facturas"] += 1
 
     if by_supplier:
-        cli_q = await db.execute(
-            select(Client).where(Client.id.in_(list(by_supplier.keys())))
-        )
+        cli_q = await db.execute(select(Client).where(Client.id.in_(list(by_supplier.keys()))))
         for cli in cli_q.scalars().all():
             entry = by_supplier.get(cli.id)
             if entry is not None:
@@ -376,20 +370,11 @@ async def build_modelo_111_data(
     ]
     profesionales.sort(key=lambda p: (p["nif"] or "", p["nombre"] or ""))
 
-    total_base_prof = sum(
-        Decimal(str(p["base_retencion"])) for p in profesionales
-    )
-    total_ret_prof = sum(
-        Decimal(str(p["retencion_practicada"])) for p in profesionales
-    )
+    total_base_prof = sum(Decimal(str(p["base_retencion"])) for p in profesionales)
+    total_ret_prof = sum(Decimal(str(p["retencion_practicada"])) for p in profesionales)
 
-    total_base = (
-        sum(Decimal(str(p["base_retencion"])) for p in perceptores) + total_base_prof
-    )
-    total_retencion = (
-        sum(Decimal(str(p["retencion_practicada"])) for p in perceptores)
-        + total_ret_prof
-    )
+    total_base = sum(Decimal(str(p["base_retencion"])) for p in perceptores) + total_base_prof
+    total_retencion = sum(Decimal(str(p["retencion_practicada"])) for p in perceptores) + total_ret_prof
 
     return {
         "modelo": "111",
@@ -451,9 +436,7 @@ async def build_modelo_190_data(
         entry["num_nominas"] += 1
 
     if by_employee:
-        emp_q = await db.execute(
-            select(Employee).where(Employee.id.in_(list(by_employee.keys())))
-        )
+        emp_q = await db.execute(select(Employee).where(Employee.id.in_(list(by_employee.keys()))))
         for emp in emp_q.scalars().all():
             entry = by_employee.get(emp.id)
             if entry is not None:
@@ -507,9 +490,7 @@ async def build_modelo_190_data(
         entry["num_facturas"] += 1
 
     if by_supplier:
-        cli_q = await db.execute(
-            select(Client).where(Client.id.in_(list(by_supplier.keys())))
-        )
+        cli_q = await db.execute(select(Client).where(Client.id.in_(list(by_supplier.keys()))))
         for cli in cli_q.scalars().all():
             entry = by_supplier.get(cli.id)
             if entry is not None:
@@ -575,10 +556,7 @@ async def build_modelo_390_data(
     # (devengado + deducible); el resto de recibidas es deducible interior.
     intra = [r for r in received if getattr(r, "fiscal_regime", None) == "intracomunitario"]
     isp = [r for r in received if getattr(r, "fiscal_regime", None) == "isp"]
-    general_received = [
-        r for r in received
-        if getattr(r, "fiscal_regime", None) not in ("intracomunitario", "isp")
-    ]
+    general_received = [r for r in received if getattr(r, "fiscal_regime", None) not in ("intracomunitario", "isp")]
 
     devengado = vat_breakdown_by_rate(issued)
     deducible = vat_breakdown_by_rate(general_received + isp)
@@ -597,14 +575,8 @@ async def build_modelo_390_data(
     cuota_intra = sum((v["quota"] for v in intra_bd.values()), Decimal("0"))
     cuota_isp = sum((v["quota"] for v in isp_bd.values()), Decimal("0"))
 
-    total_devengado = _round2(
-        sum((v["quota"] for v in devengado.values()), Decimal("0"))
-        + cuota_intra
-        + cuota_isp
-    )
-    total_deducible = _round2(
-        sum((v["quota"] for v in deducible.values()), Decimal("0")) + cuota_intra
-    )
+    total_devengado = _round2(sum((v["quota"] for v in devengado.values()), Decimal("0")) + cuota_intra + cuota_isp)
+    total_deducible = _round2(sum((v["quota"] for v in deducible.values()), Decimal("0")) + cuota_intra)
     resultado = _round2(total_devengado - total_deducible)
 
     return {
@@ -633,8 +605,14 @@ TIPO_RETENCION_115 = Decimal("19.0")
 # Palabras clave para detectar alquileres en facturas recibidas. Heurístico —
 # se afinará cuando exista campo `category` o flag explícito en Invoice.
 _KEYWORDS_ALQUILER = (
-    "alquiler", "arrendamiento", "renta inmueble", "renta local",
-    "renta oficina", "renta nave", "lease", "leasing inmobiliario",
+    "alquiler",
+    "arrendamiento",
+    "renta inmueble",
+    "renta local",
+    "renta oficina",
+    "renta nave",
+    "lease",
+    "leasing inmobiliario",
 )
 
 
@@ -674,7 +652,11 @@ async def build_modelo_115_data(
     tenant_name, tenant_nif = await _get_tenant_info(db, tenant_id)
 
     facturas = await _invoices_in_period(
-        db, tenant_id, invoice_type="received", start=start, end=end,
+        db,
+        tenant_id,
+        invoice_type="received",
+        start=start,
+        end=end,
     )
 
     # Cargar clientes (=proveedores en facturas recibidas) para enriquecer
@@ -690,28 +672,34 @@ async def build_modelo_115_data(
 
     for inv in facturas:
         # Buscar en notes, terms y en cualquier descripción de línea
-        texto = " ".join(filter(None, [
-            inv.notes, inv.terms,
-            *[ln.description for ln in (inv.lines or [])],
-        ]))
+        texto = " ".join(
+            filter(
+                None,
+                [
+                    inv.notes,
+                    inv.terms,
+                    *[ln.description for ln in (inv.lines or [])],
+                ],
+            )
+        )
         if not _is_alquiler(texto):
             continue
 
         base = Decimal(str(inv.amount_base or 0))
-        retencion = (base * TIPO_RETENCION_115 / Decimal("100")).quantize(
-            Decimal("0.01"), rounding=ROUND_HALF_UP
-        )
+        retencion = (base * TIPO_RETENCION_115 / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         prov = proveedores_by_id.get(inv.client_id)
-        arrendadores.append({
-            "invoice_id": str(inv.id),
-            "invoice_number": inv.invoice_number,
-            "nif_arrendador": (prov.nif if prov else None) or "",
-            "nombre_arrendador": (prov.name if prov else None) or "",
-            "fecha": inv.date.date().isoformat() if hasattr(inv.date, "date") else str(inv.date)[:10],
-            "concepto": (inv.notes or (inv.lines[0].description if inv.lines else "") or "")[:160],
-            "base_retencion": float(base),
-            "retencion_practicada": float(retencion),
-        })
+        arrendadores.append(
+            {
+                "invoice_id": str(inv.id),
+                "invoice_number": inv.invoice_number,
+                "nif_arrendador": (prov.nif if prov else None) or "",
+                "nombre_arrendador": (prov.name if prov else None) or "",
+                "fecha": inv.date.date().isoformat() if hasattr(inv.date, "date") else str(inv.date)[:10],
+                "concepto": (inv.notes or (inv.lines[0].description if inv.lines else "") or "")[:160],
+                "base_retencion": float(base),
+                "retencion_practicada": float(retencion),
+            }
+        )
         total_base += base
         total_retencion += retencion
 
@@ -744,9 +732,33 @@ async def build_modelo_115_data(
 # Prefijos de país UE para detectar NIF intracomunitarios.
 # ES queda excluido (es operación interior, no entra en el 349).
 _UE_PREFIXES = {
-    "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "EL",
-    "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO",
-    "SK", "SI", "SE",
+    "AT",
+    "BE",
+    "BG",
+    "HR",
+    "CY",
+    "CZ",
+    "DK",
+    "EE",
+    "FI",
+    "FR",
+    "DE",
+    "EL",
+    "GR",
+    "HU",
+    "IE",
+    "IT",
+    "LV",
+    "LT",
+    "LU",
+    "MT",
+    "NL",
+    "PL",
+    "PT",
+    "RO",
+    "SK",
+    "SI",
+    "SE",
 }
 
 
@@ -790,10 +802,18 @@ async def build_modelo_349_data(
     tenant_name, tenant_nif = await _get_tenant_info(db, tenant_id)
 
     emitidas = await _invoices_in_period(
-        db, tenant_id, invoice_type="issued", start=start, end=end,
+        db,
+        tenant_id,
+        invoice_type="issued",
+        start=start,
+        end=end,
     )
     recibidas = await _invoices_in_period(
-        db, tenant_id, invoice_type="received", start=start, end=end,
+        db,
+        tenant_id,
+        invoice_type="received",
+        start=start,
+        end=end,
     )
 
     todos_cli_ids = {f.client_id for f in emitidas + recibidas if f.client_id}
@@ -812,14 +832,17 @@ async def build_modelo_349_data(
         if not pais:
             return
         key = (nif, tipo)
-        entry = by_key.setdefault(key, {
-            "nif_intracomunitario": nif,
-            "pais_codigo": pais,
-            "nombre_contraparte": (cli.name if cli else None) or "",
-            "tipo_operacion": tipo,
-            "base_imponible": Decimal("0"),
-            "num_operaciones": 0,
-        })
+        entry = by_key.setdefault(
+            key,
+            {
+                "nif_intracomunitario": nif,
+                "pais_codigo": pais,
+                "nombre_contraparte": (cli.name if cli else None) or "",
+                "tipo_operacion": tipo,
+                "base_imponible": Decimal("0"),
+                "num_operaciones": 0,
+            },
+        )
         entry["base_imponible"] += Decimal(str(inv.amount_base or 0))
         entry["num_operaciones"] += 1
 
@@ -938,10 +961,7 @@ async def build_modelo_100_data(
         coste_nominas += bruto + ss_empresa
 
     rendimiento_neto = ingresos - gastos_facturas - coste_nominas
-    minp = (
-        Decimal(str(minimo_personal)) if minimo_personal is not None
-        else MINIMO_PERSONAL_DEFAULT
-    )
+    minp = Decimal(str(minimo_personal)) if minimo_personal is not None else MINIMO_PERSONAL_DEFAULT
     base_liquidable = max(Decimal(0), rendimiento_neto - minp)
     cuota_integra = _irpf_cuota(base_liquidable)
 
@@ -963,11 +983,7 @@ async def build_modelo_100_data(
         "retenciones_soportadas": float(round(retenciones, 2)),
         "pagos_fraccionados_pagados": float(pagos),
         "resultado_declaracion": float(round(resultado, 2)),
-        "signo": (
-            "ingresar" if resultado > 0
-            else "devolver" if resultado < 0
-            else "cero"
-        ),
+        "signo": ("ingresar" if resultado > 0 else "devolver" if resultado < 0 else "cero"),
         "_warning": (
             "Preview no oficial. La Declaración de la Renta (Modelo 100) real "
             "incluye rendimientos del trabajo, del capital, ganancias/pérdidas "
@@ -1075,11 +1091,7 @@ async def build_modelo_200_data(
         "retenciones_soportadas": float(round(retenciones, 2)),
         "pagos_fraccionados_pagados": float(pagos),
         "resultado_declaracion": float(round(resultado_declaracion, 2)),
-        "signo": (
-            "ingresar" if resultado_declaracion > 0
-            else "devolver" if resultado_declaracion < 0
-            else "cero"
-        ),
+        "signo": ("ingresar" if resultado_declaracion > 0 else "devolver" if resultado_declaracion < 0 else "cero"),
         "_warning": (
             "Preview no oficial. El Modelo 200 real exige ajustes fiscales "
             "(provisiones, amortizaciones aceleradas, compensación BINs, "

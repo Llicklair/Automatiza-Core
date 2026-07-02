@@ -11,6 +11,7 @@ Reglas clave:
 - Cancelar elimina la sesión y sus líneas (sin tocar stock — no se
   habían descontado todavía).
 """
+
 from __future__ import annotations
 
 import logging
@@ -31,9 +32,7 @@ def _pos_stock_reference(session_id: UUID) -> str:
     return f"POS_SESSION:{session_id}"
 
 
-async def _get_open_session(
-    db: AsyncSession, tenant_id: UUID, user_id: UUID
-) -> PosSession | None:
+async def _get_open_session(db: AsyncSession, tenant_id: UUID, user_id: UUID) -> PosSession | None:
     result = await db.execute(
         select(PosSession)
         .where(
@@ -46,9 +45,7 @@ async def _get_open_session(
     return result.scalar_one_or_none()
 
 
-async def _get_session_for_user(
-    db: AsyncSession, tenant_id: UUID, session_id: UUID
-) -> PosSession:
+async def _get_session_for_user(db: AsyncSession, tenant_id: UUID, session_id: UUID) -> PosSession:
     result = await db.execute(
         select(PosSession)
         .where(PosSession.id == session_id, PosSession.tenant_id == tenant_id)
@@ -65,16 +62,12 @@ def _line_total(quantity: int, unit_price: Decimal, tax_pct: Decimal) -> Decimal
     return (base + base * Decimal(tax_pct) / Decimal("100")).quantize(Decimal("0.01"))
 
 
-async def get_current_session(
-    db: AsyncSession, tenant_id: UUID, user_id: UUID
-) -> PosSession | None:
+async def get_current_session(db: AsyncSession, tenant_id: UUID, user_id: UUID) -> PosSession | None:
     """Devuelve la sesión 'open' del usuario o None."""
     return await _get_open_session(db, tenant_id, user_id)
 
 
-async def open_session(
-    db: AsyncSession, tenant_id: UUID, user_id: UUID
-) -> PosSession:
+async def open_session(db: AsyncSession, tenant_id: UUID, user_id: UUID) -> PosSession:
     """Abre una nueva sesión. Falla si el cajero ya tiene una abierta."""
     existing = await _get_open_session(db, tenant_id, user_id)
     if existing:
@@ -88,9 +81,7 @@ async def open_session(
     return session
 
 
-async def _reload_with_lines(
-    db: AsyncSession, tenant_id: UUID, session_id: UUID
-) -> PosSession:
+async def _reload_with_lines(db: AsyncSession, tenant_id: UUID, session_id: UUID) -> PosSession:
     """Refresca el cache de la session de SQLAlchemy y devuelve la
     sesión con lines actualizadas. expire_all() asegura que el siguiente
     select vea los cambios committeados, no objetos en cache stale."""
@@ -119,19 +110,13 @@ async def add_line(
         raise ValueError("La cantidad debe ser mayor que cero")
 
     if product_id:
-        prod_res = await db.execute(
-            select(Product).where(
-                Product.id == product_id, Product.tenant_id == tenant_id
-            )
-        )
+        prod_res = await db.execute(select(Product).where(Product.id == product_id, Product.tenant_id == tenant_id))
         product = prod_res.scalar_one_or_none()
         if not product:
             raise LookupError("Producto no encontrado")
         description = description or product.name
         unit_price = float(product.price) if unit_price is None else unit_price
-        tax_percentage = (
-            float(product.tax_percentage) if tax_percentage is None else tax_percentage
-        )
+        tax_percentage = float(product.tax_percentage) if tax_percentage is None else tax_percentage
     else:
         if not description:
             raise ValueError("description es obligatorio sin product_id")
@@ -234,9 +219,7 @@ async def checkout(
         if line.product_id is None:
             continue
         prod_res = await db.execute(
-            select(Product).where(
-                Product.id == line.product_id, Product.tenant_id == tenant_id
-            )
+            select(Product).where(Product.id == line.product_id, Product.tenant_id == tenant_id)
         )
         product = prod_res.scalar_one_or_none()
         if product is None:
@@ -281,9 +264,7 @@ async def checkout(
     return await _reload_with_lines(db, tenant_id, session_id)
 
 
-async def cancel_session(
-    db: AsyncSession, tenant_id: UUID, session_id: UUID
-) -> PosSession:
+async def cancel_session(db: AsyncSession, tenant_id: UUID, session_id: UUID) -> PosSession:
     session = await _get_session_for_user(db, tenant_id, session_id)
     if session.status != "open":
         raise ValueError("Solo se pueden cancelar sesiones abiertas")
@@ -308,10 +289,6 @@ async def list_sessions(
         query = query.where(PosSession.user_id == user_id)
     if status:
         query = query.where(PosSession.status == status)
-    query = (
-        query.order_by(desc(PosSession.opened_at))
-        .options(selectinload(PosSession.lines))
-        .limit(limit)
-    )
+    query = query.order_by(desc(PosSession.opened_at)).options(selectinload(PosSession.lines)).limit(limit)
     result = await db.execute(query)
     return list(result.scalars().all())

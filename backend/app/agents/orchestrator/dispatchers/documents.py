@@ -18,9 +18,7 @@ async def _dispatch_documents(state: OrchestratorState, subtask: dict) -> AgentR
     from app.agents.documents import graph
 
     tenant_id = state["tenant_id"]
-    intent = subtask.get("params", {}).get(
-        "intent", state.get("current_intent", state["user_intent"])
-    )
+    intent = subtask.get("params", {}).get("intent", state.get("current_intent", state["user_intent"]))
 
     # Enriquecer el intent con el document_id si hay un documento vinculado a la tarea
     enriched_intent = intent

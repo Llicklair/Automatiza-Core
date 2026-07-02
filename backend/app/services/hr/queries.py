@@ -53,6 +53,7 @@ def mei_trabajador(year: int | None = None) -> float:
         return _MEI_TRABAJADOR[year]
     return _MEI_TRABAJADOR[_MEI_DEFAULT_YEAR]
 
+
 # Tope máximo de la base de cotización MENSUAL (Régimen General). La SS se
 # cotiza sobre min(salario, tope): por encima del tope NO se cotiza (salvo la
 # cuota de solidaridad sobre el exceso, no incluida en este MVP). El IRPF, en
@@ -208,23 +209,16 @@ def calc_payroll(
     # Baja IT: días trabajados cobran salario; días de baja cobran prestación.
     dias_baja_it = min(max(int(dias_baja_it or 0), 0), _DIAS_PERIODO)
     base_reguladora_diaria = round(base_mes / _DIAS_PERIODO, 4)
-    salario_dias_trabajados = round(
-        base_mes * (_DIAS_PERIODO - dias_baja_it) / _DIAS_PERIODO, 2
-    )
+    salario_dias_trabajados = round(base_mes * (_DIAS_PERIODO - dias_baja_it) / _DIAS_PERIODO, 2)
     prestacion_it = (
-        _prestacion_it(base_reguladora_diaria, dias_baja_it, max(int(it_dia_inicio or 1), 1))
-        if dias_baja_it
-        else 0.0
+        _prestacion_it(base_reguladora_diaria, dias_baja_it, max(int(it_dia_inicio or 1), 1)) if dias_baja_it else 0.0
     )
 
     horas_extra_importe = round(float(horas_extra_importe or 0.0), 2)
 
     # Devengo bruto del periodo.
     gross = round(
-        salario_dias_trabajados
-        + prestacion_it
-        + (prorrata_extra if prorratear_pagas else 0.0)
-        + horas_extra_importe,
+        salario_dias_trabajados + prestacion_it + (prorrata_extra if prorratear_pagas else 0.0) + horas_extra_importe,
         2,
     )
 
@@ -326,9 +320,7 @@ async def list_employees(tenant_id, db: AsyncSession) -> list[Employee]:
 
 
 async def get_employee(employee_id: UUID, tenant_id, db: AsyncSession) -> Employee | None:
-    result = await db.execute(
-        select(Employee).where(Employee.id == employee_id, Employee.tenant_id == tenant_id)
-    )
+    result = await db.execute(select(Employee).where(Employee.id == employee_id, Employee.tenant_id == tenant_id))
     return result.scalar_one_or_none()
 
 
@@ -342,9 +334,7 @@ def _load_sepe_logo_b64() -> str:
         os.path.join(os.path.dirname(__file__), "..", "assets", "sepe_logo.png"),
         # Rutas históricas conservadas por compatibilidad.
         os.path.join(os.path.dirname(__file__), "assets", "sepe_logo.png"),
-        os.path.join(
-            os.path.dirname(__file__), "..", "api", "v1", "routes", "assets", "sepe_logo.png"
-        ),
+        os.path.join(os.path.dirname(__file__), "..", "api", "v1", "routes", "assets", "sepe_logo.png"),
     ]
     for path in candidates:
         p = os.path.normpath(path)
@@ -626,9 +616,7 @@ async def get_document(doc_id: str, tenant_id, db: AsyncSession) -> dict:
 # ── Recruitment queries ──────────────────────────────────────────────────────
 
 
-async def list_positions(
-    db: AsyncSession, tenant_id: UUID, status_filter: str = "all"
-) -> list[dict]:
+async def list_positions(db: AsyncSession, tenant_id: UUID, status_filter: str = "all") -> list[dict]:
     q = select(RecruitmentPosition).where(RecruitmentPosition.tenant_id == tenant_id)
     if status_filter != "all":
         q = q.where(RecruitmentPosition.status == status_filter)
@@ -651,9 +639,7 @@ async def list_positions(
             "department": p.department,
             "description": p.description,
             "required_skills": p.required_skills,
-            "experience_min_years": float(p.experience_min_years)
-            if p.experience_min_years
-            else 0,
+            "experience_min_years": float(p.experience_min_years) if p.experience_min_years else 0,
             "salary_range_min": float(p.salary_range_min) if p.salary_range_min else None,
             "salary_range_max": float(p.salary_range_max) if p.salary_range_max else None,
             "status": p.status,
@@ -755,9 +741,7 @@ def _attendance_row(r: Attendance) -> dict:
 # ── Leave request queries ─────────────────────────────────────────────────────
 
 
-async def list_leave_requests(
-    db: AsyncSession, tenant_id, status_filter: str | None = None
-) -> list[dict]:
+async def list_leave_requests(db: AsyncSession, tenant_id, status_filter: str | None = None) -> list[dict]:
     q = select(LeaveRequest).where(LeaveRequest.tenant_id == tenant_id)
     if status_filter:
         q = q.where(LeaveRequest.status == status_filter)
@@ -781,9 +765,7 @@ def _leave_request_row(r: LeaveRequest) -> dict:
 # ── Expense queries ───────────────────────────────────────────────────────────
 
 
-async def list_expenses(
-    db: AsyncSession, tenant_id, status_filter: str | None = None, employee_id=None
-) -> list[dict]:
+async def list_expenses(db: AsyncSession, tenant_id, status_filter: str | None = None, employee_id=None) -> list[dict]:
     q = (
         select(Expense)
         .where(Expense.tenant_id == tenant_id)
@@ -815,9 +797,7 @@ def _expense_row(r: Expense) -> dict:
 
 
 async def get_expense_receipt_path(db: AsyncSession, tenant_id, expense_id) -> tuple[str, str] | None:
-    result = await db.execute(
-        select(Expense).where(Expense.id == expense_id, Expense.tenant_id == tenant_id)
-    )
+    result = await db.execute(select(Expense).where(Expense.id == expense_id, Expense.tenant_id == tenant_id))
     exp = result.scalar_one_or_none()
     if not exp or not exp.receipt_path:
         return None

@@ -34,9 +34,7 @@ class Project(Base):
 
     tenant = relationship("Tenant")
     client = relationship("Client")
-    project_tasks = relationship(
-        "ProjectTask", back_populates="project", cascade="all, delete-orphan"
-    )
+    project_tasks = relationship("ProjectTask", back_populates="project", cascade="all, delete-orphan")
 
 
 class ProjectTask(Base):

@@ -26,12 +26,8 @@ async def create_opportunity(db: AsyncSession, tenant_id: UUID, data: dict) -> O
     return opp
 
 
-async def update_opportunity(
-    db: AsyncSession, tenant_id: UUID, opp_id: UUID, data: dict
-) -> Opportunity:
-    result = await db.execute(
-        select(Opportunity).where(Opportunity.id == opp_id, Opportunity.tenant_id == tenant_id)
-    )
+async def update_opportunity(db: AsyncSession, tenant_id: UUID, opp_id: UUID, data: dict) -> Opportunity:
+    result = await db.execute(select(Opportunity).where(Opportunity.id == opp_id, Opportunity.tenant_id == tenant_id))
     opp = result.scalar_one_or_none()
     if not opp:
         raise LookupError("Oportunidad no encontrada")
@@ -45,9 +41,7 @@ async def update_opportunity(
 
 
 async def delete_opportunity(db: AsyncSession, tenant_id: UUID, opp_id: UUID) -> None:
-    result = await db.execute(
-        select(Opportunity).where(Opportunity.id == opp_id, Opportunity.tenant_id == tenant_id)
-    )
+    result = await db.execute(select(Opportunity).where(Opportunity.id == opp_id, Opportunity.tenant_id == tenant_id))
     opp = result.scalar_one_or_none()
     if not opp:
         raise LookupError("Oportunidad no encontrada")
@@ -69,9 +63,7 @@ async def create_activity(db: AsyncSession, tenant_id: UUID, data: dict) -> Acti
 
 
 async def delete_activity(db: AsyncSession, tenant_id: UUID, activity_id: UUID) -> None:
-    result = await db.execute(
-        select(Activity).where(Activity.id == activity_id, Activity.tenant_id == tenant_id)
-    )
+    result = await db.execute(select(Activity).where(Activity.id == activity_id, Activity.tenant_id == tenant_id))
     activity = result.scalar_one_or_none()
     if not activity:
         raise LookupError("Activity not found")
@@ -93,9 +85,7 @@ async def create_event(db: AsyncSession, tenant_id: UUID, data: dict) -> Event:
 
 
 async def update_event(db: AsyncSession, tenant_id: UUID, event_id: UUID, data: dict) -> Event:
-    result = await db.execute(
-        select(Event).where(Event.id == event_id, Event.tenant_id == tenant_id)
-    )
+    result = await db.execute(select(Event).where(Event.id == event_id, Event.tenant_id == tenant_id))
     evt = result.scalar_one_or_none()
     if not evt:
         raise LookupError("Evento no encontrado")
@@ -111,9 +101,7 @@ async def update_event(db: AsyncSession, tenant_id: UUID, event_id: UUID, data: 
 
 
 async def delete_event(db: AsyncSession, tenant_id: UUID, event_id: UUID) -> None:
-    result = await db.execute(
-        select(Event).where(Event.id == event_id, Event.tenant_id == tenant_id)
-    )
+    result = await db.execute(select(Event).where(Event.id == event_id, Event.tenant_id == tenant_id))
     evt = result.scalar_one_or_none()
     if not evt:
         raise LookupError("Evento no encontrado")
@@ -134,12 +122,8 @@ async def create_reservation(db: AsyncSession, tenant_id: UUID, data: dict) -> R
     return res
 
 
-async def update_reservation(
-    db: AsyncSession, tenant_id: UUID, res_id: UUID, data: dict
-) -> Reservation:
-    result = await db.execute(
-        select(Reservation).where(Reservation.id == res_id, Reservation.tenant_id == tenant_id)
-    )
+async def update_reservation(db: AsyncSession, tenant_id: UUID, res_id: UUID, data: dict) -> Reservation:
+    result = await db.execute(select(Reservation).where(Reservation.id == res_id, Reservation.tenant_id == tenant_id))
     res = result.scalar_one_or_none()
     if not res:
         raise LookupError("Reserva no encontrada")
@@ -155,9 +139,7 @@ async def update_reservation(
 
 
 async def delete_reservation(db: AsyncSession, tenant_id: UUID, res_id: UUID) -> None:
-    result = await db.execute(
-        select(Reservation).where(Reservation.id == res_id, Reservation.tenant_id == tenant_id)
-    )
+    result = await db.execute(select(Reservation).where(Reservation.id == res_id, Reservation.tenant_id == tenant_id))
     res = result.scalar_one_or_none()
     if not res:
         raise LookupError("Reserva no encontrada")

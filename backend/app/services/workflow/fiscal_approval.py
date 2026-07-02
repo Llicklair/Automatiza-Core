@@ -84,6 +84,7 @@ async def request_fiscal_approval(
 def _validate_approval_text(provided: str, expected: str) -> bool:
     """Comparación insensible a acentos y mayúsculas — el cliente puede
     escribir sin acentos en teclado típico."""
+
     def _normalize(s: str) -> str:
         return (
             s.strip()
@@ -121,15 +122,10 @@ async def approve_fiscal(
     period = f"{period_quarter}T-{period_year}" if period_quarter else str(period_year)
     expected = build_expected_approval_text(model_aeat, period)
     if not _validate_approval_text(approval_text, expected):
-        raise ValueError(
-            "Texto de aprobación no coincide. Debe escribir literalmente: "
-            f"'{expected}'"
-        )
+        raise ValueError("Texto de aprobación no coincide. Debe escribir literalmente: " f"'{expected}'")
 
     # Marcar el PendingApproval como aprobado
-    result = await db.execute(
-        select(PendingApproval).where(PendingApproval.id == pending_approval_id)
-    )
+    result = await db.execute(select(PendingApproval).where(PendingApproval.id == pending_approval_id))
     pending = result.scalar_one_or_none()
     if pending is None:
         raise LookupError(f"PendingApproval {pending_approval_id} no encontrado")
@@ -174,9 +170,7 @@ async def reject_fiscal(
     user_agent: str | None = None,
 ) -> FiscalApprovalLog:
     """Registra un rechazo append-only sin marcar el modelo como presentable."""
-    result = await db.execute(
-        select(PendingApproval).where(PendingApproval.id == pending_approval_id)
-    )
+    result = await db.execute(select(PendingApproval).where(PendingApproval.id == pending_approval_id))
     pending = result.scalar_one_or_none()
     if pending is None:
         raise LookupError(f"PendingApproval {pending_approval_id} no encontrado")

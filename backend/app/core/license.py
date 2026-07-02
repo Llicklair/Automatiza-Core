@@ -25,15 +25,16 @@ from app.core.paths import app_data_dir
 
 logger = logging.getLogger(__name__)
 
-LICENSE_SERVER    = "https://automatizapyme-license-server.onrender.com"
-CACHE_TTL_HOURS   = 24
+LICENSE_SERVER = "https://automatizapyme-license-server.onrender.com"
+CACHE_TTL_HOURS = 24
 OFFLINE_GRACE_DAYS = 7
 # Cubre el cold start del free tier de Render (el dyno hiberna y tarda ~30-60s en
 # despertar). Con un timeout corto, una clave válida se marcaba inválida por timeout.
-REQUEST_TIMEOUT   = 60
+REQUEST_TIMEOUT = 60
 
 # Ed25519 public key — hardcoded to prevent fake-server attacks
 _PUBLIC_KEY_B64 = "0Pop065Ihkr11kYsaA3mwv5vUPH+Vx7C9vIvCtDRgQA="
+
 
 def _verify_server_sig(nonce: str, plan: str, sig_b64: str) -> bool:
     """Verify that the validate response was signed by our real server."""
@@ -48,15 +49,18 @@ def _verify_server_sig(nonce: str, plan: str, sig_b64: str) -> bool:
     except (InvalidSignature, Exception):
         return False
 
+
 LICENSE_FILE = app_data_dir("license.json")
 
 
 # ── Machine ID ────────────────────────────────────────────────────────────────
 
+
 def get_machine_id() -> str:
     if platform.system() == "Windows":
         try:
             import winreg
+
             k = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Cryptography")
             guid, _ = winreg.QueryValueEx(k, "MachineGuid")
             return str(guid)
@@ -66,6 +70,7 @@ def get_machine_id() -> str:
 
 
 # ── HMAC de integridad ────────────────────────────────────────────────────────
+
 
 def _sign(payload: str, machine_id: str) -> str:
     return hmac.new(
@@ -80,6 +85,7 @@ def _cache_payload(key: str, plan: str, last_validated: str, machine_id: str) ->
 
 
 # ── Lectura / escritura ───────────────────────────────────────────────────────
+
 
 def _read_cache() -> dict:
     try:
@@ -100,9 +106,7 @@ def _verify_cache(cache: dict, machine_id: str) -> bool:
     """Verifica HMAC y machine_id. False si cualquier campo fue alterado."""
     try:
         sig = cache.get("sig", "")
-        payload = _cache_payload(
-            cache["key"], cache["plan"], cache["last_validated"], cache["machine_id"]
-        )
+        payload = _cache_payload(cache["key"], cache["plan"], cache["last_validated"], cache["machine_id"])
         expected = _sign(payload, machine_id)
         if not hmac.compare_digest(sig, expected):
             logger.warning("[LICENSE] Firma de caché inválida — posible manipulación")
@@ -135,10 +139,11 @@ def save_license(key: str, plan: str) -> None:
 
 # ── Validación ────────────────────────────────────────────────────────────────
 
+
 class LicenseResult:
     def __init__(self, valid: bool, plan: str = "", reason: str = "", retriable: bool = False):
         self.valid = valid
-        self.plan  = plan
+        self.plan = plan
         self.reason = reason
         # retriable = fallo transitorio (servidor iniciándose), NO una clave inválida.
         self.retriable = retriable
@@ -212,7 +217,7 @@ async def validate_license() -> LicenseResult:
         if resp.status_code == 200:
             data = resp.json()
             plan = data.get("plan", "pro")
-            sig  = data.get("sig", "")
+            sig = data.get("sig", "")
             if not _verify_server_sig(nonce, plan, sig):
                 logger.error("[LICENSE] Firma del servidor inválida — posible servidor falso")
                 return LicenseResult(valid=False, reason="Respuesta del servidor no autenticada.")
@@ -286,8 +291,6 @@ async def refresh_app_license_state(app) -> None:
         lic = await validate_license()
         app.state.license_valid = lic.valid
         app.state.license_plan = lic.plan
-        logger.info(
-            "[LICENSE] Revalidación periódica: valid=%s plan=%s", lic.valid, lic.plan
-        )
+        logger.info("[LICENSE] Revalidación periódica: valid=%s plan=%s", lic.valid, lic.plan)
     except Exception:
         logger.exception("[LICENSE] Revalidación periódica falló (estado sin cambios)")

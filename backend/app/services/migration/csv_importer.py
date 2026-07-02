@@ -92,9 +92,7 @@ def _decode_with_fallback(blob: bytes) -> tuple[str, str]:
         return blob.decode("latin-1"), "latin-1"
 
 
-def _build_header_mapping(
-    csv_headers: list[str], kind: ImportKind
-) -> tuple[dict[str, str], list[str]]:
+def _build_header_mapping(csv_headers: list[str], kind: ImportKind) -> tuple[dict[str, str], list[str]]:
     """Mapea cada cabecera CSV a un campo canónico (o no la mapea).
 
     Devuelve `(canonical_to_csv_header, unmapped_csv_headers)`.

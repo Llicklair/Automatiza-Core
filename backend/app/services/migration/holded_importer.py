@@ -39,10 +39,18 @@ def normalize_holded_contact(contact: dict[str, Any]) -> ImportRow:
         "name": contact.get("name") or None,
         "email": contact.get("email") or None,
         "phone": contact.get("phone") or None,
-        "address": ", ".join(filter(None, [
-            contact.get("address"), contact.get("city"),
-            contact.get("postalCode"), contact.get("country"),
-        ])) or None,
+        "address": ", ".join(
+            filter(
+                None,
+                [
+                    contact.get("address"),
+                    contact.get("city"),
+                    contact.get("postalCode"),
+                    contact.get("country"),
+                ],
+            )
+        )
+        or None,
     }
     errors: list[str] = []
     if not canonical["nif"] and not canonical["name"]:

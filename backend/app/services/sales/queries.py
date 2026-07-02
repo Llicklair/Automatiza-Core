@@ -56,9 +56,7 @@ async def list_client_invoices(
     skip: int = 0,
     limit: int = 100,
 ) -> list[Invoice]:
-    client_result = await db.execute(
-        select(Client).where(Client.id == client_id, Client.tenant_id == tenant_id)
-    )
+    client_result = await db.execute(select(Client).where(Client.id == client_id, Client.tenant_id == tenant_id))
     if not client_result.scalar_one_or_none():
         raise LookupError("Cliente no encontrado")
 
@@ -144,9 +142,7 @@ async def list_products(
     return list(result.scalars().all())
 
 
-async def get_product_by_barcode(
-    db: AsyncSession, tenant_id: UUID, barcode: str
-) -> Product | None:
+async def get_product_by_barcode(db: AsyncSession, tenant_id: UUID, barcode: str) -> Product | None:
     result = await db.execute(
         select(Product).where(
             Product.tenant_id == tenant_id,
@@ -208,9 +204,7 @@ async def get_stock_valuation(db: AsyncSession, tenant_id: UUID) -> dict:
     }
 
 
-async def list_stock_movements(
-    db: AsyncSession, tenant_id: UUID, product_id: UUID
-) -> list[StockMovement]:
+async def list_stock_movements(db: AsyncSession, tenant_id: UUID, product_id: UUID) -> list[StockMovement]:
     result = await db.execute(
         select(StockMovement)
         .where(
@@ -233,18 +227,14 @@ def _quote_query_with_rels():
 
 
 async def _get_quote_or_raise(db: AsyncSession, quote_id: UUID, tenant_id: UUID) -> Quote:
-    result = await db.execute(
-        _quote_query_with_rels().where(Quote.id == quote_id, Quote.tenant_id == tenant_id)
-    )
+    result = await db.execute(_quote_query_with_rels().where(Quote.id == quote_id, Quote.tenant_id == tenant_id))
     quote = result.scalar_one_or_none()
     if not quote:
         raise LookupError("Quote not found")
     return quote
 
 
-async def list_quotes(
-    db: AsyncSession, tenant_id: UUID, *, skip: int = 0, limit: int = 100
-) -> list[Quote]:
+async def list_quotes(db: AsyncSession, tenant_id: UUID, *, skip: int = 0, limit: int = 100) -> list[Quote]:
     result = await db.execute(
         _quote_query_with_rels()
         .where(Quote.tenant_id == tenant_id)

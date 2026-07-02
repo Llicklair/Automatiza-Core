@@ -25,9 +25,7 @@ class InvoiceSeries(Base):
     """Controla la numeración correlativa de facturas por serie y año."""
 
     __tablename__ = "invoice_series"
-    __table_args__ = (
-        UniqueConstraint("tenant_id", "serie", "year", name="uq_invoice_series_tenant_serie_year"),
-    )
+    __table_args__ = (UniqueConstraint("tenant_id", "serie", "year", name="uq_invoice_series_tenant_serie_year"),)
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
@@ -83,12 +81,10 @@ class Invoice(Base):
 
     # Rectificativa / abono (RD 1619/2012 Art. 15): enlaza a la factura original
     # que minora y guarda el motivo. NULL en una factura ordinaria.
-    rectifies_invoice_id = Column(
-        UUID(as_uuid=True), ForeignKey("invoices.id"), nullable=True, index=True
-    )
+    rectifies_invoice_id = Column(UUID(as_uuid=True), ForeignKey("invoices.id"), nullable=True, index=True)
     rectification_reason = Column(Text, nullable=True)
 
-    verifactu_status = Column(String(30), nullable=True)   # None | "sent" | "error"
+    verifactu_status = Column(String(30), nullable=True)  # None | "sent" | "error"
     verifactu_sent_at = Column(DateTime(timezone=True), nullable=True)
 
     # Régimen fiscal especial (Modelo 303, casillas 10-13/16-26/36-39).
@@ -98,7 +94,7 @@ class Invoice(Base):
 
     # Retención IRPF Art. 95 LIRPF (facturas recibidas de profesionales).
     # Alimenta el Modelo 111 (perceptores profesionales).
-    retencion_irpf_rate = Column(Numeric(5, 2), nullable=True)    # p.ej. 15.00
+    retencion_irpf_rate = Column(Numeric(5, 2), nullable=True)  # p.ej. 15.00
     retencion_irpf_amount = Column(Numeric(10, 2), nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
@@ -107,9 +103,7 @@ class Invoice(Base):
     client = relationship("Client", back_populates="invoices")
     document = relationship("TenantDocument", foreign_keys=[document_id])
     lines = relationship("InvoiceLine", back_populates="invoice", cascade="all, delete-orphan")
-    rectifies = relationship(
-        "Invoice", remote_side=[id], foreign_keys=[rectifies_invoice_id]
-    )
+    rectifies = relationship("Invoice", remote_side=[id], foreign_keys=[rectifies_invoice_id])
 
 
 class VerifactuRecord(Base):
@@ -212,9 +206,7 @@ class QuoteLine(Base):
     __tablename__ = "quote_lines"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    quote_id = Column(
-        UUID(as_uuid=True), ForeignKey("quotes.id", ondelete="CASCADE"), nullable=False
-    )
+    quote_id = Column(UUID(as_uuid=True), ForeignKey("quotes.id", ondelete="CASCADE"), nullable=False)
     product_id = Column(UUID(as_uuid=True), ForeignKey("products.id"), nullable=True)
 
     description = Column(String(255), nullable=False)
@@ -303,18 +295,14 @@ class DeliveryNote(Base):
     amount_total = Column(Numeric(10, 2), nullable=False, default=0)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
-    lines = relationship(
-        "DeliveryNoteLine", back_populates="delivery_note", cascade="all, delete-orphan"
-    )
+    lines = relationship("DeliveryNoteLine", back_populates="delivery_note", cascade="all, delete-orphan")
     client = relationship("Client", foreign_keys=[client_id])
 
 
 class DeliveryNoteLine(Base):
     __tablename__ = "delivery_note_lines"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    albaran_id = Column(
-        UUID(as_uuid=True), ForeignKey("delivery_notes.id", ondelete="CASCADE"), nullable=False
-    )
+    albaran_id = Column(UUID(as_uuid=True), ForeignKey("delivery_notes.id", ondelete="CASCADE"), nullable=False)
     product_id = Column(UUID(as_uuid=True), ForeignKey("products.id"), nullable=True)
     description = Column(String(500), nullable=False)
     quantity = Column(Numeric(10, 3), nullable=False, default=1)

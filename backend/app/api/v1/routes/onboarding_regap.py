@@ -82,7 +82,9 @@ async def post_start(
     """Step 1 → 2: usuario eligió método de autenticación en el wizard."""
     try:
         record = await start_identification(
-            db, tenant_id=user.tenant_id, auth_method=payload.auth_method,
+            db,
+            tenant_id=user.tenant_id,
+            auth_method=payload.auth_method,
         )
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e)) from e
@@ -125,7 +127,9 @@ async def post_verify(
     """Step 3 → 4: consulta REGAP confirma el apoderamiento (mocked v1.0)."""
     try:
         record = await verify_regap_consulta(
-            db, tenant_id=user.tenant_id, nif_cliente=payload.nif_cliente,
+            db,
+            tenant_id=user.tenant_id,
+            nif_cliente=payload.nif_cliente,
         )
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e)) from e

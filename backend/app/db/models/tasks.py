@@ -121,9 +121,7 @@ class PendingApproval(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     task_id = Column(UUID(as_uuid=True), ForeignKey("tasks.id"), nullable=False, index=True)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
-    execution_id = Column(
-        UUID(as_uuid=True), ForeignKey("workflow_executions.id"), nullable=True, index=True
-    )
+    execution_id = Column(UUID(as_uuid=True), ForeignKey("workflow_executions.id"), nullable=True, index=True)
 
     action_description = Column(Text, nullable=False)
     action_payload = Column(JSONB, nullable=False)
@@ -160,9 +158,7 @@ class FiscalApprovalLog(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
-    pending_approval_id = Column(
-        UUID(as_uuid=True), ForeignKey("pending_approvals.id"), nullable=True, index=True
-    )
+    pending_approval_id = Column(UUID(as_uuid=True), ForeignKey("pending_approvals.id"), nullable=True, index=True)
 
     model_aeat = Column(String(10), nullable=False)  # "303", "130", "347", "390", "111", "190"
     period_quarter = Column(Integer, nullable=True)  # 1..4 si trimestral

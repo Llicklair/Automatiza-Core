@@ -41,23 +41,25 @@ AutonomyMode = Literal["AUTO", "CONFIRM", "MANUAL"]
 
 # Dominios reconocidos. Añadir un nuevo dominio requiere PR + actualizar
 # la UI de Settings.
-KNOWN_DOMAINS: frozenset[str] = frozenset({
-    "banking_read",
-    "banking_write",
-    "accounting",
-    "billing",
-    "crm",
-    "hr",
-    "documents",
-    "email",
-    "inventory",
-    "marketing",
-    "recruitment",
-    "rag",
-    "validators",
-    "uploads",
-    "fiscal",
-})
+KNOWN_DOMAINS: frozenset[str] = frozenset(
+    {
+        "banking_read",
+        "banking_write",
+        "accounting",
+        "billing",
+        "crm",
+        "hr",
+        "documents",
+        "email",
+        "inventory",
+        "marketing",
+        "recruitment",
+        "rag",
+        "validators",
+        "uploads",
+        "fiscal",
+    }
+)
 
 # Dominios con modo FORZADO — no configurables por el tenant ni por API.
 # fiscal (Verifactu/AEAT): presentar ante la Administración exige SIEMPRE un
@@ -75,10 +77,10 @@ DEFAULTS: dict[str, AutonomyMode] = {
     "accounting": "CONFIRM",
     "marketing": "CONFIRM",
     "recruitment": "CONFIRM",
-    "email": "CONFIRM",       # enviar correo es irreversible
-    "documents": "CONFIRM",   # importar factura de compra puede mover stock
-    "inventory": "CONFIRM",   # ajustes/precios/altas-bajas por lotes
-    "hr": "CONFIRM",          # aplicar horarios afecta a toda la plantilla
+    "email": "CONFIRM",  # enviar correo es irreversible
+    "documents": "CONFIRM",  # importar factura de compra puede mover stock
+    "inventory": "CONFIRM",  # ajustes/precios/altas-bajas por lotes
+    "hr": "CONFIRM",  # aplicar horarios afecta a toda la plantilla
 }
 
 
@@ -88,9 +90,7 @@ def default_mode(domain: str) -> AutonomyMode:
     return DEFAULTS.get(domain, "AUTO")
 
 
-async def get_policy(
-    db: AsyncSession, *, tenant_id: UUID, domain: str
-) -> AutonomyMode:
+async def get_policy(db: AsyncSession, *, tenant_id: UUID, domain: str) -> AutonomyMode:
     """Devuelve el mode efectivo (fila persistida o default del dominio)."""
     if domain not in KNOWN_DOMAINS:
         logger.warning("autonomy.get_policy: dominio desconocido %s", domain)
@@ -109,9 +109,7 @@ async def get_policy(
     return mode  # type: ignore[return-value]
 
 
-async def list_policies(
-    db: AsyncSession, *, tenant_id: UUID
-) -> dict[str, dict[str, str | bool]]:
+async def list_policies(db: AsyncSession, *, tenant_id: UUID) -> dict[str, dict[str, str | bool]]:
     """Devuelve todas las policies efectivas del tenant.
 
     Para cada dominio conocido: `{mode, is_default}`. La UI usa
@@ -179,9 +177,7 @@ async def set_policy(
     return record
 
 
-async def reset_policy(
-    db: AsyncSession, *, tenant_id: UUID, domain: str
-) -> None:
+async def reset_policy(db: AsyncSession, *, tenant_id: UUID, domain: str) -> None:
     """Elimina la fila persistida — vuelve al default del dominio."""
     if domain not in KNOWN_DOMAINS:
         raise ValueError(f"Dominio desconocido: {domain}")
@@ -198,9 +194,7 @@ async def reset_policy(
         await db.flush()
 
 
-async def check_autonomy(
-    db: AsyncSession, *, tenant_id: UUID, domain: str
-) -> AutonomyMode:
+async def check_autonomy(db: AsyncSession, *, tenant_id: UUID, domain: str) -> AutonomyMode:
     """Helper para que los agentes consulten antes de ejecutar tools.
 
     Alias semántico de `get_policy` — facilita búsqueda por intención

@@ -51,9 +51,7 @@ def _settings_apoderado() -> tuple[str, str]:
         from app.core.config import settings
 
         nif = getattr(settings, "APODERADO_NIF", "") or APODERADO_NIF_DEFAULT
-        nombre = (
-            getattr(settings, "APODERADO_NOMBRE", "") or APODERADO_NOMBRE_DEFAULT
-        )
+        nombre = getattr(settings, "APODERADO_NOMBRE", "") or APODERADO_NOMBRE_DEFAULT
         return nif, nombre
     except Exception:
         return APODERADO_NIF_DEFAULT, APODERADO_NOMBRE_DEFAULT
@@ -61,9 +59,7 @@ def _settings_apoderado() -> tuple[str, str]:
 
 async def get_regap_status(db: AsyncSession, *, tenant_id: UUID) -> TenantRegapStatus:
     """Devuelve el registro REGAP del tenant; lo crea con defaults si no existe."""
-    result = await db.execute(
-        select(TenantRegapStatus).where(TenantRegapStatus.tenant_id == tenant_id)
-    )
+    result = await db.execute(select(TenantRegapStatus).where(TenantRegapStatus.tenant_id == tenant_id))
     record = result.scalar_one_or_none()
     if record is not None:
         return record
@@ -113,9 +109,7 @@ async def start_identification(
     return record
 
 
-async def mark_power_granted(
-    db: AsyncSession, *, tenant_id: UUID
-) -> TenantRegapStatus:
+async def mark_power_granted(db: AsyncSession, *, tenant_id: UUID) -> TenantRegapStatus:
     """Step 2 → 3: el cliente declara haber completado el apoderamiento.
 
     Es una declaración del usuario — antes de marcar `verified` debe pasar
@@ -123,10 +117,7 @@ async def mark_power_granted(
     """
     record = await get_regap_status(db, tenant_id=tenant_id)
     if record.status not in ("identifying", "cert_pending"):
-        raise ValueError(
-            f"Transición ilegal: estado actual '{record.status}' no permite "
-            f"avanzar a 'power_granted'"
-        )
+        raise ValueError(f"Transición ilegal: estado actual '{record.status}' no permite " f"avanzar a 'power_granted'")
     record.status = "power_granted"
     record.updated_at = datetime.now(UTC)
     await db.flush()
@@ -166,15 +157,12 @@ async def verify_regap_consulta(
     record = await get_regap_status(db, tenant_id=tenant_id)
     if record.status != "power_granted":
         raise ValueError(
-            f"Transición ilegal: solo se puede verificar desde 'power_granted', "
-            f"actual '{record.status}'"
+            f"Transición ilegal: solo se puede verificar desde 'power_granted', " f"actual '{record.status}'"
         )
 
     apoderado_nif = record.apoderado_nif or APODERADO_NIF_DEFAULT
     payload = await _call_regap_consulta(nif_cliente, apoderado_nif)
-    vigente = any(
-        ap.get("estado") == "VIGENTE" for ap in payload.get("apoderamientos", [])
-    )
+    vigente = any(ap.get("estado") == "VIGENTE" for ap in payload.get("apoderamientos", []))
 
     record.verify_payload = json.dumps(payload)
     if vigente:

@@ -84,9 +84,7 @@ _IMPORT_COLUMN_MAP = {
 # ─── Private helpers ──────────────────────────────────────────────────────────
 
 
-async def _load_excel_doc(
-    tenant_id: str, document_id: str
-) -> "tuple[TenantDocument | None, str | None]":
+async def _load_excel_doc(tenant_id: str, document_id: str) -> "tuple[TenantDocument | None, str | None]":
     """Carga TenantDocument desde BD y valida que el archivo exista en disco."""
     async with AsyncSessionLocal() as db:
         result = await db.execute(
@@ -147,9 +145,7 @@ async def _import_rows_to_db(
 
 
 @tool
-async def import_excel(
-    tenant_id: str, document_id: str, target: str = "", sheet_name: str = ""
-) -> str:
+async def import_excel(tenant_id: str, document_id: str, target: str = "", sheet_name: str = "") -> str:
     """
     Importa datos desde un archivo Excel (.xlsx) subido al sistema hacia la base de datos del ERP.
     Lee las columnas del Excel y las mapea automáticamente a campos de la BD.
@@ -163,9 +159,7 @@ async def import_excel(
     return await _import_excel_async(tenant_id, document_id, target, sheet_name)
 
 
-async def _import_excel_async(
-    tenant_id: str, document_id: str, target: str, sheet_name: str
-) -> str:
+async def _import_excel_async(tenant_id: str, document_id: str, target: str, sheet_name: str) -> str:
     MODEL_MAP = {"Client": Client, "Product": Product, "Employee": Employee}
 
     try:
@@ -210,9 +204,7 @@ async def _import_excel_async(
             )
 
         sheet_title = ws.title
-        created, skipped, errors = await _import_rows_to_db(
-            rows, col_mapping, config, model_cls, tenant_id
-        )
+        created, skipped, errors = await _import_rows_to_db(rows, col_mapping, config, model_cls, tenant_id)
 
         result_lines = [
             f"Importación completada desde '{sheet_title}'.",

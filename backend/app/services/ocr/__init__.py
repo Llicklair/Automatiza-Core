@@ -4,6 +4,8 @@ from app.services.ocr.invoice_scanner import InvoiceExtractionError, extract_inv
 from app.services.ocr.receipt_scanner import ReceiptExtractionError, extract_receipt_data
 
 __all__ = [
-    "extract_receipt_data", "ReceiptExtractionError",
-    "extract_invoice_data", "InvoiceExtractionError",
+    "extract_receipt_data",
+    "ReceiptExtractionError",
+    "extract_invoice_data",
+    "InvoiceExtractionError",
 ]

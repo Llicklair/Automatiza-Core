@@ -50,15 +50,9 @@ def _common_styles():
     return {
         "styles": styles,
         "C": C,
-        "title": sty(
-            "CTitle", fontSize=20, fontName="Helvetica-Bold", textColor=colors.HexColor(C["SLATE"])
-        ),
-        "header": sty(
-            "CHeader", fontSize=9, fontName="Helvetica-Bold", textColor=colors.HexColor(C["GRAY"])
-        ),
-        "body": sty(
-            "CBody", fontSize=9, fontName="Helvetica", textColor=colors.HexColor(C["SLATE"])
-        ),
+        "title": sty("CTitle", fontSize=20, fontName="Helvetica-Bold", textColor=colors.HexColor(C["SLATE"])),
+        "header": sty("CHeader", fontSize=9, fontName="Helvetica-Bold", textColor=colors.HexColor(C["GRAY"])),
+        "body": sty("CBody", fontSize=9, fontName="Helvetica", textColor=colors.HexColor(C["SLATE"])),
         "right": sty(
             "CRight",
             fontSize=9,
@@ -305,9 +299,7 @@ def _traditional_styles():
             spaceAfter=2,
         ),
         "body": sty("Trad_body", fontSize=8, fontName="Helvetica", textColor=colors.black),
-        "body_bold": sty(
-            "Trad_body_bold", fontSize=8, fontName="Helvetica-Bold", textColor=colors.black
-        ),
+        "body_bold": sty("Trad_body_bold", fontSize=8, fontName="Helvetica-Bold", textColor=colors.black),
         "body_right": sty(
             "Trad_body_right",
             fontSize=8,
@@ -322,9 +314,7 @@ def _traditional_styles():
             textColor=colors.black,
             alignment=TA_RIGHT,
         ),
-        "small": sty(
-            "Trad_small", fontSize=6.5, fontName="Helvetica", textColor=colors.HexColor("#333333")
-        ),
+        "small": sty("Trad_small", fontSize=6.5, fontName="Helvetica", textColor=colors.HexColor("#333333")),
         "small_bold": sty(
             "Trad_small_bold",
             fontSize=6.5,

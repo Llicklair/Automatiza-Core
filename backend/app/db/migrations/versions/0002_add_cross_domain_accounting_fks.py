@@ -67,9 +67,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_constraint(
-        "fk_bank_transactions_journal_entry_id", "bank_transactions", type_="foreignkey"
-    )
+    op.drop_constraint("fk_bank_transactions_journal_entry_id", "bank_transactions", type_="foreignkey")
     op.drop_column("bank_transactions", "journal_entry_id")
 
     op.drop_constraint("fk_invoices_document_id", "invoices", type_="foreignkey")

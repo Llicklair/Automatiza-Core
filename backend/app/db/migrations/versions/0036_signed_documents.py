@@ -62,9 +62,7 @@ def upgrade() -> None:
         ),
     )
     op.create_index("ix_signed_documents_tenant", "signed_documents", ["tenant_id"])
-    op.create_index(
-        "ix_signed_documents_session_token", "signed_documents", ["session_token"]
-    )
+    op.create_index("ix_signed_documents_session_token", "signed_documents", ["session_token"])
 
 
 def downgrade() -> None:

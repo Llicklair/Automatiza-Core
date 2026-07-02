@@ -66,9 +66,7 @@ async def create_employee(
         email: Email del empleado (opcional)
         irpf_rate: Tipo de retención IRPF en % (por defecto 15)
     """
-    return await _create_employee_async(
-        tenant_id, name, nif, base_salary, role, department, email, irpf_rate
-    )
+    return await _create_employee_async(tenant_id, name, nif, base_salary, role, department, email, irpf_rate)
 
 
 async def _create_employee_async(

@@ -252,16 +252,18 @@ async def create_campaign(
             await db.flush()
 
             for p in parsed:
-                db.add(ScheduledPost(
-                    tenant_id=tenant_uuid,
-                    campaign_id=campaign.id,
-                    social_account_id=UUID(p["social_account_id"]),
-                    platform=p["platform"],
-                    content=p["content"],
-                    image_url=p.get("image_url"),
-                    scheduled_at=p["_sched"],
-                    status="scheduled",
-                ))
+                db.add(
+                    ScheduledPost(
+                        tenant_id=tenant_uuid,
+                        campaign_id=campaign.id,
+                        social_account_id=UUID(p["social_account_id"]),
+                        platform=p["platform"],
+                        content=p["content"],
+                        image_url=p.get("image_url"),
+                        scheduled_at=p["_sched"],
+                        status="scheduled",
+                    )
+                )
             await db.commit()
             campaign_id = campaign.id
 
@@ -275,7 +277,16 @@ async def create_campaign(
         return f"Error al crear campaña: {e}"
 
 
-tools = [get_product_catalog, search_image, generate_image, list_social_accounts, create_post, create_campaign, create_pdf_report, create_pdf_text_report]
+tools = [
+    get_product_catalog,
+    search_image,
+    generate_image,
+    list_social_accounts,
+    create_post,
+    create_campaign,
+    create_pdf_report,
+    create_pdf_text_report,
+]
 
 
 # Defensa multi-tenant: envolver tools para forzar tenant_id del ContextVar

@@ -63,7 +63,9 @@ class EmailCampaignRecipient(Base):
     __tablename__ = "email_campaign_recipients"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    campaign_id = Column(UUID(as_uuid=True), ForeignKey("email_campaigns.id", ondelete="CASCADE"), nullable=False, index=True)
+    campaign_id = Column(
+        UUID(as_uuid=True), ForeignKey("email_campaigns.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     email = Column(String(255), nullable=False)
     name = Column(String(255), nullable=True)
     # pending | sent | failed

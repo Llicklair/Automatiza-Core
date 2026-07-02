@@ -69,9 +69,7 @@ async def _list_invoices_async(tenant_id: str, limit: int) -> str:
         return f"Error consultando facturas: {e}"
 
 
-async def _send_invoice_by_email_async(
-    tenant_id: str, invoice_id: str, recipient_email: str
-) -> str:
+async def _send_invoice_by_email_async(tenant_id: str, invoice_id: str, recipient_email: str) -> str:
     try:
         async with AsyncSessionLocal() as db:
             result = await db.execute(

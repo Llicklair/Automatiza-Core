@@ -43,17 +43,17 @@ MINUTES_BY_ACTION: dict[str, int] = {
 }
 
 # Acciones de fontanería que no representan trabajo humano ahorrado.
-EXCLUDED_ACTIONS: frozenset[str] = frozenset({
-    "user_registered",
-    "node_execution_failed",
-})
+EXCLUDED_ACTIONS: frozenset[str] = frozenset(
+    {
+        "user_registered",
+        "node_execution_failed",
+    }
+)
 
 DEFAULT_MINUTES = 5
 
 
-async def time_saved_summary(
-    db: AsyncSession, tenant_id: UUID, *, days: int = 30
-) -> dict:
+async def time_saved_summary(db: AsyncSession, tenant_id: UUID, *, days: int = 30) -> dict:
     """Resumen de tiempo ahorrado en los últimos `days` días.
 
     Devuelve total en minutos/horas y desglose por action_type, contando solo
@@ -80,12 +80,14 @@ async def time_saved_summary(
         minutes = minutes_each * count
         total_minutes += minutes
         total_actions += count
-        breakdown.append({
-            "action_type": action_type,
-            "count": count,
-            "minutes_each": minutes_each,
-            "minutes": minutes,
-        })
+        breakdown.append(
+            {
+                "action_type": action_type,
+                "count": count,
+                "minutes_each": minutes_each,
+                "minutes": minutes,
+            }
+        )
 
     breakdown.sort(key=lambda b: b["minutes"], reverse=True)
     return {

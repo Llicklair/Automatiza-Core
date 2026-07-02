@@ -59,10 +59,29 @@ class JSONFormatter(logging.Formatter):
         # Campos extra que el caller haya pasado vía `extra={...}`.
         # No incluimos campos privados ni reservados del LogRecord.
         reserved = {
-            "args", "asctime", "created", "exc_info", "exc_text", "filename",
-            "funcName", "levelname", "levelno", "lineno", "message", "module",
-            "msecs", "msg", "name", "pathname", "process", "processName",
-            "relativeCreated", "stack_info", "thread", "threadName", "taskName",
+            "args",
+            "asctime",
+            "created",
+            "exc_info",
+            "exc_text",
+            "filename",
+            "funcName",
+            "levelname",
+            "levelno",
+            "lineno",
+            "message",
+            "module",
+            "msecs",
+            "msg",
+            "name",
+            "pathname",
+            "process",
+            "processName",
+            "relativeCreated",
+            "stack_info",
+            "thread",
+            "threadName",
+            "taskName",
         }
         extras = {
             key: scrub_text(value) if isinstance(value, str) else value

@@ -1,4 +1,5 @@
 """Backward-compatibility shim — implementation in queries.py / commands.py."""
+
 from app.services.hr.commands import (
     analyze_cv_standalone,
     create_position,

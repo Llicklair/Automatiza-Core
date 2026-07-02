@@ -28,6 +28,7 @@ async def log_activity(
 
     No hace commit — el caller es responsable de la transacción.
     """
+
     def _to_uuid(val):
         return uuid.UUID(val) if isinstance(val, str) else val
 

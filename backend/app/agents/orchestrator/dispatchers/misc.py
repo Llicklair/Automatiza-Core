@@ -32,9 +32,7 @@ async def _run_graph_agent(
 ) -> AgentResult:
     """Patrón genérico para ejecutar un agente LangGraph y devolver AgentResult."""
     tenant_id = state["tenant_id"]
-    intent = subtask.get("params", {}).get(
-        "intent", state.get("current_intent", state["user_intent"])
-    )
+    intent = subtask.get("params", {}).get("intent", state.get("current_intent", state["user_intent"]))
 
     try:
         result_state = await graph.ainvoke(
@@ -72,9 +70,7 @@ async def _run_graph_agent(
             "agent": agent_name,
             "success": success,
             "output": output,
-            "summary": format_summary(
-                agent_name, output, success, None if success else (error_text or final_text)
-            ),
+            "summary": format_summary(agent_name, output, success, None if success else (error_text or final_text)),
             "error": None if success else (error_text or final_text),
         }
 
@@ -110,9 +106,7 @@ async def _dispatch_email(state: OrchestratorState, subtask: dict) -> AgentResul
         from app.agents.email import run_email_agent
 
         agent_result = await run_email_agent(
-            user_intent=subtask.get("params", {}).get(
-                "intent", state.get("current_intent", state["user_intent"])
-            ),
+            user_intent=subtask.get("params", {}).get("intent", state.get("current_intent", state["user_intent"])),
             tenant_id=state["tenant_id"],
             task_id=state["task_id"],
         )
@@ -143,9 +137,7 @@ async def _dispatch_email(state: OrchestratorState, subtask: dict) -> AgentResul
             "agent": "email",
             "success": agent_result.success,
             "output": _email_output,
-            "summary": format_summary(
-                "email", _email_output, agent_result.success, agent_result.error
-            ),
+            "summary": format_summary("email", _email_output, agent_result.success, agent_result.error),
             "error": agent_result.error,
         }
     except Exception as e:

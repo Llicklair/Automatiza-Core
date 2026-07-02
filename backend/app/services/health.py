@@ -48,9 +48,7 @@ def check_scheduler() -> dict[str, Any]:
         if not scheduler.running:
             return {"status": "down", "running": False}
         jobs = scheduler.get_jobs()
-        next_runs = sorted(
-            [j.next_run_time for j in jobs if j.next_run_time is not None]
-        )
+        next_runs = sorted([j.next_run_time for j in jobs if j.next_run_time is not None])
         return {
             "status": "up",
             "running": True,

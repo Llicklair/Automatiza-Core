@@ -73,12 +73,8 @@ def _fiscal_styles() -> dict:
     return {
         "company": sty("FCo", fontSize=20, fontName="Helvetica-Bold", textColor=C["SLATE"]),
         "badge": sty("FBa", fontSize=9, fontName="Helvetica-Bold", textColor=C["RED"]),
-        "period": sty(
-            "FPe", fontSize=13, fontName="Helvetica-Bold", textColor=C["SLATE"], alignment=TA_RIGHT
-        ),
-        "generated": sty(
-            "FGe", fontSize=7, fontName="Helvetica", textColor=C["FOOTER"], alignment=TA_RIGHT
-        ),
+        "period": sty("FPe", fontSize=13, fontName="Helvetica-Bold", textColor=C["SLATE"], alignment=TA_RIGHT),
+        "generated": sty("FGe", fontSize=7, fontName="Helvetica", textColor=C["FOOTER"], alignment=TA_RIGHT),
         "section": sty(
             "FSe",
             fontSize=10,
@@ -95,22 +91,12 @@ def _fiscal_styles() -> dict:
             leading=13,
             spaceBefore=4,
         ),
-        "kpi_lbl": sty(
-            "FKl", fontSize=7, fontName="Helvetica", textColor=C["GRAY"], alignment=TA_CENTER
-        ),
-        "footer": sty(
-            "FFo", fontSize=7, fontName="Helvetica", textColor=C["FOOTER"], alignment=TA_CENTER
-        ),
+        "kpi_lbl": sty("FKl", fontSize=7, fontName="Helvetica", textColor=C["GRAY"], alignment=TA_CENTER),
+        "footer": sty("FFo", fontSize=7, fontName="Helvetica", textColor=C["FOOTER"], alignment=TA_CENTER),
         "row_lbl": sty("FRl", fontSize=8, fontName="Helvetica", textColor=C["GRAY"]),
-        "row_val": sty(
-            "FRv", fontSize=8, fontName="Helvetica-Bold", textColor=C["SLATE"], alignment=TA_RIGHT
-        ),
-        "row_val_em": sty(
-            "FRve", fontSize=8, fontName="Helvetica-Bold", textColor=C["INDIGO"], alignment=TA_RIGHT
-        ),
-        "row_val_red": sty(
-            "FRvr", fontSize=8, fontName="Helvetica-Bold", textColor=C["RED"], alignment=TA_RIGHT
-        ),
+        "row_val": sty("FRv", fontSize=8, fontName="Helvetica-Bold", textColor=C["SLATE"], alignment=TA_RIGHT),
+        "row_val_em": sty("FRve", fontSize=8, fontName="Helvetica-Bold", textColor=C["INDIGO"], alignment=TA_RIGHT),
+        "row_val_red": sty("FRvr", fontSize=8, fontName="Helvetica-Bold", textColor=C["RED"], alignment=TA_RIGHT),
         "_sty": sty,  # factory para estilos one-off
     }
 
@@ -133,9 +119,7 @@ def _fiscal_header(company_name: str, period_label: str, st: dict) -> list:
             [
                 Paragraph(period_label, st["period"]),
                 Spacer(1, 5),
-                Paragraph(
-                    f"Generado: {datetime.now(BUSINESS_TZ).strftime('%d/%m/%Y %H:%M')}", st["generated"]
-                ),
+                Paragraph(f"Generado: {datetime.now(BUSINESS_TZ).strftime('%d/%m/%Y %H:%M')}", st["generated"]),
             ],
         ]
     ]
@@ -316,9 +300,7 @@ def _fiscal_iva_section(iva: dict, st: dict) -> list:
             Paragraph(_fmt_eur(rep_4 - sop_4), st["row_val"]),
         ],
         [
-            Paragraph(
-                "TOTAL", sty("FTot", fontSize=8, fontName="Helvetica-Bold", textColor=C["SLATE"])
-            ),
+            Paragraph("TOTAL", sty("FTot", fontSize=8, fontName="Helvetica-Bold", textColor=C["SLATE"])),
             Paragraph(_fmt_eur(total_rep), st["row_val_em"]),
             Paragraph(_fmt_eur(total_sop), st["row_val_red"]),
             Paragraph(

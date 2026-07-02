@@ -21,17 +21,12 @@ async def marketing_agent_node(state: AgentState) -> dict:
         # lo proporcione.
         tenant_id = str(state.get("tenant_id") or "")
         from datetime import datetime, timezone
+
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        prompt_text = (
-            MARKETING_SYSTEM_PROMPT
-            .replace("{tenant_id}", tenant_id)
-            .replace("{today}", today)
-        )
+        prompt_text = MARKETING_SYSTEM_PROMPT.replace("{tenant_id}", tenant_id).replace("{today}", today)
         state["messages"] = [
             make_cached_system_message(prompt_text),
-            HumanMessage(
-                content=state.get("user_intent", "Genera un plan de contenidos para este mes")
-            ),
+            HumanMessage(content=state.get("user_intent", "Genera un plan de contenidos para este mes")),
         ]
     response = await llm.ainvoke(state["messages"])
     return {"messages": [response]}

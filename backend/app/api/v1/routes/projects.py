@@ -54,9 +54,7 @@ async def update_project(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        return await svc.update_project(
-            db, current_user.tenant_id, project_id, payload.model_dump(exclude_unset=True)
-        )
+        return await svc.update_project(db, current_user.tenant_id, project_id, payload.model_dump(exclude_unset=True))
     except LookupError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
 
@@ -108,9 +106,7 @@ async def update_task(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        return await svc.update_task(
-            db, current_user.tenant_id, task_id, payload.model_dump(exclude_unset=True)
-        )
+        return await svc.update_task(db, current_user.tenant_id, task_id, payload.model_dump(exclude_unset=True))
     except LookupError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
 

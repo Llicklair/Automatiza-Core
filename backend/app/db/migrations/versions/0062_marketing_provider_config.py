@@ -27,8 +27,7 @@ def upgrade() -> None:
         )
     """)
     op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_marketing_provider_config_tenant_id "
-        "ON marketing_provider_config(tenant_id)"
+        "CREATE INDEX IF NOT EXISTS ix_marketing_provider_config_tenant_id " "ON marketing_provider_config(tenant_id)"
     )
     # Cada cuenta social recuerda por qué cuenta de Zernio (email/key) se conectó.
     op.execute(

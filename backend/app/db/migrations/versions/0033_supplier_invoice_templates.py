@@ -87,9 +87,7 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.func.now(),
         ),
-        sa.UniqueConstraint(
-            "tenant_id", "supplier_nif", name="uq_supplier_template_tenant_nif"
-        ),
+        sa.UniqueConstraint("tenant_id", "supplier_nif", name="uq_supplier_template_tenant_nif"),
     )
     op.create_index(
         "ix_supplier_template_tenant_nif",
@@ -99,8 +97,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index(
-        "ix_supplier_template_tenant_nif", table_name="supplier_invoice_templates"
-    )
+    op.drop_index("ix_supplier_template_tenant_nif", table_name="supplier_invoice_templates")
     op.drop_table("supplier_invoice_templates")
     op.drop_table("invoice_scan_cache")

@@ -153,12 +153,7 @@ async def _dispatch_workflow(
     else:
         action_config = wf.action_config or {}
         config = wf.trigger_config or {}
-        instruction = (
-            action_config.get("instruction")
-            or config.get("instruction")
-            or wf.description
-            or wf.name
-        )
+        instruction = action_config.get("instruction") or config.get("instruction") or wf.description or wf.name
         domain = action_config.get("domain") or _infer_domain_from_text(
             f"{wf.name} {wf.description or ''} {instruction}".lower()
         )
@@ -238,15 +233,11 @@ async def _check_scheduled_workflows():
                 wf.trigger_config.get("conditions"), wf.tenant_id, db, temporal_context
             )
             if not evaluate_conditions(wf.trigger_config.get("conditions"), eval_context):
-                logger.debug(
-                    "[BEAT] Workflow '%s' bloqueado por condiciones no cumplidas.", wf.name
-                )
+                logger.debug("[BEAT] Workflow '%s' bloqueado por condiciones no cumplidas.", wf.name)
                 continue
 
             logger.info("[BEAT] Disparando workflow programado: '%s'", wf.name)
-            execution = await create_execution(
-                db, wf, {"source": "apscheduler", "scheduled_at": now.isoformat()}
-            )
+            execution = await create_execution(db, wf, {"source": "apscheduler", "scheduled_at": now.isoformat()})
             await _dispatch_workflow(db, wf, execution, "schedule_based", guard, idempotency_key)
 
         # Limpia el ContextVar para que el último tenant del loop no quede activo.
@@ -326,9 +317,7 @@ async def _catchup_missed_workflows():
                 logger.info("[CATCHUP] Workflow '%s' ya tiene ejecucion activa. Skip.", wf.name)
                 continue
 
-            execution = await create_execution(
-                db, wf, {"source": "catchup", "since": since.isoformat()}
-            )
+            execution = await create_execution(db, wf, {"source": "catchup", "since": since.isoformat()})
             await _dispatch_workflow(db, wf, execution, "catchup", guard, idempotency_key)
 
         set_current_tenant(None)
@@ -412,9 +401,7 @@ async def _process_recurring_invoices():
                         )
 
                     rec.last_run_date = today
-                    rec.next_run_date = today + timedelta(
-                        days=interval_map.get(rec.interval_type, 30)
-                    )
+                    rec.next_run_date = today + timedelta(days=interval_map.get(rec.interval_type, 30))
                 generated += 1
             except Exception as e:
                 logger.error("[RECURRING] Error procesando plantilla %s: %s", rec.id, e)
@@ -471,8 +458,7 @@ def _handle_publish_result(post, result, now: datetime) -> str:
         post.status = "scheduled"
         post.scheduled_at = now + timedelta(minutes=delay)
         post.error_message = (
-            f"Reintento {post.retry_count}/{_MAX_PUBLISH_RETRIES} en {delay} min: "
-            f"{post.error_message or ''}"
+            f"Reintento {post.retry_count}/{_MAX_PUBLISH_RETRIES} en {delay} min: " f"{post.error_message or ''}"
         )[:500]
         return "retried"
     return "failed"
@@ -519,7 +505,10 @@ async def _publish_scheduled_posts():
         if posts:
             logger.info(
                 "[MARKETING] %d publicados, %d reprogramados, %d fallidos (de %d).",
-                published, retried, len(posts) - published - retried, len(posts),
+                published,
+                retried,
+                len(posts) - published - retried,
+                len(posts),
             )
 
 
@@ -615,7 +604,7 @@ async def _emit_month_end_events():
     from app.services.event_bus import emit_event
 
     today = datetime.now(zoneinfo.ZoneInfo("Europe/Madrid")).date()
-    closed = (today.replace(day=1) - timedelta(days=1))  # último día del mes cerrado
+    closed = today.replace(day=1) - timedelta(days=1)  # último día del mes cerrado
     period = f"{closed.year}-{closed.month:02d}"
     guard = IdempotencyGuard()
 
@@ -636,7 +625,10 @@ async def _emit_month_end_events():
         set_current_tenant(str(tid))
         async with AsyncSessionLocal() as db:
             await emit_event(
-                db, tid, None, ev.MONTH_END,
+                db,
+                tid,
+                None,
+                ev.MONTH_END,
                 {"month": closed.month, "year": closed.year, "period": period},
             )
         await guard.mark_executed("month_end", key, {"period": period})

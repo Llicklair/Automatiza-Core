@@ -88,9 +88,7 @@ def _get_langfuse():
     global _langfuse_client
     if _langfuse_client is not None:
         return _langfuse_client
-    if not getattr(settings, "LANGFUSE_PUBLIC_KEY", None) or not getattr(
-        settings, "LANGFUSE_SECRET_KEY", None
-    ):
+    if not getattr(settings, "LANGFUSE_PUBLIC_KEY", None) or not getattr(settings, "LANGFUSE_SECRET_KEY", None):
         return None
     try:
         from langfuse import Langfuse
@@ -330,9 +328,7 @@ def record_http_request(method: str, path: str, status_code: int, duration_secon
         import re
 
         normalized = re.sub(r"/[0-9a-f-]{8,}", "/{id}", path)
-        HTTP_REQUESTS_TOTAL.labels(
-            method=method, path=normalized, status_code=str(status_code)
-        ).inc()
+        HTTP_REQUESTS_TOTAL.labels(method=method, path=normalized, status_code=str(status_code)).inc()
         HTTP_REQUEST_DURATION.labels(method=method, path=normalized).observe(duration_seconds)
     except Exception:
         _log.debug("No se pudo registrar métrica HTTP; continúo", exc_info=True)

@@ -15,9 +15,7 @@ from app.services.audit import log_action
 logger = logging.getLogger(__name__)
 
 
-def make_error_result(
-    subtask: dict, agent_name: str, action: str, error: str, summary: str | None = None
-) -> dict:
+def make_error_result(subtask: dict, agent_name: str, action: str, error: str, summary: str | None = None) -> dict:
     return {
         "subtask_id": subtask["id"],
         "agent": agent_name,
@@ -41,6 +39,7 @@ async def release_employee(db, employee, *, label: str) -> None:
     except Exception:
         logger.debug("[ORCHESTRATOR] rollback de limpieza falló; continúo", exc_info=True)
     try:
+
         async def _set_idle_if_working() -> None:
             # El rollback expiró el objeto: recarga el estado real de BD para
             # no pisar un "paused" que un admin haya puesto durante los 180s de
@@ -56,7 +55,9 @@ async def release_employee(db, employee, *, label: str) -> None:
     except Exception as commit_err:
         logger.warning(
             "[ORCHESTRATOR] cleanup post-%s para employee '%s' falló (status no actualizado): %s",
-            label, getattr(employee, "name", "?"), commit_err,
+            label,
+            getattr(employee, "name", "?"),
+            commit_err,
         )
 
 

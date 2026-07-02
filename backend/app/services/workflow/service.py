@@ -1,4 +1,4 @@
-﻿"""Servicio de dominio para Workflows & Automatizaciones.
+"""Servicio de dominio para Workflows & Automatizaciones.
 
 CRUD de workflows/executions y queries. La logica de ejecucion, NLP y grafos
 UI esta en sub-modulos (_execution, _nlp, _ui_graph) y se re-exporta aqui
@@ -54,9 +54,7 @@ async def create_workflow(workflow_in, tenant_id, user_id, db: AsyncSession) -> 
         action_type=workflow_in.action_type,
         action_config=workflow_in.action_config,
         execution_mode=workflow_in.execution_mode,
-        compiled_steps=workflow_in.compiled_steps
-        if hasattr(workflow_in, "compiled_steps")
-        else None,
+        compiled_steps=workflow_in.compiled_steps if hasattr(workflow_in, "compiled_steps") else None,
         ui_nodes=workflow_in.ui_nodes or [],
         ui_edges=workflow_in.ui_edges or [],
     )
@@ -68,9 +66,7 @@ async def create_workflow(workflow_in, tenant_id, user_id, db: AsyncSession) -> 
 
 async def get_workflow(workflow_id: UUID, tenant_id, db: AsyncSession) -> models.Workflow | None:
     result = await db.execute(
-        select(models.Workflow).where(
-            models.Workflow.id == workflow_id, models.Workflow.tenant_id == tenant_id
-        )
+        select(models.Workflow).where(models.Workflow.id == workflow_id, models.Workflow.tenant_id == tenant_id)
     )
     return result.scalar_one_or_none()
 

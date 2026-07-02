@@ -13,13 +13,8 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute(
-        "ALTER TABLE employees ADD COLUMN IF NOT EXISTS num_pagas INTEGER DEFAULT 12"
-    )
-    op.execute(
-        "ALTER TABLE employees "
-        "ADD COLUMN IF NOT EXISTS prorratear_pagas BOOLEAN DEFAULT FALSE"
-    )
+    op.execute("ALTER TABLE employees ADD COLUMN IF NOT EXISTS num_pagas INTEGER DEFAULT 12")
+    op.execute("ALTER TABLE employees " "ADD COLUMN IF NOT EXISTS prorratear_pagas BOOLEAN DEFAULT FALSE")
 
 
 def downgrade() -> None:

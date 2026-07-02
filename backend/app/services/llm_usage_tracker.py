@@ -16,18 +16,18 @@ logger = logging.getLogger(__name__)
 _lock = threading.Lock()
 
 # Estructura: {tenant_id: {YYYY-MM: {agent: {provider: {calls, tokens_in, tokens_out}}}}}
-_store: dict = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(
-    lambda: {"calls": 0, "tokens_in": 0, "tokens_out": 0}
-))))
+_store: dict = defaultdict(
+    lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: {"calls": 0, "tokens_in": 0, "tokens_out": 0})))
+)
 
 # Precios en USD por 1M tokens (input, output) — actualizar periódicamente
 _PRICE_TABLE: dict[str, tuple[float, float]] = {
-    "anthropic":   (3.00,  15.00),   # claude-sonnet-4-6
-    "openai":      (0.15,   0.60),   # gpt-4o-mini
-    "groq":        (0.05,   0.10),   # llama-3.3-70b
-    "openrouter":  (0.50,   1.50),   # promedio modelos free/paid
-    "claude_code": (0.00,   0.00),   # CLI local — sin coste directo
-    "mock":        (0.00,   0.00),
+    "anthropic": (3.00, 15.00),  # claude-sonnet-4-6
+    "openai": (0.15, 0.60),  # gpt-4o-mini
+    "groq": (0.05, 0.10),  # llama-3.3-70b
+    "openrouter": (0.50, 1.50),  # promedio modelos free/paid
+    "claude_code": (0.00, 0.00),  # CLI local — sin coste directo
+    "mock": (0.00, 0.00),
 }
 
 _MAX_MONTHS_PER_TENANT = 6  # anti memory-leak
@@ -109,24 +109,28 @@ def get_monthly_stats(tenant_id: str, months: int = 3) -> list[dict]:
                 total_in += tin
                 total_out += tout
                 total_cost += cost
-                by_agent.append({
-                    "agent": agent,
-                    "provider": provider,
-                    "calls": calls,
-                    "tokens_in": tin,
-                    "tokens_out": tout,
-                    "cost_usd": round(cost, 4),
-                })
+                by_agent.append(
+                    {
+                        "agent": agent,
+                        "provider": provider,
+                        "calls": calls,
+                        "tokens_in": tin,
+                        "tokens_out": tout,
+                        "cost_usd": round(cost, 4),
+                    }
+                )
 
         by_agent.sort(key=lambda x: x["tokens_in"] + x["tokens_out"], reverse=True)
-        result.append({
-            "month": month,
-            "total_calls": total_calls,
-            "total_tokens_in": total_in,
-            "total_tokens_out": total_out,
-            "estimated_cost_usd": round(total_cost, 4),
-            "by_agent": by_agent,
-        })
+        result.append(
+            {
+                "month": month,
+                "total_calls": total_calls,
+                "total_tokens_in": total_in,
+                "total_tokens_out": total_out,
+                "estimated_cost_usd": round(total_cost, 4),
+                "by_agent": by_agent,
+            }
+        )
 
     return result
 
@@ -145,15 +149,17 @@ def _snapshot() -> list[dict]:
             for month, agents in months.items():
                 for agent, providers in agents.items():
                     for provider, counts in providers.items():
-                        rows.append({
-                            "tenant_id": tenant_id,
-                            "month": month,
-                            "agent": agent,
-                            "provider": provider,
-                            "calls": counts["calls"],
-                            "tokens_in": counts["tokens_in"],
-                            "tokens_out": counts["tokens_out"],
-                        })
+                        rows.append(
+                            {
+                                "tenant_id": tenant_id,
+                                "month": month,
+                                "agent": agent,
+                                "provider": provider,
+                                "calls": counts["calls"],
+                                "tokens_in": counts["tokens_in"],
+                                "tokens_out": counts["tokens_out"],
+                            }
+                        )
     return rows
 
 
@@ -193,16 +199,18 @@ async def persist_to_db() -> int:
                     existing.tokens_out = r["tokens_out"]
                     existing.updated_at = _dt.now(UTC)
                 else:
-                    db.add(LlmUsageMonthly(
-                        tenant_id=_uuid.UUID(r["tenant_id"]),
-                        month=r["month"],
-                        agent=r["agent"],
-                        provider=r["provider"],
-                        calls=r["calls"],
-                        tokens_in=r["tokens_in"],
-                        tokens_out=r["tokens_out"],
-                        updated_at=_dt.now(UTC),
-                    ))
+                    db.add(
+                        LlmUsageMonthly(
+                            tenant_id=_uuid.UUID(r["tenant_id"]),
+                            month=r["month"],
+                            agent=r["agent"],
+                            provider=r["provider"],
+                            calls=r["calls"],
+                            tokens_in=r["tokens_in"],
+                            tokens_out=r["tokens_out"],
+                            updated_at=_dt.now(UTC),
+                        )
+                    )
                 written += 1
             await db.commit()
     except Exception:  # noqa: BLE001 — persistencia best-effort, no debe tumbar el shutdown

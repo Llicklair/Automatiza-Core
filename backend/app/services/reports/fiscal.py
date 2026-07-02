@@ -51,9 +51,7 @@ def _period_invoices_stmt(tenant_id: uuid.UUID, *, side: str, start: date, end: 
       - Los datos demo del onboarding nunca entran en lo fiscal.
     """
     type_clause = (
-        Invoice.invoice_type.in_(("issued", "rectificativa"))
-        if side == "issued"
-        else Invoice.invoice_type == side
+        Invoice.invoice_type.in_(("issued", "rectificativa")) if side == "issued" else Invoice.invoice_type == side
     )
     return (
         select(Invoice)
@@ -159,9 +157,7 @@ async def aggregate_fiscal(
     irpf_nominas = round(sum(float(p.irpf or 0) for p in payrolls), 2)
     # N4: retenciones de IRPF practicadas por los clientes sobre las facturas
     # emitidas (mismo criterio que el Modelo 130/100), antes ignoradas (0.0).
-    retenciones_facturas = round(
-        sum(float(i.retencion_irpf_amount or 0) for i in issued_invoices), 2
-    )
+    retenciones_facturas = round(sum(float(i.retencion_irpf_amount or 0) for i in issued_invoices), 2)
 
     irpf_section = FiscalIRPF(
         retenciones_nominas=irpf_nominas,
@@ -170,12 +166,8 @@ async def aggregate_fiscal(
     )
 
     # ── IS: Estimacion Impuesto de Sociedades ──
-    ingresos_brutos = round(
-        sum(float(i.amount_base or i.amount_total or 0) for i in issued_invoices), 2
-    )
-    gastos_deducibles = round(
-        sum(float(i.amount_base or i.amount_total or 0) for i in received_invoices), 2
-    )
+    ingresos_brutos = round(sum(float(i.amount_base or i.amount_total or 0) for i in issued_invoices), 2)
+    gastos_deducibles = round(sum(float(i.amount_base or i.amount_total or 0) for i in received_invoices), 2)
     coste_nominas = round(sum(float(p.base_salary or 0) for p in payrolls), 2)
     gastos_total = gastos_deducibles + coste_nominas
     base_imponible = round(ingresos_brutos - gastos_total, 2)
@@ -241,10 +233,7 @@ async def build_modelo_303_data(
         Decimal("10"): Decimal("1.4"),
         Decimal("4"): Decimal("0.5"),
     }
-    recargo_invoices = [
-        i for i in issued_invoices
-        if getattr(i, "fiscal_regime", None) == "recargo_equivalencia"
-    ]
+    recargo_invoices = [i for i in issued_invoices if getattr(i, "fiscal_regime", None) == "recargo_equivalencia"]
     recargo_eq: list[dict] = []
     if recargo_invoices:
         recargo_by_rate = vat_breakdown_by_rate(recargo_invoices)
@@ -268,17 +257,10 @@ async def build_modelo_303_data(
 
     # Separar compras por régimen: las intracomunitarias y las de inversión
     # del sujeto pasivo (ISP) autoliquidan el IVA (devengado + deducible).
-    intra_invoices = [
-        i for i in received_invoices
-        if getattr(i, "fiscal_regime", None) == "intracomunitario"
-    ]
-    isp_invoices = [
-        i for i in received_invoices
-        if getattr(i, "fiscal_regime", None) == "isp"
-    ]
+    intra_invoices = [i for i in received_invoices if getattr(i, "fiscal_regime", None) == "intracomunitario"]
+    isp_invoices = [i for i in received_invoices if getattr(i, "fiscal_regime", None) == "isp"]
     general_received = [
-        i for i in received_invoices
-        if getattr(i, "fiscal_regime", None) not in ("intracomunitario", "isp")
+        i for i in received_invoices if getattr(i, "fiscal_regime", None) not in ("intracomunitario", "isp")
     ]
 
     # IVA deducible interior (compras generales + ISP: ambos van a 28/29).

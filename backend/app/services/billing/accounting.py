@@ -1,4 +1,5 @@
 """Backward-compatibility shim — implementation in queries.py / commands.py."""
+
 from app.services.billing.commands import (
     create_fixed_asset,
     create_journal_entry,

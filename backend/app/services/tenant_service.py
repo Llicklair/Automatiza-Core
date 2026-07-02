@@ -136,22 +136,19 @@ def evaluate_ai_readiness(
     if provider not in ALLOWED_LLM_PROVIDERS:
         return (
             False,
-            "No hay proveedor de IA seleccionado. Configúralo en "
-            "Configuración → Claves API.",
+            "No hay proveedor de IA seleccionado. Configúralo en " "Configuración → Claves API.",
         )
 
     pdata = (keys or {}).get(provider) or {}
     if not pdata.get("api_key"):
         return (
             False,
-            f"Falta la clave de IA de «{provider}». Añádela en "
-            "Configuración → Claves API.",
+            f"Falta la clave de IA de «{provider}». Añádela en " "Configuración → Claves API.",
         )
     if not pdata.get("enabled"):
         return (
             False,
-            f"El proveedor de IA «{provider}» está desactivado. Actívalo en "
-            "Configuración → Claves API.",
+            f"El proveedor de IA «{provider}» está desactivado. Actívalo en " "Configuración → Claves API.",
         )
     return True, "IA configurada."
 
@@ -184,10 +181,7 @@ async def update_llm_config(
 ) -> dict[str, Any]:
     if active_llm_provider and active_llm_provider not in ALLOWED_LLM_PROVIDERS:
         raise ValueError(f"Provider LLM no válido: {active_llm_provider}")
-    if (
-        active_embeddings_provider
-        and active_embeddings_provider not in ALLOWED_EMBEDDINGS_PROVIDERS
-    ):
+    if active_embeddings_provider and active_embeddings_provider not in ALLOWED_EMBEDDINGS_PROVIDERS:
         raise ValueError(f"Provider embeddings no válido: {active_embeddings_provider}")
 
     result = await db.execute(select(TenantLlmConfig).where(TenantLlmConfig.tenant_id == tenant_id))
@@ -280,9 +274,7 @@ async def _ensure_claude_installed() -> tuple[str | None, str | None]:
     if not npm_bin:
         return None, "Node.js no está instalado. Descárgalo desde https://nodejs.org/"
 
-    code, out, err = await loop.run_in_executor(
-        None, _run_cmd, ["npm", "install", "-g", "@anthropic-ai/claude-code"]
-    )
+    code, out, err = await loop.run_in_executor(None, _run_cmd, ["npm", "install", "-g", "@anthropic-ai/claude-code"])
     if code != 0:
         return None, f"Error instalando Claude Code: {err or out}"
 
@@ -304,9 +296,7 @@ async def claude_code_setup() -> dict[str, Any]:
     if code != 0:
         version = "desconocida"
 
-    code, auth_out, auth_err = await loop.run_in_executor(
-        None, _run_cmd, ["claude", "auth", "status"]
-    )
+    code, auth_out, auth_err = await loop.run_in_executor(None, _run_cmd, ["claude", "auth", "status"])
 
     is_authenticated = False
     if code == 0 and auth_out:
@@ -315,11 +305,7 @@ async def claude_code_setup() -> dict[str, Any]:
             is_authenticated = auth_data.get("loggedIn", False) is True
         except (ValueError, KeyError):
             full_output = f"{auth_out} {auth_err}".lower()
-            is_authenticated = (
-                "logged in" in full_output
-                or "authenticated" in full_output
-                or "active" in full_output
-            )
+            is_authenticated = "logged in" in full_output or "authenticated" in full_output or "active" in full_output
 
     if is_authenticated:
         return {
@@ -422,9 +408,7 @@ async def get_logo_status(db: AsyncSession, tenant_id: UUID) -> dict[str, Any]:
     return {"has_logo": True, "logo_path": tenant.logo_path}
 
 
-async def upload_logo(
-    db: AsyncSession, tenant_id: UUID, content: bytes, ext: str
-) -> dict[str, Any]:
+async def upload_logo(db: AsyncSession, tenant_id: UUID, content: bytes, ext: str) -> dict[str, Any]:
     logo_dir = _LOGO_DIR / str(tenant_id)
     logo_dir.mkdir(parents=True, exist_ok=True)
     # Borrar logo previo si existía con otra extensión

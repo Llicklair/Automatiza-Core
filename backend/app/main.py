@@ -102,6 +102,7 @@ async def lifespan(app: FastAPI):
     )
     # Relay WebSocket ↔ Redis (sólo cuando REDIS_URL está configurado)
     from app.services.ws_relay import start_ws_relay, stop_ws_relay
+
     await start_ws_relay()
     yield
     # Parar scheduler, relay y tareas en vuelo
@@ -192,9 +193,7 @@ async def global_exception_handler(request: Request, exc: Exception):
         request_id = request.state.request_id
     except (AttributeError, TypeError):
         request_id = None
-    logger.error(
-        "Unhandled exception on %s %s: %s", request.method, request.url.path, exc, exc_info=True
-    )
+    logger.error("Unhandled exception on %s %s: %s", request.method, request.url.path, exc, exc_info=True)
     # Include CORS headers so the browser can read the error response.
     # Without them, cross-origin requests see "Failed to fetch" instead of the real error.
     origin = request.headers.get("origin", "")
@@ -207,9 +206,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=500,
         content={
-            "detail": f"{type(exc).__name__}: {exc}"
-            if settings.DEBUG
-            else "Error interno del servidor.",
+            "detail": f"{type(exc).__name__}: {exc}" if settings.DEBUG else "Error interno del servidor.",
             "type": "internal_error",
             "request_id": request_id,
         },
@@ -264,9 +261,7 @@ async def health_check():
         "python_version": sys.version,
         "app_version": settings.APP_VERSION,
         "uptime_seconds": round(time.monotonic() - _app_start_time, 1),
-        "memory_mb": round(
-            __import__("psutil").Process(os.getpid()).memory_info().rss / 1024 / 1024, 1
-        )
+        "memory_mb": round(__import__("psutil").Process(os.getpid()).memory_info().rss / 1024 / 1024, 1)
         if _safe_import("psutil")
         else None,
         "checks": {},

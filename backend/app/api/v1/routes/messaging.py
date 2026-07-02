@@ -90,9 +90,7 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
     set_current_tenant(tenant_id)
     await svc.send_typing_indicator(chat_id)
 
-    _task = asyncio.create_task(
-        svc.process_and_reply(tenant_id, chat_id, text, update.message_id)
-    )
+    _task = asyncio.create_task(svc.process_and_reply(tenant_id, chat_id, text, update.message_id))
     _background_tasks.add(_task)
     _task.add_done_callback(_background_tasks.discard)
 
@@ -488,10 +486,9 @@ async def classify_email_inbox(
     from app.services.email_ai import EmailAIError, classify_messages
 
     try:
-        results = await classify_messages([
-            {"id": m.id, "from": m.from_, "subject": m.subject, "snippet": m.snippet}
-            for m in payload.messages
-        ])
+        results = await classify_messages(
+            [{"id": m.id, "from": m.from_, "subject": m.subject, "snippet": m.snippet} for m in payload.messages]
+        )
     except EmailAIError as e:
         raise HTTPException(status_code=422, detail=str(e)) from e
     except Exception as exc:
@@ -530,9 +527,11 @@ async def draft_email_reply(
             continue
         if provider == "gmail":
             from app.integrations.gmail_client import GmailClient
+
             client = GmailClient(token)
         else:
             from app.integrations.outlook_client import OutlookClient
+
             client = OutlookClient(token)
         try:
             full_msg = await client.get_message(payload.message_id)

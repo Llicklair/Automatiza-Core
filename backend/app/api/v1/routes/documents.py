@@ -57,9 +57,7 @@ async def search_documents(
     try:
         hits = await svc.semantic_search(query, limit, current_user.tenant_id, db)
     except svc.EmbedderUnavailableError:
-        raise HTTPException(
-            status_code=503, detail="No hay proveedor de embeddings configurado"
-        ) from None
+        raise HTTPException(status_code=503, detail="No hay proveedor de embeddings configurado") from None
 
     return [SemanticSearchHit(**hit) for hit in hits]
 
@@ -171,9 +169,7 @@ async def scan_documents(
                             status="failed",
                             parsed_content=None,
                             category="otros",
-                            created_at=__import__("datetime").datetime.now(
-                                __import__("datetime").UTC
-                            ),
+                            created_at=__import__("datetime").datetime.now(__import__("datetime").UTC),
                             processed_at=None,
                             task_id=None,
                         ),
@@ -435,9 +431,7 @@ async def preview_contract_template_html(
     try:
         data = svc.preview_contract_html(file_path)
     except ImportError as exc:
-        raise HTTPException(
-            status_code=501, detail="mammoth no instalado. Ejecuta: pip install mammoth"
-        ) from exc
+        raise HTTPException(status_code=501, detail="mammoth no instalado. Ejecuta: pip install mammoth") from exc
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Archivo de plantilla no encontrado") from exc
     except ValueError as e:
@@ -467,9 +461,7 @@ async def save_contract_template_body_html(
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
     except ImportError as exc:
-        raise HTTPException(
-            status_code=501, detail="htmldocx no instalado. Ejecuta: pip install htmldocx"
-        ) from exc
+        raise HTTPException(status_code=501, detail="htmldocx no instalado. Ejecuta: pip install htmldocx") from exc
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e)) from e
     except OSError as e:
@@ -509,9 +501,7 @@ async def generate_contract(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except ImportError as exc:
-        raise HTTPException(
-            status_code=501, detail="docxtpl no instalado. Ejecuta: pip install docxtpl"
-        ) from exc
+        raise HTTPException(status_code=501, detail="docxtpl no instalado. Ejecuta: pip install docxtpl") from exc
     except Exception as e:
         logger.error("generate_contract: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail="Error al generar el contrato") from e

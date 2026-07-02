@@ -135,9 +135,7 @@ async def extract_receipt_data(image_bytes: bytes, mime_type: str) -> ReceiptDat
     con un JSON válido.
     """
     if mime_type not in SUPPORTED_MIME:
-        raise ReceiptExtractionError(
-            f"Tipo de imagen no soportado: {mime_type}. Usa PNG, JPG o WEBP."
-        )
+        raise ReceiptExtractionError(f"Tipo de imagen no soportado: {mime_type}. Usa PNG, JPG o WEBP.")
 
     if not image_bytes or len(image_bytes) < 200:
         raise ReceiptExtractionError("La imagen está vacía o es demasiado pequeña.")
@@ -147,9 +145,7 @@ async def extract_receipt_data(image_bytes: bytes, mime_type: str) -> ReceiptDat
 
     api_key = settings.ANTHROPIC_API_KEY if hasattr(settings, "ANTHROPIC_API_KEY") else None
     if not api_key:
-        raise ReceiptExtractionError(
-            "Falta ANTHROPIC_API_KEY en la configuración del backend."
-        )
+        raise ReceiptExtractionError("Falta ANTHROPIC_API_KEY en la configuración del backend.")
 
     try:
         from anthropic import AsyncAnthropic

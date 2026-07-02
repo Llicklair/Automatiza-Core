@@ -33,6 +33,4 @@ RECONCILIATION_EXCEPTIONS = "reconciliation_exceptions"  # {unmatched, total, so
 # ── Calendario ───────────────────────────────────────────────────────────────
 MONTH_END = "month_end"  # {month, year} — mes RECIÉN CERRADO (emitido el día 1)
 
-ALL_EVENTS: frozenset[str] = frozenset(
-    v for k, v in globals().items() if k.isupper() and isinstance(v, str)
-)
+ALL_EVENTS: frozenset[str] = frozenset(v for k, v in globals().items() if k.isupper() and isinstance(v, str))

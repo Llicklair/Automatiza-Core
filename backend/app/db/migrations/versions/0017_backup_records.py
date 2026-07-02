@@ -38,8 +38,7 @@ def upgrade() -> None:
         """
     )
     op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_backup_record_tenant_created "
-        "ON backup_record(tenant_id, created_at DESC)"
+        "CREATE INDEX IF NOT EXISTS ix_backup_record_tenant_created " "ON backup_record(tenant_id, created_at DESC)"
     )
     op.execute(
         "CREATE INDEX IF NOT EXISTS ix_backup_record_tenant_kind_created "

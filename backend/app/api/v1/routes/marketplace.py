@@ -120,8 +120,6 @@ async def import_workflow_yaml(
     if not yaml_str or not isinstance(yaml_str, str):
         raise HTTPException(status_code=422, detail="Campo 'yaml' requerido (string).")
     try:
-        return await import_yaml_as_workflow(
-            db, current_user.tenant_id, yaml_str, created_by=current_user.id
-        )
+        return await import_yaml_as_workflow(db, current_user.tenant_id, yaml_str, created_by=current_user.id)
     except WorkflowYamlError as e:
         raise HTTPException(status_code=422, detail=str(e)) from e

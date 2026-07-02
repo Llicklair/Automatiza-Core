@@ -87,10 +87,7 @@ async def _build_tenant_context(tenant_id: str, db) -> str:
 
     try:
         clients_res = await db.execute(
-            select(Client)
-            .where(Client.tenant_id == uuid.UUID(tenant_id))
-            .order_by(Client.created_at.asc())
-            .limit(5)
+            select(Client).where(Client.tenant_id == uuid.UUID(tenant_id)).order_by(Client.created_at.asc()).limit(5)
         )
         clients = clients_res.scalars().all()
         if clients:
@@ -183,14 +180,17 @@ async def _broadcast(tenant_id: str, message: dict) -> None:
 
     if settings.REDIS_URL:
         import json as _json
+
         try:
             import redis.asyncio as aioredis
+
             async with aioredis.from_url(settings.REDIS_URL, decode_responses=True) as r:
                 await r.publish(f"ap:ws:{tenant_id}", _json.dumps(message))
         except Exception:
             logger.debug("Error publicando evento en Redis", exc_info=True)
     else:
         from app.api.ws.notifications import manager as ws_manager
+
         await ws_manager.broadcast_to_tenant(tenant_id, message)
 
 
@@ -210,9 +210,7 @@ async def _stream_and_log(task_id: str, initial_state: dict, orchestrator, usage
     seen_results: set = set()
 
     callbacks: list = [usage_callback]
-    langfuse_cb = get_langfuse_callback(
-        tenant_id=tenant_id, agent=domain, task_id=task_id
-    )
+    langfuse_cb = get_langfuse_callback(tenant_id=tenant_id, agent=domain, task_id=task_id)
     if langfuse_cb is not None:
         callbacks.append(langfuse_cb)
 
@@ -232,11 +230,14 @@ async def _stream_and_log(task_id: str, initial_state: dict, orchestrator, usage
                     # Notificar progreso de nodo al frontend
                     if node_name in _ORCHESTRATOR_NODES:
                         log_push(task_id, f"[{node_name}] completado")
-                        await _broadcast(tenant_id, {
-                            "type": "orchestrator_step",
-                            "node": node_name,
-                            "task_id": task_id,
-                        })
+                        await _broadcast(
+                            tenant_id,
+                            {
+                                "type": "orchestrator_step",
+                                "node": node_name,
+                                "task_id": task_id,
+                            },
+                        )
 
                     for r in state_update.get("agent_results") or []:
                         rid = r.get("subtask_id") or r.get("agent", "") + str(len(seen_results))
@@ -248,13 +249,16 @@ async def _stream_and_log(task_id: str, initial_state: dict, orchestrator, usage
                                 summary = summary.get("action") or str(summary)[:120]
                             ok = "OK" if r.get("success") else "FAIL"
                             log_push(task_id, f"[{ok}] [{agent}] {str(summary)[:200]}")
-                            await _broadcast(tenant_id, {
-                                "type": "agent_result",
-                                "agent": agent,
-                                "success": r.get("success", False),
-                                "summary": str(summary)[:200],
-                                "task_id": task_id,
-                            })
+                            await _broadcast(
+                                tenant_id,
+                                {
+                                    "type": "agent_result",
+                                    "agent": agent,
+                                    "success": r.get("success", False),
+                                    "summary": str(summary)[:200],
+                                    "task_id": task_id,
+                                },
+                            )
 
                     err = state_update.get("error_message")
                     if err and err not in seen_results:
@@ -278,17 +282,14 @@ async def _stream_and_log(task_id: str, initial_state: dict, orchestrator, usage
         # acumula 900s+ de "executing" antes de fallar. Errores de red/BD
         # sí siguen siendo transient (ConnectionError, OSError).
         from app.core.exceptions import OrchestratorTimeoutError
-        raise OrchestratorTimeoutError(
-            f"Orquestador excedio el tiempo limite de 900s para tarea {task_id}"
-        ) from exc
+
+        raise OrchestratorTimeoutError(f"Orquestador excedio el tiempo limite de 900s para tarea {task_id}") from exc
 
     result = final_state if final_state is not None else initial_state
     status_val = result.get("status")
     if hasattr(status_val, "value"):
         status_val = status_val.value
-    log_push(
-        task_id, f"[{'OK' if status_val == 'done' else 'FAIL'}] Ejecucion finalizada ({status_val})"
-    )
+    log_push(task_id, f"[{'OK' if status_val == 'done' else 'FAIL'}] Ejecucion finalizada ({status_val})")
     logger.info("FINAL STATE RETURNED BY LANGGRAPH: %s", result)
     return result
 
@@ -320,9 +321,7 @@ async def _load_task_and_approval(task_id: str, db):
         if not approval or not approval.action_payload:
             logger.error("[RESUME] Approval no encontrado o sin payload para tarea %s", task_id)
             task.status = "failed"
-            task.error_message = (
-                "No se encontro la aprobacion asociada para continuar o el payload esta vacio."
-            )
+            task.error_message = "No se encontro la aprobacion asociada para continuar o el payload esta vacio."
             await db.commit()
             return None
 
@@ -369,16 +368,11 @@ async def _create_invoice_from_approval(task, payload_data: dict, db) -> bool:
     # más abajo), un reintento NO debe duplicarla. Se correlaciona por la huella
     # del payload para no bloquear tasks que generen varias facturas distintas.
     inv_key = _approval_invoice_key(payload_data)
-    for r in (task.agent_results or []):
+    for r in task.agent_results or []:
         out = r.get("output") if isinstance(r, dict) else None
-        if (
-            isinstance(out, dict)
-            and out.get("action") == "draft_created"
-            and out.get("payload_key") == inv_key
-        ):
+        if isinstance(out, dict) and out.get("action") == "draft_created" and out.get("payload_key") == inv_key:
             logger.info(
-                "[RESUME] Factura ya creada para task %s (payload_key idempotente); "
-                "reintento no la duplica.",
+                "[RESUME] Factura ya creada para task %s (payload_key idempotente); " "reintento no la duplica.",
                 task.id,
             )
             return True
@@ -387,22 +381,16 @@ async def _create_invoice_from_approval(task, payload_data: dict, db) -> bool:
     amount_base = Decimal(str(payload_data.get("amount_base", "0")).replace(",", "."))
     vat_rate = Decimal(str(payload_data.get("vat_rate", 21)))
     concept = payload_data.get("concept", "Concepto por aprobacion manual")
-    inv_date = date.fromisoformat(
-        payload_data.get("invoice_date", datetime.now(UTC).strftime("%Y-%m-%d"))
-    )
+    inv_date = date.fromisoformat(payload_data.get("invoice_date", datetime.now(UTC).strftime("%Y-%m-%d")))
 
     # Resolver cliente por ID o NIF
     cliente_local = None
     if "contact_id_local" in payload_data:
-        res = await db.execute(
-            select(Client).where(Client.id == uuid.UUID(payload_data["contact_id_local"]))
-        )
+        res = await db.execute(select(Client).where(Client.id == uuid.UUID(payload_data["contact_id_local"])))
         cliente_local = res.scalars().first()
 
     if not cliente_local and client_nif:
-        res = await db.execute(
-            select(Client).where(Client.tenant_id == task.tenant_id, Client.nif == client_nif)
-        )
+        res = await db.execute(select(Client).where(Client.tenant_id == task.tenant_id, Client.nif == client_nif))
         cliente_local = res.scalars().first()
 
     # Fallback: crear cliente si no existe
@@ -419,9 +407,7 @@ async def _create_invoice_from_approval(task, payload_data: dict, db) -> bool:
 
     if not cliente_local:
         task.status = "failed"
-        task.error_message = (
-            "No se encontro ni se pudo crear el cliente local vinculado durante la reanudacion."
-        )
+        task.error_message = "No se encontro ni se pudo crear el cliente local vinculado durante la reanudacion."
         await db.commit()
         return False
 
@@ -429,9 +415,7 @@ async def _create_invoice_from_approval(task, payload_data: dict, db) -> bool:
     tax_amount = round(amount_base * (vat_rate / Decimal("100")), 2)
     total_amount = amount_base + tax_amount
 
-    count_res = await db.execute(
-        select(func.count(Invoice.id)).where(Invoice.tenant_id == task.tenant_id)
-    )
+    count_res = await db.execute(select(func.count(Invoice.id)).where(Invoice.tenant_id == task.tenant_id))
     invoice_number = f"FAC-{inv_date.year}-{(count_res.scalar() or 0) + 1:04d}"
 
     new_invoice = Invoice(
@@ -500,7 +484,7 @@ async def _execute_from_approval(task, payload_data: dict, db) -> bool:
     # garantiza el IdempotencyGuard del worker, no este guard (no protege la carrera
     # concurrente real de dos resumes simultáneos).
     action_key = _approval_action_key(payload_data)
-    for r in (task.agent_results or []):
+    for r in task.agent_results or []:
         out = r.get("output") if isinstance(r, dict) else None
         if (
             isinstance(out, dict)
@@ -508,8 +492,7 @@ async def _execute_from_approval(task, payload_data: dict, db) -> bool:
             and out.get("payload_key") == action_key
         ):
             logger.info(
-                "[RESUME] Acción ya ejecutada para task %s (payload_key idempotente); "
-                "reintento no la re-ejecuta.",
+                "[RESUME] Acción ya ejecutada para task %s (payload_key idempotente); " "reintento no la re-ejecuta.",
                 task.id,
             )
             return True

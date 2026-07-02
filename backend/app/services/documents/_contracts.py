@@ -154,9 +154,7 @@ async def generate_contract_from_template(
     if entity_type == "client":
         from app.db.models.crm import Client
 
-        r = await db.execute(
-            sa_select(Client).where(Client.id == entity_id, Client.tenant_id == tenant_id)
-        )
+        r = await db.execute(sa_select(Client).where(Client.id == entity_id, Client.tenant_id == tenant_id))
         entity = r.scalar_one_or_none()
         if not entity:
             raise ValueError("Cliente no encontrado")
@@ -164,9 +162,7 @@ async def generate_contract_from_template(
     elif entity_type == "employee":
         from app.db.models.hr import Employee
 
-        r = await db.execute(
-            sa_select(Employee).where(Employee.id == entity_id, Employee.tenant_id == tenant_id)
-        )
+        r = await db.execute(sa_select(Employee).where(Employee.id == entity_id, Employee.tenant_id == tenant_id))
         entity = r.scalar_one_or_none()
         if not entity:
             raise ValueError("Empleado no encontrado")

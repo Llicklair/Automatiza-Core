@@ -1,4 +1,5 @@
 """Rutas TPV (Punto de Venta)."""
+
 import logging
 from uuid import UUID
 
@@ -29,9 +30,7 @@ async def get_current_session(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return await svc.get_current_session(
-        db, current_user.tenant_id, current_user.id
-    )
+    return await svc.get_current_session(db, current_user.tenant_id, current_user.id)
 
 
 @router.post(
@@ -46,9 +45,7 @@ async def open_session(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        return await svc.open_session(
-            db, current_user.tenant_id, current_user.id
-        )
+        return await svc.open_session(db, current_user.tenant_id, current_user.id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -102,9 +99,7 @@ async def add_line(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        return await svc.add_line(
-            db, current_user.tenant_id, session_id, payload.model_dump()
-        )
+        return await svc.add_line(db, current_user.tenant_id, session_id, payload.model_dump())
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
@@ -151,18 +146,14 @@ async def remove_line(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        return await svc.remove_line(
-            db, current_user.tenant_id, session_id, line_id
-        )
+        return await svc.remove_line(db, current_user.tenant_id, session_id, line_id)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.post(
-    "/sessions/{session_id}/checkout", response_model=PosSessionResponse
-)
+@router.post("/sessions/{session_id}/checkout", response_model=PosSessionResponse)
 @limiter.limit("30/minute")
 async def checkout(
     request: Request,
@@ -186,9 +177,7 @@ async def checkout(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.post(
-    "/sessions/{session_id}/cancel", response_model=PosSessionResponse
-)
+@router.post("/sessions/{session_id}/cancel", response_model=PosSessionResponse)
 @limiter.limit("30/minute")
 async def cancel_session(
     request: Request,
@@ -197,9 +186,7 @@ async def cancel_session(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        return await svc.cancel_session(
-            db, current_user.tenant_id, session_id
-        )
+        return await svc.cancel_session(db, current_user.tenant_id, session_id)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:

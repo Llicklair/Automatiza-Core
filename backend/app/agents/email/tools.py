@@ -101,12 +101,8 @@ def send_email(
         attachment_ids = [attachment_ids] if attachment_ids else None
     attachments_str = f" con {len(attachment_ids)} adjuntos" if attachment_ids else ""
 
-    preview = (
-        f"Borrador de correo:\n"
-        f"  Para: {to}\n"
-        f"  Asunto: {subject}\n"
-        f"  Cuerpo:\n{body}"
-        + (f"\n  Adjuntos: {len(attachment_ids)} documento(s)" if attachment_ids else "")
+    preview = f"Borrador de correo:\n" f"  Para: {to}\n" f"  Asunto: {subject}\n" f"  Cuerpo:\n{body}" + (
+        f"\n  Adjuntos: {len(attachment_ids)} documento(s)" if attachment_ids else ""
     )
     if not confirm:
         return (

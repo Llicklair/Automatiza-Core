@@ -55,9 +55,7 @@ def _plan_to_ui_graph(plan: list, trigger_type: str) -> tuple[list, list]:
 async def _save_final_state(task, final_state: dict, db) -> None:
     """Persist LangGraph final state into the Task row. Shared by execute & resume."""
     status_val = final_state.get("status")
-    task.status = (
-        status_val.value if hasattr(status_val, "value") else (status_val or "failed")
-    )
+    task.status = status_val.value if hasattr(status_val, "value") else (status_val or "failed")
     task.plan = final_state.get("plan")
     task.agent_results = final_state.get("agent_results", [])
     task.current_step = final_state.get("current_step", 0)
@@ -78,9 +76,7 @@ async def _update_workflow_topology(task, plan_list: list, db) -> None:
     wf_res = await db.execute(select(WFModel).where(WFModel.id == uuid.UUID(wf_id)))
     wf_record = wf_res.scalar_one_or_none()
     if wf_record and not wf_record.ui_nodes:
-        wf_record.ui_nodes, wf_record.ui_edges = _plan_to_ui_graph(
-            plan_list, wf_record.trigger_type or "manual"
-        )
+        wf_record.ui_nodes, wf_record.ui_edges = _plan_to_ui_graph(plan_list, wf_record.trigger_type or "manual")
 
 
 async def _update_workflow_execution(task, db) -> None:
@@ -97,9 +93,7 @@ async def _update_workflow_execution(task, db) -> None:
     if not wf_exec or wf_exec.status not in ("running", "pending"):
         return
 
-    wf_exec.status = {"done": "success", "failed": "failed", "awaiting_approval": "paused"}.get(
-        task.status, "running"
-    )
+    wf_exec.status = {"done": "success", "failed": "failed", "awaiting_approval": "paused"}.get(task.status, "running")
     if task.status in ("done", "failed"):
         wf_exec.completed_at = datetime.now(UTC)
     wf_exec.result_log = (

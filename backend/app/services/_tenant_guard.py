@@ -27,8 +27,6 @@ async def assert_fk_in_tenant(
     """
     if entity_id is None:
         return
-    found = await db.execute(
-        select(model.id).where(model.id == entity_id, model.tenant_id == tenant_id)
-    )
+    found = await db.execute(select(model.id).where(model.id == entity_id, model.tenant_id == tenant_id))
     if found.scalar_one_or_none() is None:
         raise LookupError(f"{label} not found")

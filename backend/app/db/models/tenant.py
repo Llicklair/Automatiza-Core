@@ -54,9 +54,7 @@ class TenantLlmConfig(Base):
     __tablename__ = "tenant_llm_configs"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(
-        UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, unique=True, index=True
-    )
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, unique=True, index=True)
     # Provider activo para LLM y embeddings
     active_llm_provider = Column(String(50), nullable=False, default="claude_code")
     active_embeddings_provider = Column(String(50), nullable=False, default="local")

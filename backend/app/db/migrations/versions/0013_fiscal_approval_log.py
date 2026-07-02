@@ -39,8 +39,7 @@ def upgrade() -> None:
         """
     )
     op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_fiscal_appr_tenant_created "
-        "ON fiscal_approval_log(tenant_id, created_at)"
+        "CREATE INDEX IF NOT EXISTS ix_fiscal_appr_tenant_created " "ON fiscal_approval_log(tenant_id, created_at)"
     )
     op.execute(
         "CREATE INDEX IF NOT EXISTS ix_fiscal_appr_model_period "
@@ -50,9 +49,7 @@ def upgrade() -> None:
     bind = op.get_bind()
     if bind.dialect.name == "postgresql":
         # Reutiliza la función creada en 0012.
-        op.execute(
-            "DROP TRIGGER IF EXISTS fiscal_approval_log_no_update ON fiscal_approval_log"
-        )
+        op.execute("DROP TRIGGER IF EXISTS fiscal_approval_log_no_update ON fiscal_approval_log")
         op.execute(
             """
             CREATE TRIGGER fiscal_approval_log_no_update
@@ -60,9 +57,7 @@ def upgrade() -> None:
             FOR EACH ROW EXECUTE FUNCTION sec_worm_reject_mutation();
             """
         )
-        op.execute(
-            "DROP TRIGGER IF EXISTS fiscal_approval_log_no_delete ON fiscal_approval_log"
-        )
+        op.execute("DROP TRIGGER IF EXISTS fiscal_approval_log_no_delete ON fiscal_approval_log")
         op.execute(
             """
             CREATE TRIGGER fiscal_approval_log_no_delete

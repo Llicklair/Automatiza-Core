@@ -24,9 +24,7 @@ async def get_my_employee(db: AsyncSession, current_user) -> Employee | None:
     return result.scalar_one_or_none()
 
 
-async def get_active_attendance(
-    db: AsyncSession, tenant_id, employee_id
-) -> Attendance | None:
+async def get_active_attendance(db: AsyncSession, tenant_id, employee_id) -> Attendance | None:
     result = await db.execute(
         select(Attendance).where(
             Attendance.tenant_id == tenant_id,
@@ -87,9 +85,7 @@ async def build_portal_payload(
     }
 
 
-async def get_employee_by_uuid(
-    db: AsyncSession, employee_id: uuid.UUID, tenant_id
-) -> Employee | None:
+async def get_employee_by_uuid(db: AsyncSession, employee_id: uuid.UUID, tenant_id) -> Employee | None:
     result = await db.execute(
         select(Employee).where(
             Employee.id == employee_id,

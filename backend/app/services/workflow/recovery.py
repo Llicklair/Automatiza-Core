@@ -75,8 +75,7 @@ async def recover_stale_executions() -> dict[str, int]:
                 for t in stale_tasks:
                     t.status = "failed"
                     t.error_message = (
-                        t.error_message
-                        or "Backend reiniciado mientras la task estaba en ejecución (recovery)."
+                        t.error_message or "Backend reiniciado mientras la task estaba en ejecución (recovery)."
                     )
                     t.completed_at = now
                 stats["tasks_failed"] = len(stale_tasks)
@@ -84,9 +83,7 @@ async def recover_stale_executions() -> dict[str, int]:
                 # 2. WorkflowExecutions pending/running cuya task no existe → cancelled
                 #    Subquery: ids de tasks que existen.
                 execs_r = await db.execute(
-                    select(WorkflowExecution).where(
-                        WorkflowExecution.status.in_(("pending", "running"))
-                    )
+                    select(WorkflowExecution).where(WorkflowExecution.status.in_(("pending", "running")))
                 )
                 execs = execs_r.scalars().all()
 
@@ -94,9 +91,7 @@ async def recover_stale_executions() -> dict[str, int]:
                 if execs:
                     task_ids = {e.task_id for e in execs if e.task_id is not None}
                     if task_ids:
-                        t_r = await db.execute(
-                            select(Task.id).where(Task.id.in_(task_ids))
-                        )
+                        t_r = await db.execute(select(Task.id).where(Task.id.in_(task_ids)))
                         existing_task_ids = {row[0] for row in t_r.all()}
 
                 for ex in execs:
@@ -104,10 +99,7 @@ async def recover_stale_executions() -> dict[str, int]:
                     if ex.task_id is None or ex.task_id not in existing_task_ids:
                         ex.status = "cancelled"
                         ex.completed_at = now
-                        ex.result_log = (
-                            ex.result_log
-                            or "Task asociada no existe (recovery al arrancar)."
-                        )
+                        ex.result_log = ex.result_log or "Task asociada no existe (recovery al arrancar)."
                         stats["execs_cancelled"] += 1
                         continue
                     # Si la task quedó failed (por el bloque 1), sincronizar

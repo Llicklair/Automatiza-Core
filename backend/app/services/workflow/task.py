@@ -90,9 +90,7 @@ async def create_task(
     metadata = additional_metadata or {}
 
     if parent_task_id:
-        conversation_history = await _build_conversation_history(
-            db, UUID(parent_task_id), tenant_id
-        )
+        conversation_history = await _build_conversation_history(db, UUID(parent_task_id), tenant_id)
         metadata["parent_task_id"] = parent_task_id
         metadata["conversation_history"] = conversation_history
 
@@ -221,21 +219,15 @@ async def cleanup_tasks(db: AsyncSession, *, tenant_id: UUID) -> dict:
     # Conservamos los registros para no romper FK desde audit_log y
     # agent_execution_trace (ambas WORM, mig 0012).
     if active_ids:
-        await db.execute(
-            sql_update(Task).where(Task.id.in_(active_ids)).values(status="cancelled")
-        )
-    await db.execute(
-        sql_update(Task).where(Task.id.in_(task_ids)).values(is_deleted=True)
-    )
+        await db.execute(sql_update(Task).where(Task.id.in_(active_ids)).values(status="cancelled"))
+    await db.execute(sql_update(Task).where(Task.id.in_(task_ids)).values(is_deleted=True))
 
     await db.commit()
 
     return {"deleted": len(task_ids), "cancelled": cancelled}
 
 
-async def get_task_audit(
-    db: AsyncSession, *, task_id: UUID, tenant_id: UUID, is_admin: bool
-) -> list[AuditLog]:
+async def get_task_audit(db: AsyncSession, *, task_id: UUID, tenant_id: UUID, is_admin: bool) -> list[AuditLog]:
     # Verify task belongs to tenant
     await get_task(db, task_id=task_id, tenant_id=tenant_id)
 

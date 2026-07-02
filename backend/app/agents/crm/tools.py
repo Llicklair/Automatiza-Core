@@ -129,9 +129,7 @@ async def _create_opportunity_async(
 
 
 @tool
-async def update_opportunity_stage(
-    tenant_id: str, opportunity_id: str, new_stage: str, notes: str = ""
-) -> str:
+async def update_opportunity_stage(tenant_id: str, opportunity_id: str, new_stage: str, notes: str = "") -> str:
     """
     Mueve una Oportunidad de Venta de una fase a otra en el Embudo.
     Args:
@@ -146,9 +144,7 @@ async def update_opportunity_stage(
     return await _update_opportunity_stage_async(tenant_id, opportunity_id, new_stage, notes)
 
 
-async def _update_opportunity_stage_async(
-    tenant_id: str, opportunity_id: str, new_stage: str, notes: str
-) -> str:
+async def _update_opportunity_stage_async(tenant_id: str, opportunity_id: str, new_stage: str, notes: str) -> str:
     try:
         async with AsyncSessionLocal() as db:
             result = await db.execute(
@@ -189,9 +185,7 @@ async def _qualify_leads_async(tenant_id: str) -> str:
     try:
         async with AsyncSessionLocal() as db:
             result = await db.execute(
-                select(Opportunity).filter(
-                    Opportunity.tenant_id == UUID(tenant_id), Opportunity.stage == "new"
-                )
+                select(Opportunity).filter(Opportunity.tenant_id == UUID(tenant_id), Opportunity.stage == "new")
             )
             new_opps = result.scalars().all()
 

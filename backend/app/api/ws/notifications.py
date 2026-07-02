@@ -40,9 +40,9 @@ class ConnectionManager:
 
                 await task_event_hub.publish(str(task_id), message)
                 # Si el evento es terminal, cerramos el stream.
-                if message.get("type") in ("task_completed", "task_failed") or message.get(
-                    "step"
-                ) == message.get("total_steps"):
+                if message.get("type") in ("task_completed", "task_failed") or message.get("step") == message.get(
+                    "total_steps"
+                ):
                     await task_event_hub.signal_end(str(task_id))
             except Exception as _e:
                 logger.debug("task_event_hub fan-out falló (silenciado): %s", _e)
@@ -53,9 +53,7 @@ class ConnectionManager:
                 try:
                     await connection.send_json(message)
                 except Exception as _e:
-                    logger.warning(
-                        "WebSocket roto para tenant %s, desconectando: %s", tenant_id, _e
-                    )
+                    logger.warning("WebSocket roto para tenant %s, desconectando: %s", tenant_id, _e)
                     # Clean up broken connections
                     self.disconnect(connection, tenant_id)
 

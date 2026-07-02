@@ -42,6 +42,7 @@ def _parse_items(items_json: str) -> list[dict]:
 
 # ── Consultas ─────────────────────────────────────────────────────────────────
 
+
 @tool
 async def get_stock_overview(tenant_id: str) -> str:
     """Resumen del inventario: valoración (coste, PVP, margen), nº de productos con
@@ -66,9 +67,9 @@ async def get_stock_overview(tenant_id: str) -> str:
         f"- Stock muerto (>{ov['dead_days']}d sin movimiento): {ov['dead_count']} productos, {ov['dead_value_cost']:.2f}€ a coste",
     ]
     if ov["top_movers"]:
-        lines.append("- Más movidos: " + ", ".join(
-            f"{m.get('name', '?')} ({m.get('units', 0)})" for m in ov["top_movers"][:5]
-        ))
+        lines.append(
+            "- Más movidos: " + ", ".join(f"{m.get('name', '?')} ({m.get('units', 0)})" for m in ov["top_movers"][:5])
+        )
     return "\n".join(lines)
 
 
@@ -112,9 +113,7 @@ async def find_products(tenant_id: str, query: str = "", category: str = "") -> 
             stmt = select(Product).where(Product.tenant_id == tid)
             if query:
                 like = f"%{query}%"
-                stmt = stmt.where(
-                    or_(Product.name.ilike(like), Product.sku.ilike(like), Product.barcode.ilike(like))
-                )
+                stmt = stmt.where(or_(Product.name.ilike(like), Product.sku.ilike(like), Product.barcode.ilike(like)))
             if category:
                 stmt = stmt.where(Product.category.ilike(f"%{category}%"))
             stmt = stmt.order_by(Product.name.asc()).limit(30)
@@ -164,13 +163,16 @@ async def get_product_stock(tenant_id: str, ref: str) -> str:
 
 # ── Helpers de formato de previsualización ────────────────────────────────────
 
+
 def _format_adjust_preview(res: dict) -> str:
     verb = {"set": "Recuento (fijar)", "add": "Entrada", "remove": "Salida"}[res["op"]]
     head = "PREVISUALIZACIÓN" if res["dry_run"] else "APLICADO"
     lines = [f"{head} — {verb} de stock | {res['ok']} OK, {res['skipped']} omitidos de {res['total']}:"]
     for r in res["plan"]:
         if r["status"] == "ok":
-            lines.append(f"  • {r['name']} ({r.get('sku') or r['ref']}): {r['before']} → {r['after']} ({r['delta']:+d})")
+            lines.append(
+                f"  • {r['name']} ({r.get('sku') or r['ref']}): {r['before']} → {r['after']} ({r['delta']:+d})"
+            )
         else:
             lines.append(f"  ⚠️ {r['ref']}: {r.get('warning', r['status'])}")
     if res["dry_run"] and res["ok"] > 0:
@@ -198,6 +200,7 @@ def _format_update_preview(res: dict) -> str:
 
 # ── Gate de autonomía (tareas y automatizaciones) ─────────────────────────────
 
+
 async def _gated_batch(tenant_uuid, *, kind, params, summary, confirm, apply_fn):
     """Aplica una escritura de stock respetando la política de autonomía.
 
@@ -213,8 +216,11 @@ async def _gated_batch(tenant_uuid, *, kind, params, summary, confirm, apply_fn)
     """
     async with tool_session(tenant_uuid) as db:
         decision = await evaluate_autonomy(
-            db, tenant_id=tenant_uuid, domain=_INVENTORY_DOMAIN,
-            action_summary=summary[:480], action_payload=params,
+            db,
+            tenant_id=tenant_uuid,
+            domain=_INVENTORY_DOMAIN,
+            action_summary=summary[:480],
+            action_payload=params,
         )
 
     if decision.manual_only:
@@ -232,8 +238,7 @@ async def _gated_batch(tenant_uuid, *, kind, params, summary, confirm, apply_fn)
         if approval_id:
             return (
                 "⏸ Cambios pendientes de aprobación (inventario = CONFIRM). "
-                "Los he enviado a la bandeja de aprobaciones; se aplicarán al aprobarlos.\n\n"
-                + summary
+                "Los he enviado a la bandeja de aprobaciones; se aplicarán al aprobarlos.\n\n" + summary
             )
         # Sin contexto de task (uso interactivo suelto): confirmación clásica.
         if not confirm:
@@ -246,6 +251,7 @@ async def _gated_batch(tenant_uuid, *, kind, params, summary, confirm, apply_fn)
 
 
 # ── Modificación por lotes (preview + confirm) ────────────────────────────────
+
 
 @tool
 async def batch_adjust_stock(
@@ -283,15 +289,11 @@ async def batch_adjust_stock(
     try:
         # Previsualización (no toca la BD) para el resumen de la aprobación.
         async with tool_session(tid) as db:
-            preview = await batch_service.batch_adjust_stock(
-                db, tid, items, op=op, reason=reason, dry_run=True
-            )
+            preview = await batch_service.batch_adjust_stock(db, tid, items, op=op, reason=reason, dry_run=True)
         summary = _format_adjust_preview(preview)
 
         async def _apply(db):
-            res = await batch_service.batch_adjust_stock(
-                db, tid, items, op=op, reason=reason, dry_run=False
-            )
+            res = await batch_service.batch_adjust_stock(db, tid, items, op=op, reason=reason, dry_run=False)
             return _format_adjust_preview(res)
 
         return await _gated_batch(

@@ -129,9 +129,7 @@ async def run_employee_heartbeat(employee_id: str, tenant_id: str) -> None:
 
             budget = await get_budget_status(employee_id, db)
             if budget and budget["state"] == "exhausted":
-                await db.execute(
-                    update(AIEmployee).where(AIEmployee.id == emp_uuid).values(status="paused")
-                )
+                await db.execute(update(AIEmployee).where(AIEmployee.id == emp_uuid).values(status="paused"))
                 await db.commit()
                 await _ws_notify_budget(tenant_id, employee_id, "budget_exhausted", budget)
                 _budget_warned.discard(employee_id)
@@ -154,9 +152,7 @@ async def run_employee_heartbeat(employee_id: str, tenant_id: str) -> None:
             )
             pending_before = int(pending_count_result.scalar() or 0)
 
-            await db.execute(
-                update(AIEmployee).where(AIEmployee.id == emp_uuid).values(status="working")
-            )
+            await db.execute(update(AIEmployee).where(AIEmployee.id == emp_uuid).values(status="working"))
             await db.commit()
 
         from app.services.workflow.task_dispatch import dispatch_orchestrator
@@ -203,11 +199,7 @@ async def run_employee_heartbeat(employee_id: str, tenant_id: str) -> None:
                 logger.exception("Heartbeat: error despachando tarea %s: %s", tid, exc)
                 try:
                     async with AsyncSessionLocal() as dbx:
-                        await dbx.execute(
-                            update(Task)
-                            .where(Task.id == tid)
-                            .values(status="pending", started_at=None)
-                        )
+                        await dbx.execute(update(Task).where(Task.id == tid).values(status="pending", started_at=None))
                         await dbx.commit()
                 except Exception:
                     logger.error("No se pudo revertir tarea %s a pending", tid)
@@ -244,9 +236,7 @@ async def run_employee_heartbeat(employee_id: str, tenant_id: str) -> None:
             )
             db.add(entry)
 
-            await db.execute(
-                update(AIEmployee).where(AIEmployee.id == emp_uuid).values(status="idle")
-            )
+            await db.execute(update(AIEmployee).where(AIEmployee.id == emp_uuid).values(status="idle"))
             await db.commit()
             logger.debug(
                 "Heartbeat completado para %s (%s), dispatched=%d",
@@ -259,17 +249,16 @@ async def run_employee_heartbeat(employee_id: str, tenant_id: str) -> None:
         logger.error("Heartbeat falló para empleado %s: %s", employee_id, e)
         try:
             async with AsyncSessionLocal() as db:
-                await db.execute(
-                    update(AIEmployee).where(AIEmployee.id == emp_uuid).values(status="idle")
-                )
+                await db.execute(update(AIEmployee).where(AIEmployee.id == emp_uuid).values(status="idle"))
                 await db.commit()
         except Exception as recovery_err:
             # Recovery del status del empleado falló — quedará en "working" colgado.
             # Health-check pre-dispatch lo bloqueará en próximas invocaciones.
             logger.warning(
-                "No se pudo restaurar status='idle' del empleado %s tras fallo de "
-                "heartbeat: %s: %s",
-                employee_id, type(recovery_err).__name__, recovery_err,
+                "No se pudo restaurar status='idle' del empleado %s tras fallo de " "heartbeat: %s: %s",
+                employee_id,
+                type(recovery_err).__name__,
+                recovery_err,
             )
 
 
@@ -284,9 +273,7 @@ async def bootstrap_employee_heartbeats() -> None:
     """
     try:
         async with AsyncSessionLocal() as db:
-            result = await db.execute(
-                select(AIEmployee.id, AIEmployee.tenant_id).where(AIEmployee.status != "paused")
-            )
+            result = await db.execute(select(AIEmployee.id, AIEmployee.tenant_id).where(AIEmployee.status != "paused"))
             employees = result.all()
 
         registered = 0

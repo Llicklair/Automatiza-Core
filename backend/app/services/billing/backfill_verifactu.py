@@ -145,13 +145,8 @@ async def backfill_tenant_verifactu_chain(
 
     # Pre-cargamos los registros ya existentes por invoice_id para detectar
     # idempotencia sin un query por factura.
-    existing_query = await db.execute(
-        select(VerifactuRecord)
-        .where(VerifactuRecord.tenant_id == tenant_id)
-    )
-    existing_by_invoice = {
-        record.invoice_id: record for record in existing_query.scalars().all()
-    }
+    existing_query = await db.execute(select(VerifactuRecord).where(VerifactuRecord.tenant_id == tenant_id))
+    existing_by_invoice = {record.invoice_id: record for record in existing_query.scalars().all()}
     already_chained = len(existing_by_invoice)
 
     # Si el tenant tiene registros previos pero ninguno fue backfill, encadenamos

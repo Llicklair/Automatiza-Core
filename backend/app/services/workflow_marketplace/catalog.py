@@ -33,9 +33,7 @@ def _template_to_dict(t: WorkflowTemplate) -> dict[str, Any]:
     }
 
 
-async def list_templates(
-    db: AsyncSession, *, category: str | None = None
-) -> list[dict[str, Any]]:
+async def list_templates(db: AsyncSession, *, category: str | None = None) -> list[dict[str, Any]]:
     stmt = sa.select(WorkflowTemplate).order_by(
         WorkflowTemplate.is_official.desc(),
         WorkflowTemplate.downloads_count.desc(),
@@ -48,9 +46,7 @@ async def list_templates(
 
 
 async def get_template(db: AsyncSession, slug: str) -> dict[str, Any] | None:
-    res = await db.execute(
-        sa.select(WorkflowTemplate).where(WorkflowTemplate.slug == slug)
-    )
+    res = await db.execute(sa.select(WorkflowTemplate).where(WorkflowTemplate.slug == slug))
     t = res.scalar_one_or_none()
     return _template_to_dict(t) if t else None
 
@@ -69,9 +65,7 @@ async def install_template(
     un sufijo numérico para evitar colisión.
     Incrementa `downloads_count` de la plantilla.
     """
-    res = await db.execute(
-        sa.select(WorkflowTemplate).where(WorkflowTemplate.slug == slug)
-    )
+    res = await db.execute(sa.select(WorkflowTemplate).where(WorkflowTemplate.slug == slug))
     t = res.scalar_one_or_none()
     if t is None:
         raise ValueError(f"Plantilla no encontrada: {slug}")
@@ -106,9 +100,7 @@ async def install_template(
     }
 
 
-async def _ensure_unique_name(
-    db: AsyncSession, tenant_id: UUID, base_name: str
-) -> str:
+async def _ensure_unique_name(db: AsyncSession, tenant_id: UUID, base_name: str) -> str:
     """Si ya existe un workflow con `base_name` en el tenant, añade ` (n)`."""
     res = await db.execute(
         sa.select(Workflow.name).where(

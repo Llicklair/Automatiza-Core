@@ -53,9 +53,7 @@ async def list_notifications(
     query = select(Notification).where(Notification.tenant_id == tenant_id)
     if user_id is not None:
         # User-specific OR broadcast (user_id IS NULL).
-        query = query.where(
-            (Notification.user_id == user_id) | (Notification.user_id.is_(None))
-        )
+        query = query.where((Notification.user_id == user_id) | (Notification.user_id.is_(None)))
     if only_unread:
         query = query.where(Notification.read_at.is_(None))
     query = query.order_by(desc(Notification.created_at)).limit(limit)
@@ -63,18 +61,14 @@ async def list_notifications(
     return list(result.scalars().all())
 
 
-async def count_unread(
-    db: AsyncSession, *, tenant_id: UUID, user_id: UUID | None = None
-) -> int:
+async def count_unread(db: AsyncSession, *, tenant_id: UUID, user_id: UUID | None = None) -> int:
     """Cuenta no leídas — usado para el badge del bell."""
     query = select(func.count(Notification.id)).where(
         Notification.tenant_id == tenant_id,
         Notification.read_at.is_(None),
     )
     if user_id is not None:
-        query = query.where(
-            (Notification.user_id == user_id) | (Notification.user_id.is_(None))
-        )
+        query = query.where((Notification.user_id == user_id) | (Notification.user_id.is_(None)))
     result = await db.execute(query)
     return int(result.scalar_one())
 
@@ -102,16 +96,12 @@ async def mark_read(
         .values(read_at=datetime.now(UTC))
     )
     if user_id is not None:
-        stmt = stmt.where(
-            (Notification.user_id == user_id) | (Notification.user_id.is_(None))
-        )
+        stmt = stmt.where((Notification.user_id == user_id) | (Notification.user_id.is_(None)))
     result = await db.execute(stmt)
     return result.rowcount > 0
 
 
-async def mark_all_read(
-    db: AsyncSession, *, tenant_id: UUID, user_id: UUID | None = None
-) -> int:
+async def mark_all_read(db: AsyncSession, *, tenant_id: UUID, user_id: UUID | None = None) -> int:
     """Marca todas las no leídas como leídas. Devuelve cuántas cambiaron."""
     now = datetime.now(UTC)
     stmt = (
@@ -123,9 +113,7 @@ async def mark_all_read(
         .values(read_at=now)
     )
     if user_id is not None:
-        stmt = stmt.where(
-            (Notification.user_id == user_id) | (Notification.user_id.is_(None))
-        )
+        stmt = stmt.where((Notification.user_id == user_id) | (Notification.user_id.is_(None)))
     result = await db.execute(stmt)
     return result.rowcount
 

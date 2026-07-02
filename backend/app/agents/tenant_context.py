@@ -60,23 +60,29 @@ def enforce_tenant(tool: Any) -> Any:
             logger.warning(
                 "[TENANT-ISOLATION] tool='%s' intentó usar tenant_id=%s pero "
                 "el contexto activo es %s — sobrescribiendo.",
-                getattr(tool, "name", "?"), passed, active,
+                getattr(tool, "name", "?"),
+                passed,
+                active,
             )
         kwargs["tenant_id"] = active
         return kwargs
 
     if original_coroutine is not None:
+
         @functools.wraps(original_coroutine)
         async def _async_wrapper(*args: Any, **kwargs: Any) -> Any:
             kwargs = _override_tenant(kwargs)
             return await original_coroutine(*args, **kwargs)
+
         tool.coroutine = _async_wrapper
 
     if original_func is not None:
+
         @functools.wraps(original_func)
         def _sync_wrapper(*args: Any, **kwargs: Any) -> Any:
             kwargs = _override_tenant(kwargs)
             return original_func(*args, **kwargs)
+
         tool.func = _sync_wrapper
 
     return tool

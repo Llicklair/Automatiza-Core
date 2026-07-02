@@ -42,13 +42,9 @@ def upgrade() -> None:
         """
     )
     op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_verifactu_chain_tenant_created "
-        "ON verifactu_chain(tenant_id, created_at)"
+        "CREATE INDEX IF NOT EXISTS ix_verifactu_chain_tenant_created " "ON verifactu_chain(tenant_id, created_at)"
     )
-    op.execute(
-        "CREATE UNIQUE INDEX IF NOT EXISTS ix_verifactu_chain_invoice "
-        "ON verifactu_chain(invoice_id)"
-    )
+    op.execute("CREATE UNIQUE INDEX IF NOT EXISTS ix_verifactu_chain_invoice " "ON verifactu_chain(invoice_id)")
 
     # Triggers append-only (solo Postgres).
     bind = op.get_bind()

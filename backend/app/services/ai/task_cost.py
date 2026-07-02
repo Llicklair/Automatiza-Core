@@ -21,18 +21,14 @@ from app.db.models.tasks import AgentExecutionTrace, Task
 logger = logging.getLogger("services.task_cost")
 
 
-async def summarize_task_cost(
-    db: AsyncSession, *, tenant_id: UUID, task_id: UUID
-) -> dict:
+async def summarize_task_cost(db: AsyncSession, *, tenant_id: UUID, task_id: UUID) -> dict:
     """Devuelve totales de coste agregando las trazas de ejecución de la task.
 
     Si la task no existe o no pertenece al tenant, devuelve `None` en
     `task_status` y ceros en métricas — el caller (endpoint) decide si
     eso debe ser 404 o response normal.
     """
-    task_q = await db.execute(
-        select(Task).where(Task.id == task_id, Task.tenant_id == tenant_id)
-    )
+    task_q = await db.execute(select(Task).where(Task.id == task_id, Task.tenant_id == tenant_id))
     task = task_q.scalar_one_or_none()
     if task is None:
         return {
@@ -72,10 +68,7 @@ async def summarize_task_cost(
         )
         .group_by(AgentExecutionTrace.agent_name)
     )
-    agents = [
-        {"agent": row[0], "tokens": int(row[1] or 0), "cost_eur": float(row[2] or 0)}
-        for row in agents_q.all()
-    ]
+    agents = [{"agent": row[0], "tokens": int(row[1] or 0), "cost_eur": float(row[2] or 0)} for row in agents_q.all()]
 
     return {
         "task_id": str(task_id),

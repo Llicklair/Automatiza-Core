@@ -90,6 +90,7 @@ async def _export_erp_data_async(tenant_id: str, datasets_str: str, user_request
     # guards cross-dispatcher (e.g. el de create_document) puedan detectar
     # artefactos previos de la misma task.
     from app.core.tenant_context import get_current_task
+
     current_task_id = get_current_task()
     task_uuid = uuid.UUID(current_task_id) if current_task_id else None
 

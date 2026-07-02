@@ -24,9 +24,7 @@ class RuleClassification:
 
 
 # Patrones para extracción de entidades
-NIF_PATTERN = re.compile(
-    r"\b([A-Z][- ]?\d{7}[- ]?[A-Z0-9]|\d{8}[- ]?[A-Z]|[XYZ][- ]?\d{7}[- ]?[A-Z])\b"
-)
+NIF_PATTERN = re.compile(r"\b([A-Z][- ]?\d{7}[- ]?[A-Z0-9]|\d{8}[- ]?[A-Z]|[XYZ][- ]?\d{7}[- ]?[A-Z])\b")
 IMPORTE_PATTERN = re.compile(r"(\d{1,3}(?:\.\d{3})*(?:,\d{2})?)\s*€")
 FECHA_PATTERN = re.compile(r"\b(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\b")
 IBAN_PATTERN = re.compile(r"\b(ES\d{2}\s?\d{4}\s?\d{4}\s?\d{2}\s?\d{10})\b")

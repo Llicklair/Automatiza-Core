@@ -85,9 +85,7 @@ def run_migrations_online() -> None:
                 "version_num VARCHAR(128) NOT NULL, "
                 "CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num))"
             )
-            connection.exec_driver_sql(
-                "ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(128)"
-            )
+            connection.exec_driver_sql("ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(128)")
         context.configure(connection=connection, target_metadata=target_metadata)
         context.run_migrations()
 

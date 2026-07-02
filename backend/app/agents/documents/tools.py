@@ -143,9 +143,7 @@ async def import_invoice_document(
                     if not v
                 ]
                 conf_note = (
-                    f"\n⚠️ Campos no detectados: {', '.join(missing)} — revisa antes de confirmar."
-                    if missing
-                    else ""
+                    f"\n⚠️ Campos no detectados: {', '.join(missing)} — revisa antes de confirmar." if missing else ""
                 )
                 return (
                     f"Datos extraídos de '{doc.file_name}':\n"
@@ -173,10 +171,7 @@ async def import_invoice_document(
         if not r.get("ok"):
             return f"No se pudo importar '{doc.file_name}': {r.get('error', 'error desconocido')}"
         if r.get("duplicate"):
-            return (
-                f"'{doc.file_name}' ya estaba en el ERP (factura {r.get('invoice_number')}). "
-                "No se ha duplicado."
-            )
+            return f"'{doc.file_name}' ya estaba en el ERP (factura {r.get('invoice_number')}). " "No se ha duplicado."
         stock_note = " Stock actualizado con las líneas de la factura." if apply_stock else ""
         return (
             f"Factura importada al ERP desde '{doc.file_name}': "
@@ -201,9 +196,7 @@ async def classify_document(tenant_id: str, document_id: str) -> str:
     return await _classify_document_async(tenant_id, document_id)
 
 
-async def _load_doc_and_extract_text(
-    tenant_id: str, document_id: str
-) -> "tuple[TenantDocument, str, object] | str":
+async def _load_doc_and_extract_text(tenant_id: str, document_id: str) -> "tuple[TenantDocument, str, object] | str":
     """Carga el documento de BD, lee bytes del disco y extrae texto. Devuelve (doc, raw_text, parsed_doc) o error."""
     try:
         async with AsyncSessionLocal() as db:
@@ -226,9 +219,7 @@ async def _load_doc_and_extract_text(
         if file_bytes and doc.file_type and "pdf" in doc.file_type.lower():
             try:
                 parsed_doc = parse_pdf(
-                    file_path=doc.file_path
-                    if doc.file_path and os.path.exists(doc.file_path)
-                    else None,
+                    file_path=doc.file_path if doc.file_path and os.path.exists(doc.file_path) else None,
                     file_bytes=file_bytes,
                 )
                 raw_text = parsed_doc.markdown
@@ -259,9 +250,7 @@ async def _link_client_from_nif(tenant_id: str, primary_nif: str, key_entities: 
     """Busca o crea un cliente a partir de un NIF extraído del documento. Devuelve client_info string."""
     try:
         async with AsyncSessionLocal() as db:
-            res = await db.execute(
-                select(Client).where(Client.tenant_id == UUID(tenant_id), Client.nif == primary_nif)
-            )
+            res = await db.execute(select(Client).where(Client.tenant_id == UUID(tenant_id), Client.nif == primary_nif))
             existing = res.scalar_one_or_none()
             if existing:
                 return f"\nCliente vinculado: {existing.name} (NIF: {primary_nif})"
@@ -294,17 +283,12 @@ async def _store_embeddings(tenant_id: str, document_id: str, raw_text: str, par
             doc_chunks = smart_chunk(parsed_doc.elements)
         else:
             chunk_size = 1500
-            doc_chunks = [
-                Chunk(text=raw_text[i : i + chunk_size])
-                for i in range(0, len(raw_text), chunk_size)
-            ]
+            doc_chunks = [Chunk(text=raw_text[i : i + chunk_size]) for i in range(0, len(raw_text), chunk_size)]
 
         vectors = await embedder.aembed_documents([c.text for c in doc_chunks])
 
         async with AsyncSessionLocal() as db:
-            j_res = await db.execute(
-                select(Tenant.jurisdiction).where(Tenant.id == UUID(tenant_id))
-            )
+            j_res = await db.execute(select(Tenant.jurisdiction).where(Tenant.id == UUID(tenant_id)))
             jurisdiction = j_res.scalar() or "ES_TAX"
             for i, (chunk, vector) in enumerate(zip(doc_chunks, vectors, strict=False)):
                 db.add(
@@ -328,9 +312,7 @@ async def _store_embeddings(tenant_id: str, document_id: str, raw_text: str, par
         # Antes el fallo se tragaba SIN log: invisible a ops y el documento quedaba
         # sin índice semántico sin dejar rastro. Lo registramos para diagnosticarlo
         # (el documento sigue siendo buscable por texto, no se pierde).
-        logger.warning(
-            "Fallo generando embeddings para el documento %s: %s", document_id, e, exc_info=True
-        )
+        logger.warning("Fallo generando embeddings para el documento %s: %s", document_id, e, exc_info=True)
         return f"\n⚠ Embeddings NO generados ({e}). El documento es buscable por texto pero no por semántica."
 
 
@@ -338,23 +320,17 @@ async def _update_doc_status(document_id: str, raw_text: str) -> None:
     """Marca el documento como completado y guarda el contenido parseado."""
     try:
         async with AsyncSessionLocal() as db:
-            result = await db.execute(
-                select(TenantDocument).where(TenantDocument.id == UUID(document_id))
-            )
+            result = await db.execute(select(TenantDocument).where(TenantDocument.id == UUID(document_id)))
             doc = result.scalar_one_or_none()
             if doc:
                 doc.parsed_content = raw_text[:3000]
                 doc.status = "completed"
                 await db.commit()
     except Exception:
-        logger.warning(
-            "Failed to update parsed_content for document %s", document_id, exc_info=True
-        )
+        logger.warning("Failed to update parsed_content for document %s", document_id, exc_info=True)
 
 
-async def _emit_document_processed(
-    tenant_id: str, document_id: str, classified: ClassifiedDocument
-) -> None:
+async def _emit_document_processed(tenant_id: str, document_id: str, classified: ClassifiedDocument) -> None:
     """Emite el evento document_processed al bus de eventos."""
     try:
         from app.services.event_bus import emit_event
@@ -382,9 +358,7 @@ async def _classify_with_llm(raw_text: str, rule_result) -> ClassifiedDocument:
         response = await llm.ainvoke(
             [
                 SystemMessage(content=CLASSIFICATION_PROMPT),
-                HumanMessage(
-                    content=f"Clasifica este documento:\n\n{sanitize_user_input(raw_text[:4500])}"
-                ),
+                HumanMessage(content=f"Clasifica este documento:\n\n{sanitize_user_input(raw_text[:4500])}"),
             ]
         )
         raw_content = (response.content or "").strip()
@@ -393,9 +367,7 @@ async def _classify_with_llm(raw_text: str, rule_result) -> ClassifiedDocument:
             raw_content = re.sub(r"\s*```$", "", raw_content)
         if raw_content:
             return ClassifiedDocument(**json.loads(raw_content))
-        logger.warning(
-            "LLM returned empty response for document classification, using rule fallback"
-        )
+        logger.warning("LLM returned empty response for document classification, using rule fallback")
     except Exception as e:
         logger.warning("LLM classification failed (%s), falling back to rules", e)
 
@@ -431,16 +403,10 @@ async def _classify_document_async(tenant_id: str, document_id: str) -> str:
             summary=f"Documento clasificado por reglas como {rule_result.document_type}",
         )
 
-    nif_pattern = re.compile(
-        r"\b([A-Z][- ]?\d{7}[- ]?[A-Z0-9]|\d{8}[- ]?[A-Z]|[XYZ][- ]?\d{7}[- ]?[A-Z])\b"
-    )
+    nif_pattern = re.compile(r"\b([A-Z][- ]?\d{7}[- ]?[A-Z0-9]|\d{8}[- ]?[A-Z]|[XYZ][- ]?\d{7}[- ]?[A-Z])\b")
     raw_nifs = nif_pattern.findall(raw_text.upper())
     nifs_found = list(dict.fromkeys([n.replace("-", "").replace(" ", "") for n in raw_nifs]))
-    client_info = (
-        await _link_client_from_nif(tenant_id, nifs_found[0], classified.key_entities)
-        if nifs_found
-        else ""
-    )
+    client_info = await _link_client_from_nif(tenant_id, nifs_found[0], classified.key_entities) if nifs_found else ""
 
     embeddings_info = await _store_embeddings(tenant_id, document_id, raw_text, parsed_doc)
     await _update_doc_status(document_id, raw_text)
@@ -516,9 +482,7 @@ async def _search_documents_semantic_async(tenant_id: str, query: str, limit: in
             for emb, distance in scored:
                 similarity = similarity_from_distance(distance)
                 snippet = emb.text_content[:200].replace("\n", " ")
-                lines.append(
-                    f"- Doc ID: {emb.document_id} | Relevancia: {similarity:.0%} | {snippet}..."
-                )
+                lines.append(f"- Doc ID: {emb.document_id} | Relevancia: {similarity:.0%} | {snippet}...")
 
             return f"Resultados de búsqueda semántica ({len(scored)}):\n" + "\n".join(lines)
     except Exception as e:

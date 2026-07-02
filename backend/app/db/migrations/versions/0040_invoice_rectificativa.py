@@ -42,9 +42,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_constraint(
-        "fk_invoices_rectifies_invoice_id", "invoices", type_="foreignkey"
-    )
+    op.drop_constraint("fk_invoices_rectifies_invoice_id", "invoices", type_="foreignkey")
     op.drop_index("ix_invoices_rectifies_invoice_id", table_name="invoices")
     op.drop_column("invoices", "rectification_reason")
     op.drop_column("invoices", "rectifies_invoice_id")

@@ -48,9 +48,7 @@ async def create_position(
         return f"Error: {e}"
 
     try:
-        skills = (
-            json.loads(required_skills) if isinstance(required_skills, str) else required_skills
-        )
+        skills = json.loads(required_skills) if isinstance(required_skills, str) else required_skills
     except json.JSONDecodeError:
         skills = [s.strip() for s in required_skills.split(",") if s.strip()]
 
@@ -201,9 +199,7 @@ async def process_cv(tenant_id: str, position_id: str, cv_file_path: str) -> str
             "name": candidate.name,
             "email": candidate.email,
             "skills": candidate.skills,
-            "experience_years": float(candidate.experience_years)
-            if candidate.experience_years
-            else None,
+            "experience_years": float(candidate.experience_years) if candidate.experience_years else None,
         },
         ensure_ascii=False,
     )
@@ -246,9 +242,7 @@ async def list_candidates(
     lines = []
     for c in candidates:
         skills = ", ".join((c.skills or [])[:5])
-        lines.append(
-            f"- {c.name} | Skills: {skills} | Estado: {c.status} | ID: {c.id}"
-        )
+        lines.append(f"- {c.name} | Skills: {skills} | Estado: {c.status} | ID: {c.id}")
     return "\n".join(lines)
 
 
@@ -382,7 +376,16 @@ async def create_candidate(
         return f"Error al crear el candidato: {e}"
 
 
-tools = [create_position, list_positions, process_cv, create_candidate, list_candidates, update_candidate_status, create_pdf_report, create_pdf_text_report]
+tools = [
+    create_position,
+    list_positions,
+    process_cv,
+    create_candidate,
+    list_candidates,
+    update_candidate_status,
+    create_pdf_report,
+    create_pdf_text_report,
+]
 
 
 # Defensa multi-tenant: envolver tools para forzar tenant_id del ContextVar

@@ -32,13 +32,9 @@ async def _list_transactions_async(tenant_id: str, days_back: int) -> str:
     creds = await _get_psd2_credentials(tenant_id)
 
     if not creds:
-        lines = [
-            f"- {t['fecha']}: {t['concepto']} | {t['importe']:+.2f}€ [{t['categoria']}]"
-            for t in _DEMO_TXS
-        ]
-        return (
-            "⚠️ Banco no conectado — datos de demo.\n\n"
-            f"Transacciones (últimos {days_back} días):\n" + "\n".join(lines)
+        lines = [f"- {t['fecha']}: {t['concepto']} | {t['importe']:+.2f}€ [{t['categoria']}]" for t in _DEMO_TXS]
+        return "⚠️ Banco no conectado — datos de demo.\n\n" f"Transacciones (últimos {days_back} días):\n" + "\n".join(
+            lines
         )
 
     from app.integrations.psd2 import NordigenClient
@@ -58,13 +54,8 @@ async def _list_transactions_async(tenant_id: str, days_back: int) -> str:
                 todas_tx.extend(normalized)
 
                 for tx in normalized:
-                    if (
-                        tx["tipo"] == "cargo"
-                        and abs(tx["importe"]) > ALERT_THRESHOLDS["cargo_inusual_eur"]
-                    ):
-                        alertas.append(
-                            f"🔴 Cargo inusual: {abs(tx['importe']):.2f}€ — {tx['concepto']}"
-                        )
+                    if tx["tipo"] == "cargo" and abs(tx["importe"]) > ALERT_THRESHOLDS["cargo_inusual_eur"]:
+                        alertas.append(f"🔴 Cargo inusual: {abs(tx['importe']):.2f}€ — {tx['concepto']}")
             except Exception as e:
                 todas_tx.append({"concepto": f"Error en cuenta {acc_id}: {e}", "importe": 0})
     finally:
@@ -104,9 +95,7 @@ Devuelve JSON: [{"id": "...", "categoria": "...", "confianza": 0.9}, ...]"""
         f"- {t.get('fecha', 'N/A')}: {t['concepto']} | {t['importe']:+.2f}€ [{t.get('categoria', 'otros')}]"
         for t in todas_tx[:30]
     ]
-    result = f"Transacciones (últimos {days_back} días, {len(todas_tx)} total):\n" + "\n".join(
-        lines
-    )
+    result = f"Transacciones (últimos {days_back} días, {len(todas_tx)} total):\n" + "\n".join(lines)
     if alertas:
         result += "\n\nAlertas:\n" + "\n".join(alertas)
     return result
@@ -160,7 +149,5 @@ Máximo 200 palabras. NO inventes datos."""
         )
         return response.content
     except Exception as e:
-        logger.warning(
-            "Error generando resumen financiero con LLM: %s. Devolviendo datos sin procesar.", e
-        )
+        logger.warning("Error generando resumen financiero con LLM: %s. Devolviendo datos sin procesar.", e)
         return f"Datos disponibles:\n\n{balance_text}\n\n{tx_text}"

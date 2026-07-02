@@ -51,6 +51,7 @@ def _resolve_upload_dir(category: str = "") -> str:
         upload_dir = env
     elif os.name == "nt":
         from app.core.paths import app_data_dir
+
         upload_dir = str(app_data_dir("uploads"))
     else:
         upload_dir = os.path.abspath("uploads")
@@ -70,9 +71,7 @@ def _slugify(text: str) -> str:
 
 
 @tool
-async def create_pdf_report(
-    tenant_id: str, report: dict | str, category: str = "informes"
-) -> str:
+async def create_pdf_report(tenant_id: str, report: dict | str, category: str = "informes") -> str:
     """
     Genera un informe PDF profesional a partir de un objeto Report en JSON.
     Útil para entregar análisis profundos con KPIs, tablas, callouts y gráficos.
@@ -140,17 +139,13 @@ async def create_pdf_report(
 
     try:
         async with AsyncSessionLocal() as db:
-            t_res = await db.execute(
-                select(Tenant.name, Tenant.logo_path).where(Tenant.id == UUID(tenant_id))
-            )
+            t_res = await db.execute(select(Tenant.name, Tenant.logo_path).where(Tenant.id == UUID(tenant_id)))
             row = t_res.first()
             tenant_name = (row[0] if row else None) or ""
             logo_path = row[1] if row else None
 
         try:
-            pdf_bytes = render_agent_report(
-                report, tenant_name=tenant_name, logo_path=logo_path
-            )
+            pdf_bytes = render_agent_report(report, tenant_name=tenant_name, logo_path=logo_path)
         except RuntimeError as e:
             return f"Error generando PDF: {e}"
 
@@ -232,9 +227,7 @@ async def create_pdf_text_report(
 
     try:
         async with AsyncSessionLocal() as db:
-            t_res = await db.execute(
-                select(Tenant.name, Tenant.logo_path).where(Tenant.id == UUID(tenant_id))
-            )
+            t_res = await db.execute(select(Tenant.name, Tenant.logo_path).where(Tenant.id == UUID(tenant_id)))
             row = t_res.first()
             tenant_name = (row[0] if row else None) or ""
             logo_path = row[1] if row else None
@@ -262,6 +255,7 @@ async def create_pdf_text_report(
         # sobrescribimos ese archivo y reusamos la fila — el segundo
         # contenido del LLM suele ser más completo que el primero.
         from datetime import timedelta
+
         async with AsyncSessionLocal() as db:
             cutoff = datetime.now(UTC) - timedelta(seconds=90)
             recent = await db.execute(
@@ -281,6 +275,7 @@ async def create_pdf_text_report(
         # de create_document detecte que ya hay un documento de esta task y no
         # duplique con un .md.
         from app.core.tenant_context import get_current_task
+
         current_task_id = get_current_task()
         task_uuid = UUID(current_task_id) if current_task_id else None
 
@@ -291,14 +286,11 @@ async def create_pdf_text_report(
             async with AsyncSessionLocal() as db:
                 # refresh tamaño/timestamp + task_id si aún no estaba seteado
                 from sqlalchemy import update
+
                 values = {"file_size": len(pdf_bytes), "processed_at": datetime.now(UTC)}
                 if task_uuid is not None and existing.task_id is None:
                     values["task_id"] = task_uuid
-                await db.execute(
-                    update(TenantDocument)
-                    .where(TenantDocument.id == existing.id)
-                    .values(**values)
-                )
+                await db.execute(update(TenantDocument).where(TenantDocument.id == existing.id).values(**values))
                 await db.commit()
             return (
                 f"Informe PDF '{file_name}' actualizado (dedup). "

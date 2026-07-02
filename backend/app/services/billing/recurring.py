@@ -1,4 +1,5 @@
 """Backward-compatibility shim — implementation in queries.py / commands.py."""
+
 from app.services.billing.commands import (
     create_recurring,
     delete_recurring,

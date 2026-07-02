@@ -51,9 +51,7 @@ async def get_budget_status(employee_id: str, db: AsyncSession) -> dict | None:
         }
 
     limit = float(employee.budget_limit_usd)
-    first_of_month = datetime.now(UTC).replace(
-        day=1, hour=0, minute=0, second=0, microsecond=0
-    )
+    first_of_month = datetime.now(UTC).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     monthly_spend_result = await db.execute(
         select(func.sum(TokenLedger.cost_usd)).where(
             TokenLedger.employee_id == emp_uuid,
@@ -90,9 +88,7 @@ async def check_agent_budget(employee_id: str, db: AsyncSession) -> bool:
         return True
 
     # exhausted → pausar
-    await db.execute(
-        update(AIEmployee).where(AIEmployee.id == uuid.UUID(str(employee_id))).values(status="paused")
-    )
+    await db.execute(update(AIEmployee).where(AIEmployee.id == uuid.UUID(str(employee_id))).values(status="paused"))
     await db.commit()
     logger.warning(
         "Empleado '%s' pausado por presupuesto agotado (%.4f$ / %.2f$)",
@@ -117,9 +113,7 @@ async def check_tenant_budget(tenant_id: str, db: AsyncSession) -> bool:
     if not limit:  # None o 0 → desactivado
         return True
 
-    first_of_month = datetime.now(UTC).replace(
-        day=1, hour=0, minute=0, second=0, microsecond=0
-    )
+    first_of_month = datetime.now(UTC).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     res = await db.execute(
         select(func.sum(TokenLedger.cost_usd)).where(
             TokenLedger.tenant_id == uuid.UUID(str(tenant_id)),
@@ -130,7 +124,9 @@ async def check_tenant_budget(tenant_id: str, db: AsyncSession) -> bool:
     if spend >= float(limit):
         logger.warning(
             "[BUDGET] Tenant %s superó el tope mensual de IA (%.4f$ / %.2f$)",
-            tenant_id, spend, float(limit),
+            tenant_id,
+            spend,
+            float(limit),
         )
         return False
     return True

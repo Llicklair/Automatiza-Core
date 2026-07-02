@@ -42,16 +42,15 @@ async def get_my_telemetry_status(
     db: AsyncSession = Depends(get_db),
 ) -> TelemetryStatusResponse:
     """Devuelve el estado de consentimiento de telemetría del tenant actual."""
-    result = await db.execute(
-        select(TelemetryOptOut).where(TelemetryOptOut.tenant_id == user.tenant_id)
-    )
+    result = await db.execute(select(TelemetryOptOut).where(TelemetryOptOut.tenant_id == user.tenant_id))
     opt_out = result.scalar_one_or_none()
     return TelemetryStatusResponse(
         tenant_id=str(user.tenant_id),
         opted_out=opt_out is not None,
         opted_out_at=opt_out.created_at if opt_out else None,
         note=(
-            "Telemetría desactivada: no se envían informes técnicos al VPS." if opt_out
+            "Telemetría desactivada: no se envían informes técnicos al VPS."
+            if opt_out
             else "Telemetría activada en modo per-incidente: cada envío requiere tu confirmación."
         ),
     )
@@ -74,9 +73,7 @@ async def revoke_my_telemetry(
 
     Cumplimiento RGPD Art. 17 (derecho de supresión).
     """
-    result = await db.execute(
-        select(TelemetryOptOut).where(TelemetryOptOut.tenant_id == user.tenant_id)
-    )
+    result = await db.execute(select(TelemetryOptOut).where(TelemetryOptOut.tenant_id == user.tenant_id))
     opt_out = result.scalar_one_or_none()
     if opt_out is None:
         opt_out = TelemetryOptOut(

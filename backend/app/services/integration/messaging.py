@@ -115,9 +115,7 @@ async def handle_link_command(
             )
             return
 
-    await send_reply(
-        chat_id, "Token de vinculación inválido o expirado. Genera uno nuevo desde el panel web."
-    )
+    await send_reply(chat_id, "Token de vinculación inválido o expirado. Genera uno nuevo desde el panel web.")
 
 
 async def send_typing_indicator(chat_id: int):

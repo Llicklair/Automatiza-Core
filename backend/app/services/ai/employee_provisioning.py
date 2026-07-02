@@ -246,9 +246,7 @@ async def provision_employee_bg(
             # skills se DUPLICAN (el compilador de tools las cuenta todas).
             from sqlalchemy import delete as sa_delete
 
-            await session.execute(
-                sa_delete(AgentSkill).where(AgentSkill.employee_id == emp.id)
-            )
+            await session.execute(sa_delete(AgentSkill).where(AgentSkill.employee_id == emp.id))
             for tool_module in assigned_skills:
                 session.add(AgentSkill(employee_id=emp.id, tool_module=tool_module))
 

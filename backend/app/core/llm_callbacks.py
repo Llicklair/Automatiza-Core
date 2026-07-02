@@ -75,9 +75,7 @@ class UsageTrackingCallback(BaseCallbackHandler):
                 )
                 self.total_tokens_in += tokens_in
                 self.total_tokens_out += tokens_out
-                self.total_cost_usd += llm_usage_tracker.estimate_cost(
-                    self._current_provider, tokens_in, tokens_out
-                )
+                self.total_cost_usd += llm_usage_tracker.estimate_cost(self._current_provider, tokens_in, tokens_out)
         except Exception as exc:
             _log.debug("UsageTrackingCallback.on_llm_end error: %s", exc)
 

@@ -24,9 +24,7 @@ from app.services.email.service import send_email_smtp
 logger = logging.getLogger(__name__)
 
 
-async def load_attachments(
-    tenant_id: str, attachment_ids: list[str] | None
-) -> list[tuple[str, bytes]]:
+async def load_attachments(tenant_id: str, attachment_ids: list[str] | None) -> list[tuple[str, bytes]]:
     """Carga adjuntos (nombre, bytes) desde TenantDocument por sus IDs."""
     if not attachment_ids:
         return []
@@ -42,23 +40,15 @@ async def load_attachments(
                 )
                 row = res.one_or_none()
                 if not row:
-                    logger.warning(
-                        "Adjunto doc_id=%s no encontrado para tenant=%s", doc_id, tenant_id
-                    )
+                    logger.warning("Adjunto doc_id=%s no encontrado para tenant=%s", doc_id, tenant_id)
                     continue
                 if not row.file_path or not os.path.exists(row.file_path):
-                    logger.warning(
-                        "Adjunto doc_id=%s con file_path inválido: %s", doc_id, row.file_path
-                    )
+                    logger.warning("Adjunto doc_id=%s con file_path inválido: %s", doc_id, row.file_path)
                     continue
                 _data = await asyncio.to_thread(Path(row.file_path).read_bytes)
-                attachments.append(
-                    (row.file_name or os.path.basename(row.file_path), _data)
-                )
+                attachments.append((row.file_name or os.path.basename(row.file_path), _data))
             except Exception as _e:
-                logger.warning(
-                    "Error leyendo adjunto doc_id=%s tenant=%s: %s", doc_id, tenant_id, _e
-                )
+                logger.warning("Error leyendo adjunto doc_id=%s tenant=%s: %s", doc_id, tenant_id, _e)
                 continue
     return attachments
 
@@ -108,9 +98,7 @@ async def send_email(
 
             client = GmailClient(gmail_token)
             try:
-                await client.send_message(
-                    to=to, subject=subject, body=body, attachments=attachments or None
-                )
+                await client.send_message(to=to, subject=subject, body=body, attachments=attachments or None)
                 return f"Correo enviado via Gmail{attach_msg}\nAsunto: {subject}\nPara: {to}"
             finally:
                 await client.close()
@@ -119,9 +107,7 @@ async def send_email(
 
             client = OutlookClient(outlook_token)
             try:
-                await client.send_message(
-                    to=to, subject=subject, body=body, attachments=attachments or None
-                )
+                await client.send_message(to=to, subject=subject, body=body, attachments=attachments or None)
                 return f"Correo enviado via Outlook{attach_msg}\nAsunto: {subject}\nPara: {to}"
             finally:
                 await client.close()

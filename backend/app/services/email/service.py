@@ -96,9 +96,7 @@ def _extract_body(msg: email.message.Message) -> str:
                     body = part.get_payload(decode=True).decode(charset, errors="replace")
                     break
                 except Exception:
-                    _logger.debug(
-                        "Failed to decode text/plain part (charset=%s)", charset, exc_info=True
-                    )
+                    _logger.debug("Failed to decode text/plain part (charset=%s)", charset, exc_info=True)
             elif content_type == "text/html" and not body:
                 try:
                     charset = part.get_content_charset() or "utf-8"
@@ -108,9 +106,7 @@ def _extract_body(msg: email.message.Message) -> str:
 
                     body = re.sub(r"<[^>]+>", " ", raw_html).strip()
                 except Exception:
-                    _logger.debug(
-                        "Failed to decode text/html part (charset=%s)", charset, exc_info=True
-                    )
+                    _logger.debug("Failed to decode text/html part (charset=%s)", charset, exc_info=True)
     else:
         try:
             charset = msg.get_content_charset() or "utf-8"
@@ -123,9 +119,7 @@ def _extract_body(msg: email.message.Message) -> str:
 # ─── Lectura de correos vía IMAP ──────────────────────────────────────────────
 
 
-def read_inbox(
-    credentials: EmailCredentials, max_results: int = 10, folder: str = "INBOX"
-) -> list[EmailMessage]:
+def read_inbox(credentials: EmailCredentials, max_results: int = 10, folder: str = "INBOX") -> list[EmailMessage]:
     """
     Lee los correos más recientes de la bandeja de entrada vía IMAP SSL.
     Devuelve lista de EmailMessage ordenados del más reciente al más antiguo.
@@ -134,9 +128,7 @@ def read_inbox(
 
     try:
         ctx = ssl.create_default_context()
-        with imaplib.IMAP4_SSL(
-            credentials.imap_host, credentials.imap_port, ssl_context=ctx
-        ) as imap:
+        with imaplib.IMAP4_SSL(credentials.imap_host, credentials.imap_port, ssl_context=ctx) as imap:
             imap.login(credentials.email_address, credentials.password)
             imap.select(folder, readonly=True)
 
@@ -188,9 +180,7 @@ def read_unread(credentials: EmailCredentials, max_results: int = 10) -> list[Em
     messages: list[EmailMessage] = []
     try:
         ctx = ssl.create_default_context()
-        with imaplib.IMAP4_SSL(
-            credentials.imap_host, credentials.imap_port, ssl_context=ctx
-        ) as imap:
+        with imaplib.IMAP4_SSL(credentials.imap_host, credentials.imap_port, ssl_context=ctx) as imap:
             imap.login(credentials.email_address, credentials.password)
             imap.select("INBOX", readonly=True)
 
@@ -323,9 +313,7 @@ def test_imap_connection(credentials: EmailCredentials) -> bool:
     """Verifica que las credenciales IMAP son correctas. Devuelve True si OK."""
     try:
         ctx = ssl.create_default_context()
-        with imaplib.IMAP4_SSL(
-            credentials.imap_host, credentials.imap_port, ssl_context=ctx
-        ) as imap:
+        with imaplib.IMAP4_SSL(credentials.imap_host, credentials.imap_port, ssl_context=ctx) as imap:
             imap.login(credentials.email_address, credentials.password)
             return True
     except Exception:

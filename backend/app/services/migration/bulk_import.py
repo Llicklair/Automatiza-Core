@@ -172,15 +172,11 @@ async def _resolve_employee(db, tenant_id, row):
     name = (row.get("empleado") or row.get("nombre") or row.get("name") or "").strip() or None
     emp = None
     if nif:
-        r = await db.execute(
-            select(Employee).where(Employee.tenant_id == tenant_id, Employee.nif == nif)
-        )
+        r = await db.execute(select(Employee).where(Employee.tenant_id == tenant_id, Employee.nif == nif))
         emp = r.scalars().first()
     if emp is None and name:
         r = await db.execute(
-            select(Employee).where(
-                Employee.tenant_id == tenant_id, func.lower(Employee.name) == name.lower()
-            )
+            select(Employee).where(Employee.tenant_id == tenant_id, func.lower(Employee.name) == name.lower())
         )
         emp = r.scalars().first()
     return emp
@@ -234,20 +230,20 @@ async def import_payrolls_rows(
         base = _coerce(row.get("salario_base") or row.get("base_salary") or "", float)
         net = _coerce(row.get("liquido") or row.get("neto") or row.get("net_salary") or "", float)
         if base is None or net is None:
-            result.errors.append(
-                {"row": i + 2, "reason": "Faltan importes obligatorios (salario_base y liquido/neto)"}
-            )
+            result.errors.append({"row": i + 2, "reason": "Faltan importes obligatorios (salario_base y liquido/neto)"})
             result.skipped += 1
             continue
 
         # Idempotencia: una nómina por (empleado, período).
         dup = await db.execute(
-            select(Payroll.id).where(
+            select(Payroll.id)
+            .where(
                 Payroll.tenant_id == tenant_id,
                 Payroll.employee_id == emp.id,
                 Payroll.period_start == p_start,
                 Payroll.period_end == p_end,
-            ).limit(1)
+            )
+            .limit(1)
         )
         if dup.scalar_one_or_none() is not None:
             result.skipped += 1
@@ -282,15 +278,11 @@ async def _resolve_client(db, tenant_id, nif, name):
     """Localiza un Client (cliente o proveedor) por NIF o nombre exacto."""
     client = None
     if nif:
-        r = await db.execute(
-            select(Client).where(Client.tenant_id == tenant_id, Client.nif == nif)
-        )
+        r = await db.execute(select(Client).where(Client.tenant_id == tenant_id, Client.nif == nif))
         client = r.scalars().first()
     if client is None and name:
         r = await db.execute(
-            select(Client).where(
-                Client.tenant_id == tenant_id, func.lower(Client.name) == name.lower()
-            )
+            select(Client).where(Client.tenant_id == tenant_id, func.lower(Client.name) == name.lower())
         )
         client = r.scalars().first()
     return client
@@ -330,11 +322,16 @@ async def import_invoices_rows(
             itype = "issued"
 
         nif = (row.get("nif") or row.get("nif_cliente") or row.get("nif_proveedor") or "").strip() or None
-        name = (row.get("cliente") or row.get("proveedor") or row.get("nombre") or row.get("name") or "").strip() or None
+        name = (
+            row.get("cliente") or row.get("proveedor") or row.get("nombre") or row.get("name") or ""
+        ).strip() or None
         party = await _resolve_client(db, tenant_id, nif, name)
         if party is None:
             result.errors.append(
-                {"row": i + 2, "reason": f"Cliente/proveedor no encontrado para '{name or nif or '?'}' (impórtalo antes)"}
+                {
+                    "row": i + 2,
+                    "reason": f"Cliente/proveedor no encontrado para '{name or nif or '?'}' (impórtalo antes)",
+                }
             )
             result.skipped += 1
             continue
@@ -416,14 +413,11 @@ async def import_bank_transactions_rows(
     for i, row in enumerate(rows):
         d = _parse_dt(row.get("fecha") or row.get("date"))
         desc = (
-            row.get("concepto") or row.get("descripcion") or row.get("descripción")
-            or row.get("description") or ""
+            row.get("concepto") or row.get("descripcion") or row.get("descripción") or row.get("description") or ""
         ).strip()
         amount = _coerce(row.get("importe") or row.get("amount") or "", float)
         if d is None or not desc or amount is None:
-            result.errors.append(
-                {"row": i + 2, "reason": "Faltan campos obligatorios (fecha, concepto, importe)"}
-            )
+            result.errors.append({"row": i + 2, "reason": "Faltan campos obligatorios (fecha, concepto, importe)"})
             result.skipped += 1
             continue
 

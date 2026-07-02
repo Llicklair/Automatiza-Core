@@ -52,8 +52,14 @@ async def create_expense(
     current_user: User = Depends(get_current_user),
 ):
     exp = await svc.create_expense(
-        db, current_user.tenant_id, payload.employee_id,
-        payload.amount, payload.category, payload.description, payload.date, payload.notes,
+        db,
+        current_user.tenant_id,
+        payload.employee_id,
+        payload.amount,
+        payload.category,
+        payload.description,
+        payload.date,
+        payload.notes,
     )
     return _expense_row(exp)
 
@@ -168,6 +174,7 @@ async def download_expense_receipt(
     if not __import__("os").path.exists(path):
         raise HTTPException(status_code=404, detail="Archivo no encontrado")
     import mimetypes
+
     mime, _ = mimetypes.guess_type(filename)
     content = await asyncio.to_thread(Path(path).read_bytes)
     return Response(

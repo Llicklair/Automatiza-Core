@@ -4,6 +4,7 @@ El LLM entrevista al usuario una pregunta a la vez para reunir los datos del
 contrato elegido y, al terminar, redacta el contrato profesional español
 completo (sin placeholders) precedido por el marcador `=== CONTRATO FINALIZADO ===`.
 """
+
 from __future__ import annotations
 
 import logging

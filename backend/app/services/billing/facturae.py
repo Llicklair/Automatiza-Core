@@ -58,9 +58,7 @@ def _build_party(
     _sub(addr, "CountryCode", "ESP")
 
 
-async def generate_facturae_xml(
-    invoice_id: UUID, tenant_id: UUID, db: AsyncSession
-) -> tuple[bytes, str]:
+async def generate_facturae_xml(invoice_id: UUID, tenant_id: UUID, db: AsyncSession) -> tuple[bytes, str]:
     """Genera FacturaE 3.2.2 XML para una factura emitida.
     Devuelve (xml_bytes, filename).
     """
@@ -105,15 +103,18 @@ async def generate_facturae_xml(
         }
 
     # ── Root element ──────────────────────────────────────────────────────────
-    root = ET.Element("Facturae", {
-        "xmlns": "http://www.facturae.es/Facturae/2009/v3.2/Facturae",
-        "xmlns:ds": "http://www.w3.org/2000/09/xmldsig#",
-        "xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
-        "xsi:schemaLocation": (
-            "http://www.facturae.es/Facturae/2009/v3.2/Facturae "
-            "http://www.facturae.es/Facturae/2009/v3.2/Facturae/Facturaev3_2_2.xsd"
-        ),
-    })
+    root = ET.Element(
+        "Facturae",
+        {
+            "xmlns": "http://www.facturae.es/Facturae/2009/v3.2/Facturae",
+            "xmlns:ds": "http://www.w3.org/2000/09/xmldsig#",
+            "xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+            "xsi:schemaLocation": (
+                "http://www.facturae.es/Facturae/2009/v3.2/Facturae "
+                "http://www.facturae.es/Facturae/2009/v3.2/Facturae/Facturaev3_2_2.xsd"
+            ),
+        },
+    )
 
     # ── FileHeader ────────────────────────────────────────────────────────────
     fh = _sub(root, "FileHeader")
@@ -132,7 +133,8 @@ async def generate_facturae_xml(
     parties = _sub(root, "Parties")
     _build_party(parties, "SellerParty", tenant.nif or "", tenant.name, tenant.address or "", "", "")
     _build_party(
-        parties, "BuyerParty",
+        parties,
+        "BuyerParty",
         client.nif if client else "",
         client.name if client else "",
         client.address if client else "",
@@ -211,13 +213,9 @@ async def generate_facturae_xml(
     return xml_bytes, filename
 
 
-async def mark_verifactu_sent(
-    invoice_id: UUID, tenant_id: UUID, db: AsyncSession
-) -> dict:
+async def mark_verifactu_sent(invoice_id: UUID, tenant_id: UUID, db: AsyncSession) -> dict:
     """Simula el envío a AEAT Verifactu (requiere certificado real en producción)."""
-    result = await db.execute(
-        select(Invoice).where(Invoice.id == invoice_id, Invoice.tenant_id == tenant_id)
-    )
+    result = await db.execute(select(Invoice).where(Invoice.id == invoice_id, Invoice.tenant_id == tenant_id))
     invoice = result.scalar_one_or_none()
     if not invoice:
         raise ValueError("Factura no encontrada")

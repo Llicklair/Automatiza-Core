@@ -29,9 +29,7 @@ async def _check_balances_async(tenant_id: str) -> str:
         lines = [f"- {s['nombre']}: {s['saldo']:.2f}€ ({s['iban']})" for s in _DEMO_SALDOS]
         return (
             "⚠️ Banco no conectado — mostrando datos de demo.\n\n"
-            "Saldos:\n"
-            + "\n".join(lines)
-            + "\n\nConecta tu banco desde Integraciones → PSD2 para ver datos reales."
+            "Saldos:\n" + "\n".join(lines) + "\n\nConecta tu banco desde Integraciones → PSD2 para ver datos reales."
         )
 
     from app.integrations.psd2 import NordigenClient
@@ -51,15 +49,14 @@ async def _check_balances_async(tenant_id: str) -> str:
                     balances[0] if balances else {},
                 )
                 importe = float(saldo_disp.get("balanceAmount", {}).get("amount", 0))
-                saldos.append(
-                    f"- {details.get('name', 'Cuenta')} ({details.get('iban', '')}): {importe:.2f}€"
-                )
+                saldos.append(f"- {details.get('name', 'Cuenta')} ({details.get('iban', '')}): {importe:.2f}€")
                 if importe < ALERT_THRESHOLDS["saldo_minimo_eur"]:
                     alertas.append(f"⚠️ Saldo bajo: {importe:.2f}€ en {details.get('iban', acc_id)}")
             except Exception as e:
                 logger.exception(
                     "[banking] error obteniendo saldos cuenta acc_id=%s tenant=%s",
-                    acc_id, getattr(tenant_id, "hex", tenant_id),
+                    acc_id,
+                    getattr(tenant_id, "hex", tenant_id),
                 )
                 saldos.append(f"- Cuenta {acc_id}: Error ({type(e).__name__}: {e})")
     finally:

@@ -22,8 +22,17 @@ _logger = logging.getLogger(__name__)
 # Categorías visibles en la UI (frontend/.../documentos/page.tsx FOLDERS).
 # Cualquier otra categoría → mapea a "otros" (catch-all del UI).
 _VALID_CATEGORIES = {
-    "facturas", "bancos", "nominas", "fiscal", "crm", "excels",
-    "informes", "correos", "automatizaciones", "rrhh", "otros",
+    "facturas",
+    "bancos",
+    "nominas",
+    "fiscal",
+    "crm",
+    "excels",
+    "informes",
+    "correos",
+    "automatizaciones",
+    "rrhh",
+    "otros",
 }
 
 
@@ -36,9 +45,7 @@ def _normalize_category(category: str | None) -> str:
 
 
 @tool
-async def create_document(
-    tenant_id: str, file_name: str, content: str, category: str = "otros"
-) -> str:
+async def create_document(tenant_id: str, file_name: str, content: str, category: str = "otros") -> str:
     """
     Crea un nuevo documento de texto (.txt, .csv, .md) en el Gestor Documental (Escanear).
     Util para que el agente genere informes, exporte datos, o guarde resúmenes.
@@ -108,9 +115,7 @@ async def create_document(
 
 
 @tool
-async def list_tenant_documents(
-    tenant_id: str, category: str = "all", limit: int = 50, offset: int = 0
-) -> str:
+async def list_tenant_documents(tenant_id: str, category: str = "all", limit: int = 50, offset: int = 0) -> str:
     """
     Lista los documentos del tenant en el Gestor Documental, opcionalmente
     filtrados por categoria. Util antes de modificar un documento — devuelve
@@ -132,9 +137,8 @@ async def list_tenant_documents(
         offset = max(0, int(offset))
         async with AsyncSessionLocal() as db:
             from sqlalchemy import func as _f
-            count_q = select(_f.count()).select_from(TenantDocument).where(
-                TenantDocument.tenant_id == UUID(tenant_id)
-            )
+
+            count_q = select(_f.count()).select_from(TenantDocument).where(TenantDocument.tenant_id == UUID(tenant_id))
             if category != "all":
                 count_q = count_q.where(TenantDocument.category == category)
             total = (await db.execute(count_q)).scalar() or 0
@@ -175,9 +179,7 @@ async def list_tenant_documents(
 
 
 @tool
-async def update_existing_document(
-    tenant_id: str, document_id: str, new_content: str, append: bool = False
-) -> str:
+async def update_existing_document(tenant_id: str, document_id: str, new_content: str, append: bool = False) -> str:
     """
     Modifica el contenido de un documento existente en el Escanear.
     Solo funciona con documentos de texto (TXT). Los PDFs no se pueden editar directamente.
@@ -267,15 +269,25 @@ async def get_document_content(tenant_id: str, document_id: str) -> str:
             # Extensiones binarias: leer como utf-8 garantiza UnicodeDecodeError.
             # Saltamos directo a parsed_content (que ya contiene el texto extraído
             # por OCR/parser cuando el documento se subió).
-            _BINARY_EXTS = (".pdf", ".jpg", ".jpeg", ".png", ".gif", ".webp",
-                            ".xlsx", ".xls", ".docx", ".doc", ".pptx", ".zip")
+            _BINARY_EXTS = (
+                ".pdf",
+                ".jpg",
+                ".jpeg",
+                ".png",
+                ".gif",
+                ".webp",
+                ".xlsx",
+                ".xls",
+                ".docx",
+                ".doc",
+                ".pptx",
+                ".zip",
+            )
             _is_binary = doc.file_path and doc.file_path.lower().endswith(_BINARY_EXTS)
 
             if doc.file_path and os.path.exists(doc.file_path) and not _is_binary:
                 try:
-                    content = await asyncio.to_thread(
-                        Path(doc.file_path).read_text, encoding="utf-8"
-                    )
+                    content = await asyncio.to_thread(Path(doc.file_path).read_text, encoding="utf-8")
                     return f"Contenido de '{doc.file_name}':\n\n{content[:3000]}{'...(truncado)' if len(content) > 3000 else ''}"
                 except UnicodeDecodeError:
                     # Archivo no era texto pese a extensión "segura". Fallback silencioso.

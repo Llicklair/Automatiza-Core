@@ -36,18 +36,14 @@ class Workflow(Base):
     ui_nodes = Column(JSONB, default=list)
     ui_edges = Column(JSONB, default=list)
 
-    execution_mode = Column(
-        String(20), default="reasoning", nullable=False, server_default="reasoning"
-    )
+    execution_mode = Column(String(20), default="reasoning", nullable=False, server_default="reasoning")
     compiled_steps = Column(JSONB, nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     tenant = relationship("Tenant")
-    executions = relationship(
-        "WorkflowExecution", back_populates="workflow", cascade="all, delete-orphan"
-    )
+    executions = relationship("WorkflowExecution", back_populates="workflow", cascade="all, delete-orphan")
 
 
 class WorkflowExecution(Base):
