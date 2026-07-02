@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { hrDocuments } from "@/lib/api/hr_documents";
 import type { HRDocument } from "@/lib/api/hr_documents";
@@ -51,7 +52,15 @@ export function useHRDocumentos() {
     const [toast, setToast]           = useState<string | null>(null);
     const [form, setForm]             = useState(() => ({ doc_type: "contract", employee_name: "", instructions: t(DOC_TEMPLATE_KEYS["contract"]) }));
     const [nlText, setNlText]         = useState("");
-    const [nlGenerating, setNlGenerating] = useState(false);
+    const searchParams = useSearchParams();
+    // Permite llegar pre-filtrado desde la ficha de empleado (?employee=<nombre>).
+    const [employeeFilter, setEmployeeFilter] = useState(searchParams.get("employee") ?? "");
+
+    const filteredDocs = useMemo(() => {
+        const term = employeeFilter.trim().toLowerCase();
+        if (!term) return docs;
+        return docs.filter(d => (d.employee_name ?? "").toLowerCase().includes(term));
+    }, [docs, employeeFilter]);
 
     const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3500); };
 
@@ -62,21 +71,19 @@ export function useHRDocumentos() {
 
     useEffect(() => { setLoading(true); loadDocs().finally(() => setLoading(false)); }, [loadDocs]);
 
-    const handleNLGenerate = async () => {
+    // La barra NL no genera directo: interpreta y rellena el formulario para que
+    // el usuario confirme (parseNLIntent es heurístico y puede equivocarse).
+    const handleNLGenerate = () => {
         if (!nlText.trim()) return;
-        setNlGenerating(true); setError(null);
-        try {
-            const parsed = parseNLIntent(nlText.trim());
-            const doc = await hrDocuments.generate({
-                doc_type: parsed.doc_type,
-                employee_name: parsed.employee_name || undefined,
-                instructions: parsed.instructions || nlText.trim(),
-            });
-            setDocs(prev => [doc, ...prev]);
-            setNlText("");
-            showToast(t("toasts.draftGenerated"));
-        } catch (e: any) { setError(e?.message ?? t("documentos.generateError")); }
-        finally { setNlGenerating(false); }
+        setError(null);
+        const parsed = parseNLIntent(nlText.trim());
+        setForm({
+            doc_type: parsed.doc_type,
+            employee_name: parsed.employee_name,
+            instructions: parsed.instructions || nlText.trim(),
+        });
+        setNlText("");
+        showToast(t("documentos.nlFilledToast"));
     };
 
     const handleGenerate = async () => {
@@ -106,9 +113,10 @@ export function useHRDocumentos() {
     };
 
     return {
-        docs, loading, generating, error, toast,
+        docs: filteredDocs, loading, generating, error, toast,
         form, setForm,
-        nlText, setNlText, nlGenerating,
+        nlText, setNlText,
+        employeeFilter, setEmployeeFilter,
         handleNLGenerate, handleGenerate, handleApprove, handleDelete,
     };
 }

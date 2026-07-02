@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { api, Activity, Client } from "@/lib/api";
 import { useToastStore } from "@/stores/toast";
@@ -16,7 +17,9 @@ export function useActividades() {
     const [isLoading, setIsLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
 
-    const [selectedClient, setSelectedClient] = useState("");
+    const searchParams = useSearchParams();
+    // Permite llegar pre-filtrado desde la ficha de cliente (?client=<id>).
+    const [selectedClient, setSelectedClient] = useState(searchParams.get("client") ?? "");
     const [type, setType] = useState("note");
     const [description, setDescription] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);

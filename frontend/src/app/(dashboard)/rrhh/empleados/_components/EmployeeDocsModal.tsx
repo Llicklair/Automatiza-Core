@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useFormat } from "@/hooks/useFormat";
 import { api } from "@/lib/api";
@@ -125,6 +126,17 @@ export function EmployeeDocsModal({ employee, onClose }: { employee: Employee; o
                             </div>
                         </div>
                     ))}
+                </div>
+
+                {/* Cruce con Gestoría Documental (documentos generados con IA) */}
+                <div className="px-5 py-3 border-t border-border shrink-0">
+                    <Link
+                        href={`/rrhh/documentos?employee=${encodeURIComponent(employee.name)}`}
+                        onClick={onClose}
+                        className="flex items-center gap-1.5 text-xs text-violet-400 hover:underline"
+                    >
+                        <FileText className="w-3.5 h-3.5" /> {t("empleados.docsModal.aiDocsLink")}
+                    </Link>
                 </div>
             </div>
         </div>

@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useFormat } from "@/hooks/useFormat";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { api, type Employee, type Payroll, type PayrollCalculation } from "@/lib/api";
+import { waitForTask, TaskTimeoutError } from "@/lib/api/tasks";
 import { logError } from "@/lib/logger";
 import { useNotificationStore } from "@/stores/notifications";
 
@@ -120,14 +121,25 @@ export function usePayrolls() {
         const promptMonth = now.toLocaleString("es", { month: "long" });
         const year = now.getFullYear();
         try {
-            await api.tasks.create(
+            const task = await api.tasks.create(
                 "hr",
                 `Genera todas las nóminas del mes de ${promptMonth} de ${year} para todos los empleados activos del tenant. Créalas en estado DRAFT para revisión humana.`
             );
             showToast(t("toasts.agentLaunched", { month: promptMonth, year }), "ok");
-            setTimeout(() => loadData(), 6000);
+            const finished = await waitForTask(task.id);
+            if (finished.status === "failed") {
+                showToast(t("toasts.errorPrefix", { msg: finished.error_message || t("toasts.agentLaunchError") }), "err");
+            } else {
+                showToast(t("toasts.payrollsGenerated"), "ok");
+            }
+            await loadData();
         } catch (e: any) {
-            showToast(t("toasts.errorPrefix", { msg: e.message || t("toasts.agentLaunchError") }), "err");
+            if (e instanceof TaskTimeoutError) {
+                showToast(t("toasts.payrollsStillRunning"), "ok");
+                await loadData();
+            } else {
+                showToast(t("toasts.errorPrefix", { msg: e.message || t("toasts.agentLaunchError") }), "err");
+            }
         } finally {
             setGeneratingPayrolls(false);
         }

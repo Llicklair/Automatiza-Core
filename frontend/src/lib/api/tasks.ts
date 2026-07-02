@@ -63,6 +63,35 @@ export const tasks = {
     cleanup: () => request<{ deleted: number }>("/api/v1/tasks/cleanup", { method: "DELETE" }),
 };
 
+export const TERMINAL_TASK_STATUSES = new Set(["done", "failed", "awaiting_approval"]);
+
+export class TaskTimeoutError extends Error {
+    constructor(public taskId: string, timeoutMs: number) {
+        super(`Task ${taskId} still running after ${timeoutMs / 1000}s`);
+        this.name = "TaskTimeoutError";
+    }
+}
+
+/**
+ * Espera (polling) a que una task alcance estado terminal. Lanza
+ * TaskTimeoutError si sigue en curso al agotar el timeout — la task NO se
+ * cancela, sigue visible en /mi-equipo?tab=tareas.
+ */
+export async function waitForTask(
+    taskId: string,
+    opts: { timeoutMs?: number; intervalMs?: number } = {},
+): Promise<Task> {
+    const { timeoutMs = 120_000, intervalMs = 2_000 } = opts;
+    const start = Date.now();
+    let task = await tasks.get(taskId);
+    while (!TERMINAL_TASK_STATUSES.has(task.status)) {
+        if (Date.now() - start > timeoutMs) throw new TaskTimeoutError(taskId, timeoutMs);
+        await new Promise(r => setTimeout(r, intervalMs));
+        task = await tasks.get(taskId);
+    }
+    return task;
+}
+
 export const approvals = {
     list: () => request<Approval[]>("/api/v1/approvals"),
     decide: (id: string, approved: boolean, rejection_reason?: string) =>
