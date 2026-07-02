@@ -1009,7 +1009,8 @@
       "title": "Gestoría Documental",
       "description": "Genera documentos laborales con IA. Los borradores requieren aprobación antes de usar.",
       "nlPlaceholder": "Ej: quiero un contrato para Laura Martínez de contratación indefinida",
-      "nlPrepare": "Preparar",
+      "nlPrepare": "Rellenar formulario",
+      "nlHint": "Rellena los campos de abajo con lo que escribas; revísalos y pulsa «Generar borrador».",
       "filterByEmployee": "Filtrar por empleado…",
       "nlFilledToast": "Interpretación cargada en el formulario. Revísala y pulsa «Generar borrador».",
       "generating": "Generando…",
@@ -2207,7 +2208,7 @@
       "viewInbox": "Ver bandeja de agentes →"
     },
     "chat": {
-      "assistantTitle": "Asistente IA",
+      "assistantTitle": "Asistente IA — pregunta rápida",
       "clearConversation": "Limpiar conversación",
       "stopAria": "Detener generación del agente",
       "stop": "Detener",

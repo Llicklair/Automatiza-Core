@@ -52,6 +52,7 @@ export default function HRDocumentosPage() {
                                 {t("documentos.nlPrepare")}
                             </Button>
                         </div>
+                        <p className="text-[11px] text-muted-foreground">{t("documentos.nlHint")}</p>
                         <div className="space-y-1">
                             <label className="text-xs text-muted-foreground">{t("documentos.docType")}</label>
                             <Select
