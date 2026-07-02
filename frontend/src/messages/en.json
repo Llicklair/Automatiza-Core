@@ -1009,7 +1009,8 @@
       "title": "Document Management",
       "description": "Generate employment documents with AI. Drafts require approval before use.",
       "nlPlaceholder": "E.g.: I need a permanent contract for Laura Martínez",
-      "nlPrepare": "Prepare",
+      "nlPrepare": "Fill in the form",
+      "nlHint": "Fills in the fields below from what you write; review them and click \"Generate draft\".",
       "filterByEmployee": "Filter by employee…",
       "nlFilledToast": "Interpretation loaded into the form. Review it and click \"Generate draft\".",
       "generating": "Generating…",
@@ -2207,7 +2208,7 @@
       "viewInbox": "View agent inbox →"
     },
     "chat": {
-      "assistantTitle": "AI Assistant",
+      "assistantTitle": "AI Assistant — quick question",
       "clearConversation": "Clear conversation",
       "stopAria": "Stop agent generation",
       "stop": "Stop",
