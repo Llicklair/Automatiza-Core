@@ -2156,6 +2156,9 @@
     },
     "historial": {
       "statusGenerated": "Generated",
+      "statusCancelled": "Cancelled",
+      "actionCancel": "Cancel",
+      "cancelConfirm": "Cancel remittance {id}? It can no longer be sent to the bank and its invoices/payrolls will be free to include in a new remittance.",
       "actionMarkSent": "Mark as sent",
       "statusSent": "Sent",
       "actionMarkExecuted": "Mark as executed",

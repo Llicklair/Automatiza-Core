@@ -83,7 +83,7 @@ export interface Remittance {
     id: string;
     remittance_type: "pain.001" | "pain.008";
     msg_id: string;
-    status: "generated" | "sent" | "executed" | "reconciled";
+    status: "generated" | "sent" | "executed" | "reconciled" | "cancelled";
     execution_date: string;
     party_iban: string;
     nb_of_txs: number;

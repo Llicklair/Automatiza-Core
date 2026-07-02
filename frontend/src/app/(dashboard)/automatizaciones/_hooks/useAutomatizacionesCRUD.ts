@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { api, Workflow } from "@/lib/api";
 import type { AIEmployee } from "@/lib/api/ai_employees";
 import { logError } from "@/lib/logger";
+import { useToastStore } from "@/stores/toast";
 import { type Template } from "../_components/constants";
 import type { TriggerConfig, FlowNode, FlowEdge, ParsedWorkflow } from "./useAutomatizaciones";
 
@@ -77,7 +78,6 @@ export function useAutomatizacionesCRUD() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [editingWorkflow, setEditingWorkflow] = useState<Workflow | null>(null);
-    const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
 
     // Form state
     const [name, setName] = useState("");
@@ -134,8 +134,8 @@ export function useAutomatizacionesCRUD() {
     ], []);
 
     const showToast = (msg: string, type: "ok" | "err") => {
-        setToast({ msg, type });
-        setTimeout(() => setToast(null), 5000);
+        if (type === "ok") useToastStore.getState().success(msg);
+        else useToastStore.getState().error(msg);
     };
 
     const resetForm = () => {
@@ -354,7 +354,7 @@ export function useAutomatizacionesCRUD() {
     return {
         // State
         workflows, setWorkflows, isLoading, isSubmitting, showModal, setShowModal,
-        editingWorkflow, toast, setToast,
+        editingWorkflow,
         // Form
         name, setName, description, setDescription,
         triggerType, setTriggerType, actionType, setActionType,

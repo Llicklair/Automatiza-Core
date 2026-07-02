@@ -9,6 +9,7 @@ import { EmployeeCard } from "./EmployeeCard";
 import { InstructModal } from "./InstructModal";
 import { NewEmployeeModal } from "./NewEmployeeModal";
 import { showConfirm } from "@/stores/confirm";
+import { useToastStore } from "@/stores/toast";
 
 interface EmployeeGridProps {
     employees: AIEmployee[];
@@ -23,15 +24,13 @@ export function EmployeeGrid({ employees, loading, onRefresh, refreshing }: Empl
     const [showNewModal, setShowNewModal] = useState(false);
     const [instructTarget, setInstructTarget] = useState<AIEmployee | null>(null);
     const [seeding, setSeeding] = useState(false);
-    const [toast, setToast] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
-
-    const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3500); };
+    const toast = useToastStore();
 
     const handleSeed = async () => {
         setSeeding(true);
-        try { await api.aiEmployees.seed(); onRefresh(); showToast(t("grid.toastSeedCreated")); }
-        catch { showToast(t("grid.toastSeedError")); }
+        try { await api.aiEmployees.seed(); onRefresh(); toast.success(t("grid.toastSeedCreated")); }
+        catch { toast.error(t("grid.toastSeedError")); }
         finally { setSeeding(false); }
     };
 
@@ -41,7 +40,7 @@ export function EmployeeGrid({ employees, loading, onRefresh, refreshing }: Empl
             await api.aiEmployees.updateStatus(id, next);
             onRefresh();
         } catch {
-            showToast(t("grid.toastStatusError"));
+            toast.error(t("grid.toastStatusError"));
         }
     };
 
@@ -53,7 +52,7 @@ export function EmployeeGrid({ employees, loading, onRefresh, refreshing }: Empl
             confirmVariant: "danger",
         }))) return;
         try { await api.aiEmployees.delete(id); onRefresh(); }
-        catch { showToast(t("grid.toastDeleteError")); }
+        catch { toast.error(t("grid.toastDeleteError")); }
     };
 
     if (loading) return (
@@ -64,15 +63,10 @@ export function EmployeeGrid({ employees, loading, onRefresh, refreshing }: Empl
 
     return (
         <>
-            {toast && (
-                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card border border-border text-foreground text-sm px-5 py-2.5 rounded-full shadow-lg">
-                    {toast}
-                </div>
-            )}
             {instructTarget && <InstructModal employee={instructTarget} onClose={() => setInstructTarget(null)}
-                onSent={() => { showToast(t("grid.toastInstructionSent", { name: instructTarget.name })); onRefresh(); }} />}
+                onSent={() => { toast.success(t("grid.toastInstructionSent", { name: instructTarget.name })); onRefresh(); }} />}
             {showNewModal && <NewEmployeeModal onClose={() => setShowNewModal(false)}
-                onCreated={() => { onRefresh(); showToast(t("grid.toastEmployeeCreated")); }} />}
+                onCreated={() => { onRefresh(); toast.success(t("grid.toastEmployeeCreated")); }} />}
 
             {error && (
                 <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-400">

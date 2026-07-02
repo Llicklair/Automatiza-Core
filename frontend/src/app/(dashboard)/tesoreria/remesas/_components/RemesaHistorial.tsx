@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Download, Loader2, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { showConfirm } from "@/stores/confirm";
 import { treasury, type Remittance } from "@/lib/api/treasury";
 
 const fmt = (v: number) =>
@@ -17,6 +18,7 @@ const statusConfig = (t: ReturnType<typeof useTranslations>): StatusConfig => ({
     sent: { label: t("historial.statusSent"), cls: "text-amber-400 bg-amber-500/10 border-amber-500/20", next: "executed", nextLabel: t("historial.actionMarkExecuted") },
     executed: { label: t("historial.statusExecuted"), cls: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20", next: "reconciled", nextLabel: t("historial.actionReconcile") },
     reconciled: { label: t("historial.statusReconciled"), cls: "text-muted-foreground bg-muted/30 border-border", next: null, nextLabel: null },
+    cancelled: { label: t("historial.statusCancelled"), cls: "text-red-400/70 bg-red-500/10 border-red-500/20", next: null, nextLabel: null },
 });
 
 const typeLabel = (t: ReturnType<typeof useTranslations>): Record<Remittance["remittance_type"], string> => ({
@@ -51,6 +53,23 @@ export default function RemesaHistorial() {
         setBusy(r.id);
         try {
             await treasury.remittances.updateStatus(r.id, next);
+            await load();
+        } finally {
+            setBusy(null);
+        }
+    };
+
+    // Vía de escape de la guarda anti-duplicado: una remesa `generated` (nunca
+    // enviada) se puede cancelar, liberando sus facturas/nóminas para otra remesa.
+    const cancel = async (r: Remittance) => {
+        if (!(await showConfirm({
+            message: t("historial.cancelConfirm", { id: r.msg_id }),
+            confirmLabel: t("historial.actionCancel"),
+            confirmVariant: "danger",
+        }))) return;
+        setBusy(r.id);
+        try {
+            await treasury.remittances.updateStatus(r.id, "cancelled");
             await load();
         } finally {
             setBusy(null);
@@ -99,6 +118,12 @@ export default function RemesaHistorial() {
                                         <Button variant="ghost" size="sm" className="h-7 text-[11px]"
                                             disabled={busy === r.id} onClick={() => advance(r)}>
                                             {sc.nextLabel}
+                                        </Button>
+                                    )}
+                                    {r.status === "generated" && (
+                                        <Button variant="ghost" size="sm" className="h-7 text-[11px] text-red-400 hover:text-red-300"
+                                            disabled={busy === r.id} onClick={() => cancel(r)}>
+                                            {t("historial.actionCancel")}
                                         </Button>
                                     )}
                                     <Button variant="ghost" size="icon" className="h-7 w-7"

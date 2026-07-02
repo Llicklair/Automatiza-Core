@@ -8,6 +8,7 @@ import { api, type Employee, type Payroll, type PayrollCalculation } from "@/lib
 import { waitForTask, TaskTimeoutError } from "@/lib/api/tasks";
 import { logError } from "@/lib/logger";
 import { useNotificationStore } from "@/stores/notifications";
+import { useToastStore } from "@/stores/toast";
 
 export function usePayrolls() {
     const t = useTranslations("rrhh");
@@ -17,7 +18,6 @@ export function usePayrolls() {
     const [generatingPayrolls, setGeneratingPayrolls] = useState(false);
     const [approvingId, setApprovingId]               = useState<string | null>(null);
     const [downloadingId, setDownloadingId]           = useState<string | null>(null);
-    const [toast, setToast]                           = useState<{ msg: string; type: "ok" | "err" } | null>(null);
     const [search, setSearch]                         = useState("");
     const [filterMonth, setFilterMonth]               = useState("");
     const [filterEmpId, setFilterEmpId]               = useState("");
@@ -44,8 +44,8 @@ export function usePayrolls() {
     useEffect(() => { loadData(); }, [refreshKey]);  
 
     const showToast = (msg: string, type: "ok" | "err") => {
-        setToast({ msg, type });
-        setTimeout(() => setToast(null), 5000);
+        if (type === "ok") useToastStore.getState().success(msg);
+        else useToastStore.getState().error(msg);
     };
 
     const openAutoModal = () => {
@@ -201,7 +201,7 @@ export function usePayrolls() {
 
     return {
         payrolls, filtered, isLoading, drafts, kpis, uniqueEmployees, fmt,
-        generatingPayrolls, approvingId, downloadingId, toast, setToast,
+        generatingPayrolls, approvingId, downloadingId,
         search, setSearch, filterMonth, setFilterMonth, filterEmpId, setFilterEmpId,
         autoOpen, setAutoOpen, autoEmployees, autoEmpLoading,
         autoEmpId, setAutoEmpId, autoPreview, autoPreviewLoading, autoSubmitting,

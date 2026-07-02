@@ -2156,6 +2156,9 @@
     },
     "historial": {
       "statusGenerated": "Generada",
+      "statusCancelled": "Cancelada",
+      "actionCancel": "Cancelar",
+      "cancelConfirm": "¿Cancelar la remesa {id}? No podrá enviarse al banco y sus facturas/nóminas quedarán libres para incluirse en una nueva remesa.",
       "actionMarkSent": "Marcar enviada",
       "statusSent": "Enviada",
       "actionMarkExecuted": "Marcar ejecutada",

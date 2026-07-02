@@ -138,11 +138,17 @@ export default function EscanerPage() {
 
                     <ScanResults results={esc.results} grouped={esc.grouped} docStatuses={esc.docStatuses} />
                 </div>
-            ) : mode === "facturas" ? (
-                <FacturasImportPanel initialFiles={routedFiles} />
-            ) : (
-                <ExcelImportPanel initialFiles={routedFiles} />
-            )}
+            ) : null}
+
+            {/* Los paneles pesados permanecen MONTADOS al cambiar de modo: un lote
+                escaneado o importándose no se pierde por pulsar otra pestaña.
+                initialFiles solo llega al panel activo para no auto-procesar en el otro. */}
+            <div className={mode === "facturas" ? undefined : "hidden"}>
+                <FacturasImportPanel initialFiles={mode === "facturas" ? routedFiles : undefined} />
+            </div>
+            <div className={mode === "excel" ? undefined : "hidden"}>
+                <ExcelImportPanel initialFiles={mode === "excel" ? routedFiles : undefined} />
+            </div>
         </PageContainer>
     );
 }

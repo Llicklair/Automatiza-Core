@@ -35,7 +35,6 @@ export function usePresupuestos() {
     const [lines, setLines] = useState<QuoteLine[]>([{ ...EMPTY_LINE }]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [convertingId, setConvertingId] = useState<string | null>(null);
-    const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
     const [search, setSearch] = useState("");
     const [expiredOnly, setExpiredOnly] = useState(false);
 
@@ -112,13 +111,12 @@ export function usePresupuestos() {
         setConvertingId(q.id);
         try {
             const result = await api.erp.quotes.convertToInvoice(q.id);
-            setToast({ msg: t("quoteInvoiceCreatedDetail", { number: result.invoice_number, amount: formatCurrency(result.amount_total) }), type: "ok" });
+            toastNotif.success(t("quoteInvoiceCreatedDetail", { number: result.invoice_number, amount: formatCurrency(result.amount_total) }));
             await loadData();
         } catch (e: any) {
-            setToast({ msg: t("errorConvert") + ": " + (e.message || ""), type: "err" });
+            toastNotif.error(t("errorConvert") + ": " + (e.message || ""));
         } finally {
             setConvertingId(null);
-            setTimeout(() => setToast(null), 6000);
         }
     };
 
@@ -128,8 +126,7 @@ export function usePresupuestos() {
             await api.erp.quotes.delete(id);
             setQuotes(prev => prev.filter(q => q.id !== id));
         } catch (e: any) {
-            setToast({ msg: t("errorDelete") + ": " + (e.message || ""), type: "err" });
-            setTimeout(() => setToast(null), 4000);
+            toastNotif.error(t("errorDelete") + ": " + (e.message || ""));
         }
     };
 
@@ -166,7 +163,6 @@ export function usePresupuestos() {
         selectedClient, setSelectedClient,
         validUntil, setValidUntil,
         lines, isSubmitting, convertingId,
-        toast, setToast,
         handleCreate, handleConvert, handleDelete, handleStatusChange,
         updateLine, addLine,
         t, tc,

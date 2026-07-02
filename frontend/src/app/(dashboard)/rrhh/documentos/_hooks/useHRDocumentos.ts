@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { hrDocuments } from "@/lib/api/hr_documents";
 import type { HRDocument } from "@/lib/api/hr_documents";
 import { logError } from "@/lib/logger";
+import { useToastStore } from "@/stores/toast";
 
 export function parseNLIntent(text: string): { doc_type: string; employee_name: string; instructions: string } {
     const t = text.toLowerCase();
@@ -49,7 +50,6 @@ export function useHRDocumentos() {
     const [loading, setLoading]       = useState(true);
     const [generating, setGenerating] = useState(false);
     const [error, setError]           = useState<string | null>(null);
-    const [toast, setToast]           = useState<string | null>(null);
     const [form, setForm]             = useState(() => ({ doc_type: "contract", employee_name: "", instructions: t(DOC_TEMPLATE_KEYS["contract"]) }));
     const [nlText, setNlText]         = useState("");
     const searchParams = useSearchParams();
@@ -61,8 +61,6 @@ export function useHRDocumentos() {
         if (!term) return docs;
         return docs.filter(d => (d.employee_name ?? "").toLowerCase().includes(term));
     }, [docs, employeeFilter]);
-
-    const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3500); };
 
     const loadDocs = useCallback(async () => {
         try { setDocs(await hrDocuments.list({ limit: 50 })); }
@@ -83,7 +81,7 @@ export function useHRDocumentos() {
             instructions: parsed.instructions || nlText.trim(),
         });
         setNlText("");
-        showToast(t("documentos.nlFilledToast"));
+        useToastStore.getState().success(t("documentos.nlFilledToast"));
     };
 
     const handleGenerate = async () => {
@@ -97,23 +95,23 @@ export function useHRDocumentos() {
             });
             setDocs(prev => [doc, ...prev]);
             setForm(f => ({ ...f, employee_name: "", instructions: "" }));
-            showToast(t("toasts.draftGenerated"));
+            useToastStore.getState().success(t("toasts.draftGenerated"));
         } catch (e: any) { setError(e?.message ?? t("documentos.generateError")); }
         finally { setGenerating(false); }
     };
 
     const handleApprove = async (id: string) => {
-        try { const res = await hrDocuments.approve(id); setDocs(prev => prev.map(d => d.id === id ? { ...d, status: "approved" as const, doc_number: res.doc_number } : d)); showToast(t("toasts.documentApproved")); }
-        catch { showToast(t("toasts.documentApproveError")); }
+        try { const res = await hrDocuments.approve(id); setDocs(prev => prev.map(d => d.id === id ? { ...d, status: "approved" as const, doc_number: res.doc_number } : d)); useToastStore.getState().success(t("toasts.documentApproved")); }
+        catch { useToastStore.getState().error(t("toasts.documentApproveError")); }
     };
 
     const handleDelete = async (id: string) => {
-        try { await hrDocuments.delete(id); setDocs(prev => prev.filter(d => d.id !== id)); showToast(t("toasts.deleted")); }
-        catch { showToast(t("toasts.deleteError")); }
+        try { await hrDocuments.delete(id); setDocs(prev => prev.filter(d => d.id !== id)); useToastStore.getState().success(t("toasts.deleted")); }
+        catch { useToastStore.getState().error(t("toasts.deleteError")); }
     };
 
     return {
-        docs: filteredDocs, loading, generating, error, toast,
+        docs: filteredDocs, loading, generating, error,
         form, setForm,
         nlText, setNlText,
         employeeFilter, setEmployeeFilter,
