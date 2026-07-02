@@ -1,9 +1,12 @@
 """Tests de remesas SEPA persistidas: pain.008 + ciclo de estados."""
+import uuid
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from xml.etree.ElementTree import fromstring
 
 import pytest
+
+from app.db.models.models import Client, Invoice
 
 from app.services.treasury.remittances import (
     RemittanceError,
@@ -199,3 +202,72 @@ async def test_list_remittances_filtra_por_estado(db, seed_tenant_and_user):
     assert total == 2
     enviadas, total_sent = await list_remittances(db, tenant.id, status="sent")
     assert total_sent == 1 and enviadas[0].id == r1.id
+
+
+# ─── Guarda anti-duplicado (audit 2026-07-02) ──────────────────────────
+# Escenario real: el usuario genera la remesa, navega (pierde el feedback
+# local) y al volver la vuelve a generar → doble pago/cobro en tránsito.
+
+
+async def _seed_invoice(db, tenant_id):
+    client = Client(id=uuid.uuid4(), tenant_id=tenant_id, name="Cliente Remesa", nif="B11223344")
+    db.add(client)
+    await db.flush()
+    inv = Invoice(
+        id=uuid.uuid4(),
+        tenant_id=tenant_id,
+        client_id=client.id,
+        invoice_number="REM-1",
+        date=datetime.now(UTC),
+        amount_base=Decimal("100"),
+        tax_amount=Decimal("21"),
+        amount_total=Decimal("121"),
+        status="pending",
+        invoice_type="issued",
+    )
+    db.add(inv)
+    await db.flush()
+    return inv
+
+
+@pytest.mark.asyncio
+async def test_guard_rechaza_factura_en_dos_remesas_vivas(db, seed_tenant_and_user):
+    tenant, _u, _t = seed_tenant_and_user
+    inv = await _seed_invoice(db, tenant.id)
+    debtor = DebtorParty(name="Acme SL", iban=_IBAN_A)
+    links = [{"invoice_id": inv.id}]
+    await create_transfer_remittance(
+        db, tenant.id, debtor, _TOMORROW, _transfer_orders(), links=links
+    )
+    with pytest.raises(RemittanceError, match="ya está incluida"):
+        await create_transfer_remittance(
+            db, tenant.id, debtor, _TOMORROW, _transfer_orders(), links=links
+        )
+
+
+@pytest.mark.asyncio
+async def test_guard_permite_reintentar_tras_cancelar(db, seed_tenant_and_user):
+    tenant, _u, _t = seed_tenant_and_user
+    inv = await _seed_invoice(db, tenant.id)
+    debtor = DebtorParty(name="Acme SL", iban=_IBAN_A)
+    links = [{"invoice_id": inv.id}]
+    rem = await create_transfer_remittance(
+        db, tenant.id, debtor, _TOMORROW, _transfer_orders(), links=links
+    )
+    await update_remittance_status(db, tenant.id, rem.id, "cancelled")
+    rem2 = await create_transfer_remittance(
+        db, tenant.id, debtor, _TOMORROW, _transfer_orders(), links=links
+    )
+    assert rem2.status == "generated"
+
+
+@pytest.mark.asyncio
+async def test_cancelled_solo_desde_generated(db, seed_tenant_and_user):
+    tenant, _u, _t = seed_tenant_and_user
+    debtor = DebtorParty(name="Acme SL", iban=_IBAN_A)
+    rem = await create_transfer_remittance(
+        db, tenant.id, debtor, _TOMORROW, _transfer_orders()
+    )
+    await update_remittance_status(db, tenant.id, rem.id, "sent")
+    with pytest.raises(RemittanceError, match="Transición inválida"):
+        await update_remittance_status(db, tenant.id, rem.id, "cancelled")
