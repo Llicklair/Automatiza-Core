@@ -28,6 +28,7 @@ from app.db.models.models import (
     Tenant,
     TenantDocument,
 )
+from app.services.billing.constants import EMITTED_INVOICE_TYPES
 from app.services.billing.numbering import next_invoice_number
 from app.services.billing.queries import (
     UPLOAD_DIR,
@@ -61,7 +62,7 @@ async def create_invoice(
     # que emitimos nosotros (issued/rectificativa); las recibidas llevan el
     # número del proveedor y quedan fuera de la guarda y del índice parcial.
     new_type = payload_dict.get("invoice_type") or "issued"
-    is_emitted = new_type in ("issued", "rectificativa")
+    is_emitted = new_type in EMITTED_INVOICE_TYPES
 
     # 1) Validar líneas y calcular totales (Decimal) ANTES de consumir un número
     #    de serie. Si algo falla aquí (IVA inválido, total negativo), no se ha
@@ -82,7 +83,7 @@ async def create_invoice(
                 .where(
                     Invoice.tenant_id == tenant_id,
                     Invoice.invoice_number == manual_number,
-                    Invoice.invoice_type.in_(("issued", "rectificativa")),
+                    Invoice.invoice_type.in_(EMITTED_INVOICE_TYPES),
                 )
                 .limit(1)
             )

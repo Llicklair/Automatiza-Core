@@ -20,6 +20,7 @@ from app.db.models.models import (
     Payroll,
 )
 from app.services.analytics import DEMO_TX_PREFIX
+from app.services.billing.constants import EMITTED_INVOICE_TYPES
 from app.services.reports._schemas import (
     CompanySnapshot,
     SnapshotSectionBanking,
@@ -176,7 +177,10 @@ async def aggregate(db: AsyncSession, tenant_id: uuid.UUID, start: date, end: da
     )
     invoices = inv_q.scalars().all()
 
-    issued = [i for i in invoices if i.invoice_type == "issued"]
+    # Emitidas = issued + rectificativas (conjunto canónico, ver billing/constants):
+    # los abonos llevan importe negativo y netean ingresos/top-clientes, igual que
+    # en analytics — antes este informe los excluía y sobreestimaba los ingresos.
+    issued = [i for i in invoices if i.invoice_type in EMITTED_INVOICE_TYPES]
     received = [i for i in invoices if i.invoice_type == "received"]
     pending_issued = [i for i in issued if i.status in ("draft", "pending")]
 
