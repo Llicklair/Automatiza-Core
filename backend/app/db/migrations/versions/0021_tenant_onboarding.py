@@ -40,10 +40,7 @@ def upgrade() -> None:
         )
         """
     )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_tenant_onboarding_tenant "
-        "ON tenant_onboarding(tenant_id)"
-    )
+    op.execute("CREATE INDEX IF NOT EXISTS ix_tenant_onboarding_tenant " "ON tenant_onboarding(tenant_id)")
 
 
 def downgrade() -> None:

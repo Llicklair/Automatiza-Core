@@ -195,9 +195,7 @@ async def _get_last_huella(db: AsyncSession, tenant_id: UUID) -> str | None:
     para volúmenes de pyme.
     """
     result = await db.execute(
-        select(VerifactuRecord.huella, VerifactuRecord.huella_anterior).where(
-            VerifactuRecord.tenant_id == tenant_id
-        )
+        select(VerifactuRecord.huella, VerifactuRecord.huella_anterior).where(VerifactuRecord.tenant_id == tenant_id)
     )
     links = [_Link(huella=h, huella_anterior=hp) for h, hp in result.all()]
     return find_tail_huella(links)
@@ -221,9 +219,7 @@ async def append_verifactu_record(
     en lugar de duplicar (idempotencia ante reintentos).
     """
     # Idempotencia: si ya hay registro para esta factura, devolverlo.
-    existing = await db.execute(
-        select(VerifactuRecord).where(VerifactuRecord.invoice_id == invoice.id)
-    )
+    existing = await db.execute(select(VerifactuRecord).where(VerifactuRecord.invoice_id == invoice.id))
     existing_row = existing.scalar_one_or_none()
     if existing_row is not None:
         return existing_row
@@ -302,9 +298,11 @@ async def maybe_append_verifactu_record(
         # Sin NIF del emisor no podemos firmar el payload canónico.
         # Lo dejamos pasar (la factura sigue siendo válida) pero avisamos.
         import logging
+
         logging.getLogger(__name__).warning(
             "Verifactu: tenant %s sin NIF, omitiendo cadena para factura %s",
-            invoice.tenant_id, invoice.id,
+            invoice.tenant_id,
+            invoice.id,
         )
         return None
 
@@ -319,9 +317,7 @@ async def verify_chain_integrity(db: AsyncSession, tenant_id: UUID) -> tuple[boo
     desde el `payload_canonico`, o que la `huella_anterior` no enlaza con el
     registro previo en orden cronológico.
     """
-    result = await db.execute(
-        select(VerifactuRecord).where(VerifactuRecord.tenant_id == tenant_id)
-    )
+    result = await db.execute(select(VerifactuRecord).where(VerifactuRecord.tenant_id == tenant_id))
     rows = list(result.scalars().all())
 
     # El orden lo da el enlace de la cadena, no `created_at`. Si la cadena no

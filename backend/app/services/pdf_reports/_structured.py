@@ -137,9 +137,7 @@ def _logo_flowable(logo_path: str | None, max_w_mm: float, max_h_mm: float) -> I
         return None
 
 
-def _build_cover(
-    story: list, report: Report, st: dict, tenant_name: str, logo_path: str | None = None
-) -> None:
+def _build_cover(story: list, report: Report, st: dict, tenant_name: str, logo_path: str | None = None) -> None:
     C = st["C"]
     title_style = ParagraphStyle(
         "RTitle",
@@ -205,11 +203,7 @@ def _build_kpis(kpis: list[Kpi], st: dict) -> Table | None:
             "flat": C["GRAY"],
             "none": C["GRAY"],
         }[k.trend]
-        delta_html = (
-            f'<font color="{delta_color}" size="7">{glyph} {k.delta}</font>'
-            if k.delta
-            else ""
-        )
+        delta_html = f'<font color="{delta_color}" size="7">{glyph} {k.delta}</font>' if k.delta else ""
         block = [
             Paragraph(k.value, st["kpi_val"]),
             Paragraph(k.label.upper(), st["kpi_lbl"]),
@@ -446,9 +440,7 @@ def _build_section(section: Section, st: dict) -> list:
     return items
 
 
-def _draw_footer(
-    canvas, doc, tenant_name: str, author: str, st: dict, logo_path: str | None = None
-) -> None:
+def _draw_footer(canvas, doc, tenant_name: str, author: str, st: dict, logo_path: str | None = None) -> None:
     canvas.saveState()
     C = st["C"]
     page_w = A4[0]
@@ -487,9 +479,7 @@ def _draw_footer(
 # ─── Entrypoint ──────────────────────────────────────────────────────────────
 
 
-def render_agent_report(
-    report: Report, tenant_name: str = "", logo_path: str | None = None
-) -> bytes:
+def render_agent_report(report: Report, tenant_name: str = "", logo_path: str | None = None) -> bytes:
     """Renderiza un Report como bytes de PDF.
 
     Si logo_path apunta a una imagen existente, se dibuja en la portada

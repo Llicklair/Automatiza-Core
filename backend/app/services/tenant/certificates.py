@@ -58,9 +58,7 @@ async def install_certificate(
         info = load_certificate_info(str(cert_path), password)
     except Exception as exc:  # noqa: BLE001 — wrap en error de dominio
         cert_path.unlink(missing_ok=True)
-        raise CertificateError(
-            f"Certificado inválido o contraseña incorrecta: {exc}"
-        ) from exc
+        raise CertificateError(f"Certificado inválido o contraseña incorrecta: {exc}") from exc
 
     expires_at = datetime.fromisoformat(info["expires_at"])
 

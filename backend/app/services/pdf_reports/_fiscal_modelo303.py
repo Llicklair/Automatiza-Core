@@ -85,16 +85,14 @@ def generate_modelo_303_pdf(data: dict) -> bytes:
 
     # IVA devengado: régimen general (01-09), intra/ISP (10-13), recargo (16-24
     # solo si hay), total cuota devengada (27).
-    devengado_codes = ["01", "02", "03", "04", "05", "06", "07", "08", "09",
-                       "10", "11", "12", "13"]
+    devengado_codes = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13"]
     for cod_b, cod_c in (("16", "18"), ("19", "21"), ("22", "24")):
         cb, cc = cmap.get(cod_b), cmap.get(cod_c)
         if (cb and float(cb.valor)) or (cc and float(cc.valor)):
             base, tipo = cod_b, str(int(cod_b) + 1)
             devengado_codes += [base, tipo, cod_c]
     devengado_codes.append("27")
-    dev_tbl = _casillas_table(cmap, devengado_codes, s, C, emphasis=("27",),
-                              pct_codes=_PCT_CASILLAS)
+    dev_tbl = _casillas_table(cmap, devengado_codes, s, C, emphasis=("27",), pct_codes=_PCT_CASILLAS)
     if dev_tbl is not None:
         el.append(dev_tbl)
 
@@ -104,7 +102,11 @@ def generate_modelo_303_pdf(data: dict) -> bytes:
         Spacer(1, 2 * mm),
     ]
     ded_tbl = _casillas_table(
-        cmap, ["28", "29", "30", "31", "36", "37", "45"], s, C, emphasis=("45",),
+        cmap,
+        ["28", "29", "30", "31", "36", "37", "45"],
+        s,
+        C,
+        emphasis=("45",),
         pct_codes=_PCT_CASILLAS,
     )
     if ded_tbl is not None:
@@ -116,7 +118,11 @@ def generate_modelo_303_pdf(data: dict) -> bytes:
         Spacer(1, 2 * mm),
     ]
     res_tbl = _casillas_table(
-        cmap, ["46", "64", "65", "66", "67", "69", "71"], s, C, emphasis=("46", "71"),
+        cmap,
+        ["46", "64", "65", "66", "67", "69", "71"],
+        s,
+        C,
+        emphasis=("46", "71"),
         pct_codes=_PCT_CASILLAS,
     )
     if res_tbl is not None:
@@ -135,8 +141,11 @@ def generate_modelo_303_pdf(data: dict) -> bytes:
             "la presentación oficial ante la AEAT. Las casillas marcadas como editables "
             "(p. ej. 28, 30, 67) pueden requerir ajuste manual antes de presentar.",
             ParagraphStyle(
-                "AEATFooter", parent=s["styles"]["Normal"], fontSize=8,
-                fontName="Helvetica-Bold", textColor=colors.HexColor(C["RED"]),
+                "AEATFooter",
+                parent=s["styles"]["Normal"],
+                fontSize=8,
+                fontName="Helvetica-Bold",
+                textColor=colors.HexColor(C["RED"]),
                 alignment=TA_CENTER,
             ),
         ),

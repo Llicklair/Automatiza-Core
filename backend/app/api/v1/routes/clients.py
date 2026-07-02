@@ -31,14 +31,10 @@ async def list_clients(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return await svc.list_clients(
-        db, current_user.tenant_id, skip=skip, limit=limit, client_type=client_type
-    )
+    return await svc.list_clients(db, current_user.tenant_id, skip=skip, limit=limit, client_type=client_type)
 
 
-@router.post(
-    "/clients", response_model=ClientResponse, status_code=status.HTTP_201_CREATED, tags=["erp"]
-)
+@router.post("/clients", response_model=ClientResponse, status_code=status.HTTP_201_CREATED, tags=["erp"])
 @limiter.limit("30/minute")
 async def create_client(
     request: Request,
@@ -47,9 +43,7 @@ async def create_client(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        return await svc.create_client(
-            db, current_user.tenant_id, current_user.id, payload.model_dump()
-        )
+        return await svc.create_client(db, current_user.tenant_id, current_user.id, payload.model_dump())
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e)) from e
     except RuntimeError as exc:
@@ -67,9 +61,7 @@ async def update_client(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        return await svc.update_client(
-            db, current_user.tenant_id, client_id, payload.model_dump(exclude_none=True)
-        )
+        return await svc.update_client(db, current_user.tenant_id, client_id, payload.model_dump(exclude_none=True))
     except LookupError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
     except RuntimeError as exc:
@@ -106,8 +98,6 @@ async def list_client_invoices(
 ):
     """Devuelve todas las facturas de un cliente específico dentro del tenant."""
     try:
-        return await svc.list_client_invoices(
-            db, current_user.tenant_id, client_id, skip=skip, limit=limit
-        )
+        return await svc.list_client_invoices(db, current_user.tenant_id, client_id, skip=skip, limit=limit)
     except LookupError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e

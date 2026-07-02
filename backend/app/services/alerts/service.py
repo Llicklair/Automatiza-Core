@@ -44,11 +44,7 @@ async def run_daily_alerts() -> None:
     async with AsyncSessionLocal() as db:
         set_current_tenant(None)
         with rls_bypass():  # SEC.RLS: enumeración cross-tenant pre-tenant
-            tenants = (
-                (await db.execute(select(Tenant).where(Tenant.is_active.is_(True))))
-                .scalars()
-                .all()
-            )
+            tenants = (await db.execute(select(Tenant).where(Tenant.is_active.is_(True)))).scalars().all()
         for tenant in tenants:
             try:
                 set_current_tenant(str(tenant.id))

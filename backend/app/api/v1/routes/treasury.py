@@ -48,9 +48,7 @@ def _remittance_to_dict(r, *, include_orders: bool = False) -> dict:
         "total_amount": float(r.total_amount),
         "sha256": r.sha256,
         "executed_at": r.executed_at.isoformat() if r.executed_at else None,
-        "bank_transaction_id": (
-            str(r.bank_transaction_id) if r.bank_transaction_id else None
-        ),
+        "bank_transaction_id": (str(r.bank_transaction_id) if r.bank_transaction_id else None),
         "created_at": r.created_at.isoformat() if r.created_at else None,
     }
     if include_orders:
@@ -127,9 +125,7 @@ async def generate_pain001(
     except (TypeError, ValueError) as exc:
         raise HTTPException(status_code=422, detail="execution_date inválida (YYYY-MM-DD).") from exc
 
-    tenant = (
-        await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
-    ).scalar_one_or_none()
+    tenant = (await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))).scalar_one_or_none()
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant no encontrado.")
 
@@ -247,9 +243,7 @@ async def generate_pain008(
             detail="Falta creditor_id (identificador de acreedor SEPA).",
         )
 
-    tenant = (
-        await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))
-    ).scalar_one_or_none()
+    tenant = (await db.execute(select(Tenant).where(Tenant.id == current_user.tenant_id))).scalar_one_or_none()
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant no encontrado.")
 
@@ -328,9 +322,7 @@ async def get_remittances(
     current_user: User = Depends(get_current_user),
 ):
     """Historial de remesas SEPA del tenant (más recientes primero)."""
-    rows, total = await list_remittances(
-        db, current_user.tenant_id, status=status_filter, limit=limit, offset=offset
-    )
+    rows, total = await list_remittances(db, current_user.tenant_id, status=status_filter, limit=limit, offset=offset)
     return {"items": [_remittance_to_dict(r) for r in rows], "total": total}
 
 
@@ -343,9 +335,7 @@ async def get_remittance_detail(
     current_user: User = Depends(get_current_user),
 ):
     """Detalle de una remesa con sus órdenes."""
-    remittance = await get_remittance(
-        db, current_user.tenant_id, _parse_uuid(remittance_id)
-    )
+    remittance = await get_remittance(db, current_user.tenant_id, _parse_uuid(remittance_id))
     if remittance is None:
         raise HTTPException(status_code=404, detail="Remesa no encontrada.")
     return _remittance_to_dict(remittance, include_orders=True)
@@ -360,17 +350,13 @@ async def download_remittance_xml(
     current_user: User = Depends(get_current_user),
 ):
     """Descarga del XML persistido de la remesa."""
-    remittance = await get_remittance(
-        db, current_user.tenant_id, _parse_uuid(remittance_id)
-    )
+    remittance = await get_remittance(db, current_user.tenant_id, _parse_uuid(remittance_id))
     if remittance is None:
         raise HTTPException(status_code=404, detail="Remesa no encontrada.")
     return Response(
         content=remittance.xml,
         media_type="application/xml",
-        headers={
-            "Content-Disposition": f'attachment; filename="{remittance.msg_id}.xml"'
-        },
+        headers={"Content-Disposition": f'attachment; filename="{remittance.msg_id}.xml"'},
     )
 
 

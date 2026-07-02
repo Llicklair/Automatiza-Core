@@ -60,6 +60,7 @@ async def _generate_and_save_payroll_pdf(
         pdf_bytes = generate_payroll_pdf(payroll_pdf_data, payroll_theme)
 
         from app.agents.agent_tools.reports import _resolve_upload_dir
+
         upload_dir = _resolve_upload_dir("nominas")
 
         file_name = f"Nomina_{employee.name.replace(' ', '_')}_{month}_{year}.pdf"
@@ -70,6 +71,7 @@ async def _generate_and_save_payroll_pdf(
         # (helper compartido) detecte que ya hay PDF para esta task y no
         # genere un snapshot duplicado.
         from app.core.tenant_context import get_current_task
+
         current_task_id = get_current_task()
         task_uuid = UUID(current_task_id) if current_task_id else None
 

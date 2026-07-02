@@ -1,4 +1,4 @@
-﻿"""User CRUD operations â€” business logic extracted from routes."""
+"""User CRUD operations â€” business logic extracted from routes."""
 
 import hashlib
 import secrets
@@ -114,16 +114,12 @@ async def create_invitation(
 
 async def list_invitations(tenant_id: uuid.UUID, db: AsyncSession) -> list[UserInvitation]:
     result = await db.execute(
-        select(UserInvitation)
-        .where(UserInvitation.tenant_id == tenant_id)
-        .order_by(UserInvitation.created_at.desc())
+        select(UserInvitation).where(UserInvitation.tenant_id == tenant_id).order_by(UserInvitation.created_at.desc())
     )
     return list(result.scalars().all())
 
 
-async def get_invitation(
-    invitation_id: uuid.UUID, tenant_id: uuid.UUID, db: AsyncSession
-) -> UserInvitation | None:
+async def get_invitation(invitation_id: uuid.UUID, tenant_id: uuid.UUID, db: AsyncSession) -> UserInvitation | None:
     result = await db.execute(
         select(UserInvitation).where(
             UserInvitation.id == invitation_id,
@@ -141,9 +137,7 @@ async def revoke_invitation(invitation: UserInvitation, db: AsyncSession) -> Non
 
 
 async def get_invitation_by_token(token: str, db: AsyncSession) -> UserInvitation | None:
-    result = await db.execute(
-        select(UserInvitation).where(UserInvitation.token_hash == _hash_token(token))
-    )
+    result = await db.execute(select(UserInvitation).where(UserInvitation.token_hash == _hash_token(token)))
     return result.scalar_one_or_none()
 
 

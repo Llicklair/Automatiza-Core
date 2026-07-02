@@ -77,7 +77,10 @@ async def get_oauth_token(tenant_id: str, integration_type: str) -> str | None:
                     "[OAUTH] Credenciales %s del tenant %s no se pueden desencriptar "
                     "(la encryption key cambió). Marcada inactive. El usuario debe "
                     "reconectar en /integrations/google/auth-url. Error: %s: %s",
-                    integration_type, tenant_id, type(dec_exc).__name__, dec_exc,
+                    integration_type,
+                    tenant_id,
+                    type(dec_exc).__name__,
+                    dec_exc,
                 )
                 return None
             access_token = creds.get("access_token")
@@ -95,9 +98,7 @@ async def get_oauth_token(tenant_id: str, integration_type: str) -> str | None:
             )
 
             async with httpx.AsyncClient(timeout=30) as client:
-                test = await client.get(
-                    test_url, headers={"Authorization": f"Bearer {access_token}"}
-                )
+                test = await client.get(test_url, headers={"Authorization": f"Bearer {access_token}"})
 
             if test.status_code == 401 and refresh_token:
                 if is_microsoft:
@@ -114,7 +115,5 @@ async def get_oauth_token(tenant_id: str, integration_type: str) -> str | None:
 
             return access_token
     except Exception as e:
-        logger.error(
-            "Error obteniendo token OAuth (%s) para tenant %s: %s", integration_type, tenant_id, e
-        )
+        logger.error("Error obteniendo token OAuth (%s) para tenant %s: %s", integration_type, tenant_id, e)
         return None

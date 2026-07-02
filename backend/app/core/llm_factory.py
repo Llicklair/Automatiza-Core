@@ -76,11 +76,15 @@ def make_cached_system_message(text: str):
     from langchain_core.messages import SystemMessage
 
     if _resolve_active_provider() == "anthropic":
-        return SystemMessage(content=[{
-            "type": "text",
-            "text": text,
-            "cache_control": {"type": "ephemeral"},
-        }])
+        return SystemMessage(
+            content=[
+                {
+                    "type": "text",
+                    "text": text,
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ]
+        )
     return SystemMessage(content=text)
 
 
@@ -106,9 +110,7 @@ def get_llm(
     selected_provider = provider or settings.DEFAULT_LLM_PROVIDER.lower()
     mock_fallback = _mock_fallback()
 
-    base_fallbacks: list[BaseChatModel] = (
-        [mock_fallback] if settings.ENVIRONMENT == "testing" else []
-    )
+    base_fallbacks: list[BaseChatModel] = [mock_fallback] if settings.ENVIRONMENT == "testing" else []
 
     # En testing sin API key → ir directo al mock
     if settings.ENVIRONMENT == "testing":
@@ -122,26 +124,16 @@ def get_llm(
             return _attach_trace(mock_fallback)
 
     if selected_provider == "groq":
-        return _attach_trace(
-            _build_groq(temperature, format_output, max_tokens, base_fallbacks, mock_fallback)
-        )
+        return _attach_trace(_build_groq(temperature, format_output, max_tokens, base_fallbacks, mock_fallback))
 
     elif selected_provider == "anthropic":
-        return _attach_trace(
-            _build_anthropic(
-                temperature, format_output, max_tokens, base_fallbacks, mock_fallback
-            )
-        )
+        return _attach_trace(_build_anthropic(temperature, format_output, max_tokens, base_fallbacks, mock_fallback))
 
     elif selected_provider == "openai":
-        return _attach_trace(
-            _build_openai(temperature, format_output, max_tokens, base_fallbacks, mock_fallback)
-        )
+        return _attach_trace(_build_openai(temperature, format_output, max_tokens, base_fallbacks, mock_fallback))
 
     elif selected_provider == "openrouter":
-        return _attach_trace(
-            _build_openrouter(temperature, format_output, max_tokens, base_fallbacks)
-        )
+        return _attach_trace(_build_openrouter(temperature, format_output, max_tokens, base_fallbacks))
 
     elif selected_provider == "claude_code":
         return _attach_trace(ClaudeCodeChatModel())
@@ -150,9 +142,7 @@ def get_llm(
         return _attach_trace(_mock_fallback())
 
     else:
-        logging.getLogger(__name__).warning(
-            "Proveedor LLM desconocido: '%s'. Usando mock.", selected_provider
-        )
+        logging.getLogger(__name__).warning("Proveedor LLM desconocido: '%s'. Usando mock.", selected_provider)
         return _attach_trace(mock_fallback)
 
 
@@ -179,9 +169,7 @@ async def get_llm_for_tenant(
         from app.db.models.models import TenantLlmConfig
         from app.services.encryption import decrypt_credentials
 
-        result = await db.execute(
-            select(TenantLlmConfig).where(TenantLlmConfig.tenant_id == tenant_id)
-        )
+        result = await db.execute(select(TenantLlmConfig).where(TenantLlmConfig.tenant_id == tenant_id))
         cfg = result.scalar_one_or_none()
 
         if cfg and cfg.encrypted_keys:
@@ -195,18 +183,13 @@ async def get_llm_for_tenant(
                 return ClaudeCodeChatModel(pool_key=str(tenant_id))
 
             if not pdata.get("enabled"):
-                _log.warning(
-                    "Proveedor LLM '%s' está desactivado para el tenant %s", provider, tenant_id
-                )
+                _log.warning("Proveedor LLM '%s' está desactivado para el tenant %s", provider, tenant_id)
                 raise ValueError(
-                    f"El proveedor de IA '{provider}' está desactivado. "
-                    "Actívalo en Configuración → API Keys."
+                    f"El proveedor de IA '{provider}' está desactivado. " "Actívalo en Configuración → API Keys."
                 )
 
             if not pdata.get("api_key"):
-                _log.warning(
-                    "Proveedor LLM '%s' sin API key para el tenant %s", provider, tenant_id
-                )
+                _log.warning("Proveedor LLM '%s' sin API key para el tenant %s", provider, tenant_id)
                 raise ValueError(
                     f"El proveedor de IA '{provider}' no tiene API Key configurada. "
                     "Añádela en Configuración → API Keys."
@@ -296,9 +279,7 @@ def get_embedder():
         else:
             _log.warning("EMBEDDINGS_PROVIDER=openai pero OPENAI_API_KEY está vacía.")
 
-    _log.warning(
-        "No hay proveedor de embeddings disponible. Las funciones RAG estarán desactivadas."
-    )
+    _log.warning("No hay proveedor de embeddings disponible. Las funciones RAG estarán desactivadas.")
     return None
 
 

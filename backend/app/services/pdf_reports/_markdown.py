@@ -173,10 +173,7 @@ def render_markdown_report(
         from markdown_it import MarkdownIt
         from xhtml2pdf import pisa
     except ImportError as e:
-        raise RuntimeError(
-            "Falta dependencia para PDF (markdown-it-py o xhtml2pdf): " + str(e)
-        ) from e
-
+        raise RuntimeError("Falta dependencia para PDF (markdown-it-py o xhtml2pdf): " + str(e)) from e
 
     # commonmark base + tablas GFM. Sin linkify (no instalado).
     md = MarkdownIt("commonmark", {"html": False, "breaks": False, "linkify": False}).enable("table")
@@ -248,7 +245,5 @@ def render_markdown_report(
         link_callback=_link_callback,
     )
     if pisa_status.err:
-        raise RuntimeError(
-            f"xhtml2pdf falló al generar el PDF ({pisa_status.err} errores)"
-        )
+        raise RuntimeError(f"xhtml2pdf falló al generar el PDF ({pisa_status.err} errores)")
     return buffer.getvalue()

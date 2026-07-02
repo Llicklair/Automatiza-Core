@@ -32,8 +32,7 @@ def build_casillas_347(data: dict) -> list[Casilla]:
     total = data.get("importe_total_operaciones")
     if total is None:
         total = sum(
-            (round2(d.get("importe_emitidas")) + round2(d.get("importe_recibidas"))
-             for d in declarables),
+            (round2(d.get("importe_emitidas")) + round2(d.get("importe_recibidas")) for d in declarables),
             Decimal("0"),
         )
     c02 = round2(total)
@@ -43,8 +42,19 @@ def build_casillas_347(data: dict) -> list[Casilla]:
     return [
         Casilla("01", CASILLAS_347["01"], c01, formato="numero"),
         Casilla("02", CASILLAS_347["02"], c02),
-        Casilla("03", CASILLAS_347["03"], round2(0), editable=True, formato="numero",
-                nota="Arrendamientos de local de negocio: cumplimentar si procede."),
-        Casilla("04", CASILLAS_347["04"], round2(0), editable=True,
-                nota="Importe de arrendamientos de local de negocio: cumplimentar si procede."),
+        Casilla(
+            "03",
+            CASILLAS_347["03"],
+            round2(0),
+            editable=True,
+            formato="numero",
+            nota="Arrendamientos de local de negocio: cumplimentar si procede.",
+        ),
+        Casilla(
+            "04",
+            CASILLAS_347["04"],
+            round2(0),
+            editable=True,
+            nota="Importe de arrendamientos de local de negocio: cumplimentar si procede.",
+        ),
     ]

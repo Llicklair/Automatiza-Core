@@ -35,10 +35,7 @@ def upgrade() -> None:
         )
         """
     )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_verifactu_config_tenant "
-        "ON verifactu_config(tenant_id)"
-    )
+    op.execute("CREATE INDEX IF NOT EXISTS ix_verifactu_config_tenant " "ON verifactu_config(tenant_id)")
 
 
 def downgrade() -> None:

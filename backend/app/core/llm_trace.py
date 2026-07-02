@@ -139,16 +139,12 @@ class LLMTraceCallback(BaseCallbackHandler):
         try:
             run_key = str(run_id)
             self._starts[run_key] = {"t0": time.monotonic()}
-            flat: list[dict[str, Any]] = [
-                _serialize_message(m) for batch in messages or [] for m in batch
-            ]
+            flat: list[dict[str, Any]] = [_serialize_message(m) for batch in messages or [] for m in batch]
             tools_meta = []
             inv = invocation_params or kwargs.get("invocation_params") or {}
             for t in inv.get("tools", []) or []:
                 if isinstance(t, dict):
-                    tools_meta.append(
-                        t.get("function", {}).get("name") or t.get("name") or "?"
-                    )
+                    tools_meta.append(t.get("function", {}).get("name") or t.get("name") or "?")
                 else:
                     tools_meta.append(getattr(t, "name", "?"))
             self._write(
@@ -216,9 +212,7 @@ class LLMTraceCallback(BaseCallbackHandler):
                     if info.get("finish_reason"):
                         entry["finish_reason"] = info["finish_reason"]
                     generations.append(entry)
-            tokens = (response.llm_output or {}).get("token_usage") or (
-                response.llm_output or {}
-            ).get("usage")
+            tokens = (response.llm_output or {}).get("token_usage") or (response.llm_output or {}).get("usage")
             self._write(
                 {
                     "event": "chat_end",

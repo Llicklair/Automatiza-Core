@@ -4,6 +4,7 @@ Las métricas por post (snapshots diarios en `scheduled_post_metrics`) se agrega
 por campaña aquí. La OBTENCIÓN de métricas desde las redes se hará vía la API de
 Zernio (pendiente); hasta entonces, los totales reflejan lo que haya almacenado.
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -17,9 +18,7 @@ _METRIC_KEYS = ("impressions", "reach", "likes", "comments", "shares", "clicks")
 _ZERO = dict.fromkeys(_METRIC_KEYS, 0)
 
 
-async def _upsert_metrics(
-    db: AsyncSession, post: ScheduledPost, metrics: dict, day: date
-) -> None:
+async def _upsert_metrics(db: AsyncSession, post: ScheduledPost, metrics: dict, day: date) -> None:
     """Upsert del snapshot de métricas de un post para un día (idempotente).
 
     Punto de entrada para persistir métricas cuando se cablee Zernio Analytics.
@@ -32,9 +31,7 @@ async def _upsert_metrics(
     )
     row = existing.scalar_one_or_none()
     if row is None:
-        row = ScheduledPostMetrics(
-            tenant_id=post.tenant_id, scheduled_post_id=post.id, metric_date=day
-        )
+        row = ScheduledPostMetrics(tenant_id=post.tenant_id, scheduled_post_id=post.id, metric_date=day)
         db.add(row)
     for k in _METRIC_KEYS:
         setattr(row, k, int(metrics.get(k, 0)))

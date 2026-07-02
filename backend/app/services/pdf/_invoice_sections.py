@@ -31,7 +31,11 @@ if REPORTLAB_AVAILABLE:
 
 
 def _invoice_lines_table(
-    lines: list, header_sty, body_sty, right_sty, theme: dict,
+    lines: list,
+    header_sty,
+    body_sty,
+    right_sty,
+    theme: dict,
     locale: str = "es",
 ) -> "Table":
     """Tabla de líneas de factura reutilizable.
@@ -60,11 +64,7 @@ def _invoice_lines_table(
         )
     tbl = Table(table_data, colWidths=col_widths)
     if theme:
-        tbl.setStyle(
-            TableStyle(
-                table_style_commands(theme, len(lines)) + [("ALIGN", (-1, 0), (-1, -1), "RIGHT")]
-            )
-        )
+        tbl.setStyle(TableStyle(table_style_commands(theme, len(lines)) + [("ALIGN", (-1, 0), (-1, -1), "RIGHT")]))
     else:
         tbl.setStyle(TableStyle(_table_header_style() + [("ALIGN", (-1, 0), (-1, -1), "RIGHT")]))
     return tbl
@@ -130,17 +130,13 @@ Total: {invoice_data.get("amount_total", 0):.2f} EUR
     return content.encode("utf-8")
 
 
-def _themed_header(
-    invoice_data, company, th, styles, title_sty, body_sty, right_sty, bold, font, acc
-):
+def _themed_header(invoice_data, company, th, styles, title_sty, body_sty, right_sty, bold, font, acc):
     """Genera la cabecera según el header_style del theme (color_band, dark_band, line_only)."""
     h_style = th["header_style"]
     elements = []
 
     if h_style == "color_band":
-        band_sty = ParagraphStyle(
-            "T_band", parent=styles["Normal"], fontSize=18, fontName=bold, textColor=colors.white
-        )
+        band_sty = ParagraphStyle("T_band", parent=styles["Normal"], fontSize=18, fontName=bold, textColor=colors.white)
         band_sub = ParagraphStyle(
             "T_bandsub",
             parent=styles["Normal"],
@@ -168,12 +164,9 @@ def _themed_header(
         logo_col = [
             Paragraph(company.get("name") or "Mi Empresa S.L.", band_sty),
             Spacer(1, 4),
+            Paragraph(f"NIF: {company.get('nif', 'B00000000')} · {company.get('address', '')}", band_sub),
             Paragraph(
-                f"NIF: {company.get('nif', 'B00000000')} · {company.get('address', '')}", band_sub
-            ),
-            Paragraph(
-                company.get("phone", "")
-                + (" · " + company.get("email", "") if company.get("email") else ""),
+                company.get("phone", "") + (" · " + company.get("email", "") if company.get("email") else ""),
                 band_sub,
             ),
         ]
@@ -200,9 +193,7 @@ def _themed_header(
         elements.append(Spacer(1, 6 * mm))
 
     elif h_style == "dark_band":
-        dark_sty = ParagraphStyle(
-            "T_dark", parent=styles["Normal"], fontSize=18, fontName=bold, textColor=colors.white
-        )
+        dark_sty = ParagraphStyle("T_dark", parent=styles["Normal"], fontSize=18, fontName=bold, textColor=colors.white)
         dark_sub = ParagraphStyle(
             "T_darks",
             parent=styles["Normal"],
@@ -229,9 +220,7 @@ def _themed_header(
         logo_col = [
             Paragraph(company.get("name") or "Mi Empresa S.L.", dark_sty),
             Spacer(1, 4),
-            Paragraph(
-                f"NIF: {company.get('nif', 'B00000000')} · {company.get('address', '')}", dark_sub
-            ),
+            Paragraph(f"NIF: {company.get('nif', 'B00000000')} · {company.get('address', '')}", dark_sub),
             Paragraph(company.get("phone", ""), dark_sub),
         ]
         inv_col = [
@@ -328,11 +317,7 @@ def _themed_header(
         elements.append(ht)
         elements.append(Spacer(1, 5 * mm))
         if h_style == "line_only":
-            line_color = (
-                colors.HexColor(acc)
-                if th["layout_style"] == "minimal"
-                else colors.HexColor("#e2e8f0")
-            )
+            line_color = colors.HexColor(acc) if th["layout_style"] == "minimal" else colors.HexColor("#e2e8f0")
             thickness = 1.5 if th["layout_style"] == "minimal" else 1
             elements.append(HRFlowable(width="100%", thickness=thickness, color=line_color))
         elements.append(Spacer(1, 5 * mm))

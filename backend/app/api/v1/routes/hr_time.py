@@ -86,10 +86,22 @@ async def upsert_employee_schedule(
     current_user: User = Depends(get_current_user),
 ):
     rows = await svc.upsert_schedule(
-        db, current_user.tenant_id, employee_id,
+        db,
+        current_user.tenant_id,
+        employee_id,
         [s.model_dump() for s in payload.schedules],
     )
-    return [{"id": str(r.id), "employee_id": str(r.employee_id), "day_of_week": r.day_of_week, "start_time": r.start_time, "end_time": r.end_time, "active": r.active} for r in rows]
+    return [
+        {
+            "id": str(r.id),
+            "employee_id": str(r.employee_id),
+            "day_of_week": r.day_of_week,
+            "start_time": r.start_time,
+            "end_time": r.end_time,
+            "active": r.active,
+        }
+        for r in rows
+    ]
 
 
 @router.post("/schedules/ai-suggest")
@@ -138,6 +150,7 @@ async def list_attendance(
     current_user: User = Depends(get_current_user),
 ):
     from datetime import date as date_type
+
     parsed = date_type.fromisoformat(date) if date else None
     return await svc.list_attendance(db, current_user.tenant_id, parsed)
 
@@ -164,7 +177,14 @@ async def clock_in(
         record = await svc.clock_in(db, current_user.tenant_id, payload.employee_id, payload.notes)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
-    return {"id": str(record.id), "employee_id": str(record.employee_id), "clock_in": record.clock_in.isoformat(), "clock_out": None, "date": record.date.isoformat(), "notes": record.notes}
+    return {
+        "id": str(record.id),
+        "employee_id": str(record.employee_id),
+        "clock_in": record.clock_in.isoformat(),
+        "clock_out": None,
+        "date": record.date.isoformat(),
+        "notes": record.notes,
+    }
 
 
 @router.post("/attendance/{attendance_id}/clock-out")
@@ -179,7 +199,14 @@ async def clock_out(
         record = await svc.clock_out_attendance(db, current_user.tenant_id, attendance_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
-    return {"id": str(record.id), "employee_id": str(record.employee_id), "clock_in": record.clock_in.isoformat(), "clock_out": record.clock_out.isoformat() if record.clock_out else None, "date": record.date.isoformat(), "notes": record.notes}
+    return {
+        "id": str(record.id),
+        "employee_id": str(record.employee_id),
+        "clock_in": record.clock_in.isoformat(),
+        "clock_out": record.clock_out.isoformat() if record.clock_out else None,
+        "date": record.date.isoformat(),
+        "notes": record.notes,
+    }
 
 
 # ─── Leave Requests ───────────────────────────────────────────────────────────
@@ -205,8 +232,13 @@ async def create_leave_request(
     current_user: User = Depends(get_current_user),
 ):
     req = await svc.create_leave_request(
-        db, current_user.tenant_id, payload.employee_id,
-        payload.leave_type, payload.start_date, payload.end_date, payload.notes,
+        db,
+        current_user.tenant_id,
+        payload.employee_id,
+        payload.leave_type,
+        payload.start_date,
+        payload.end_date,
+        payload.notes,
     )
     return _leave_row(req)
 

@@ -30,9 +30,7 @@ async def load_employee_and_tenant(
     return emp, tenant
 
 
-def generate_finiquito_pdf(
-    emp: Employee, tenant: Tenant | None, payload
-) -> tuple[bytes, str, dict | None]:
+def generate_finiquito_pdf(emp: Employee, tenant: Tenant | None, payload) -> tuple[bytes, str, dict | None]:
     """Genera el PDF de finiquito.
 
     Si el payload no trae conceptos, los calcula desde la ficha del empleado
@@ -53,9 +51,7 @@ def generate_finiquito_pdf(
             emp,
             fecha_baja=payload.fecha_baja,
             causa=payload.causa_baja,
-            vacaciones_pendientes_dias=float(
-                getattr(payload, "vacaciones_pendientes_dias", 0) or 0
-            ),
+            vacaciones_pendientes_dias=float(getattr(payload, "vacaciones_pendientes_dias", 0) or 0),
         )
         conceptos = calc["conceptos"]
         total_percepciones = calc["total_percepciones"]

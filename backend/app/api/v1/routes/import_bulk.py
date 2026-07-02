@@ -4,6 +4,7 @@ Capa de transporte: parsea el body, delega al servicio
 `services.migration.bulk_import` y serializa el `BulkImportResult`.
 Cero lógica de negocio aquí.
 """
+
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
@@ -47,6 +48,7 @@ def _to_response(result: BulkImportResult) -> ImportResult:
 
 # ── Employees ─────────────────────────────────────────────────────────────────
 
+
 @router.post("/employees", response_model=ImportResult)
 async def import_employees(
     body: dict[str, list[dict[str, str]]],
@@ -60,6 +62,7 @@ async def import_employees(
 
 # ── Clients ───────────────────────────────────────────────────────────────────
 
+
 @router.post("/clients", response_model=ImportResult)
 async def import_clients(
     body: dict[str, list[dict[str, str]]],
@@ -72,6 +75,7 @@ async def import_clients(
 
 
 # ── Products ──────────────────────────────────────────────────────────────────
+
 
 @router.post("/products", response_model=ImportResult)
 async def import_products(
@@ -107,9 +111,7 @@ async def import_payrolls(
     recalcula). El empleado debe existir previamente. Idempotente por período."""
     rows = body.get("rows", [])
     result = await import_payrolls_rows(rows, current_user.tenant_id, db)
-    return MigrationImportResult(
-        imported=result.created, skipped=result.skipped, errors=result.errors
-    )
+    return MigrationImportResult(imported=result.created, skipped=result.skipped, errors=result.errors)
 
 
 # ── Invoices (migración de histórico) ─────────────────────────────────────────
@@ -126,9 +128,7 @@ async def import_invoices(
     Idempotente. El cliente/proveedor debe existir previamente."""
     rows = body.get("rows", [])
     result = await import_invoices_rows(rows, current_user.tenant_id, db)
-    return MigrationImportResult(
-        imported=result.created, skipped=result.skipped, errors=result.errors
-    )
+    return MigrationImportResult(imported=result.created, skipped=result.skipped, errors=result.errors)
 
 
 # ── Bank transactions (migración de extracto) ─────────────────────────────────
@@ -144,9 +144,7 @@ async def import_bank_transactions(
     sin conciliar. Idempotente por (fecha, importe, concepto[, saldo])."""
     rows = body.get("rows", [])
     result = await import_bank_transactions_rows(rows, current_user.tenant_id, db)
-    return MigrationImportResult(
-        imported=result.created, skipped=result.skipped, errors=result.errors
-    )
+    return MigrationImportResult(imported=result.created, skipped=result.skipped, errors=result.errors)
 
 
 # ── Bank statement Norma 43 (AEB) ─────────────────────────────────────────────
@@ -198,7 +196,10 @@ async def import_bank_statement_n43(
         from app.services.event_bus import emit_event
 
         await emit_event(
-            db, current_user.tenant_id, current_user.id, ev.N43_IMPORTED,
+            db,
+            current_user.tenant_id,
+            current_user.id,
+            ev.N43_IMPORTED,
             {
                 "imported": result.created,
                 "skipped": result.skipped,
@@ -208,7 +209,9 @@ async def import_bank_statement_n43(
         )
         if unmatched:
             await emit_event(
-                db, current_user.tenant_id, current_user.id,
+                db,
+                current_user.tenant_id,
+                current_user.id,
                 ev.RECONCILIATION_EXCEPTIONS,
                 {"unmatched": unmatched, "total": unmatched + reconciled, "source": "n43"},
             )

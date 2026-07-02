@@ -48,10 +48,7 @@ async def _search_client_async(tenant_id: str, query: str) -> str:
             if not clients:
                 return f"No se encontraron clientes{' con búsqueda: ' + query if query else ''}."
 
-            lines = [
-                f"- {c.name} | NIF: {c.nif or 'N/A'} | Email: {c.email or 'N/A'} | ID: {c.id}"
-                for c in clients
-            ]
+            lines = [f"- {c.name} | NIF: {c.nif or 'N/A'} | Email: {c.email or 'N/A'} | ID: {c.id}" for c in clients]
             return f"Clientes encontrados ({len(clients)}):\n" + "\n".join(lines)
     except Exception as e:
         return f"Error buscando clientes: {e}"

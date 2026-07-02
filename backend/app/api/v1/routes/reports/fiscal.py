@@ -24,9 +24,7 @@ router = APIRouter()
 
 @router.get("/fiscal-snapshot", response_model=FiscalSnapshot)
 async def get_fiscal_snapshot(
-    period: str = Query(
-        default=None, description="Periodo: YYYY-MM (mensual) o YYYY-Q1..Q4 (trimestral)"
-    ),
+    period: str = Query(default=None, description="Periodo: YYYY-MM (mensual) o YYYY-Q1..Q4 (trimestral)"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

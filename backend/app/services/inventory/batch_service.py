@@ -31,9 +31,7 @@ EDITABLE_FIELDS = _NUMERIC_FIELDS | _TEXT_FIELDS | _BOOL_FIELDS
 _OP_MOVEMENT = {"set": "ajuste", "add": "entrada", "remove": "salida"}
 
 
-async def resolve_product(
-    db: AsyncSession, tenant_id: UUID, ref: str
-) -> tuple[Product | None, str]:
+async def resolve_product(db: AsyncSession, tenant_id: UUID, ref: str) -> tuple[Product | None, str]:
     """Resuelve una referencia de producto (id, SKU, código de barras o nombre).
 
     Devuelve (producto, motivo). Si hay varias coincidencias por nombre, devuelve
@@ -68,22 +66,14 @@ async def resolve_product(
         return None, f"ambiguo: {len(exact)} coincidencias por SKU/código"
 
     # 3) Nombre (case-insensitive, exacto primero, luego contiene)
-    res = await db.execute(
-        select(Product).where(
-            Product.tenant_id == tenant_id, Product.name.ilike(ref)
-        )
-    )
+    res = await db.execute(select(Product).where(Product.tenant_id == tenant_id, Product.name.ilike(ref)))
     by_name = res.scalars().all()
     if len(by_name) == 1:
         return by_name[0], "nombre exacto"
     if len(by_name) > 1:
         return None, f"ambiguo: {len(by_name)} coincidencias por nombre"
 
-    res = await db.execute(
-        select(Product).where(
-            Product.tenant_id == tenant_id, Product.name.ilike(f"%{ref}%")
-        )
-    )
+    res = await db.execute(select(Product).where(Product.tenant_id == tenant_id, Product.name.ilike(f"%{ref}%")))
     contains = res.scalars().all()
     if len(contains) == 1:
         return contains[0], "nombre parcial"

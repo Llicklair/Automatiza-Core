@@ -26,12 +26,8 @@ class Tenant(Base):
     contact_email = Column(String(255), nullable=True)
     plan = Column(String(50), nullable=False, default="starter")
     is_active = Column(Boolean, default=True, nullable=False)
-    ui_locale = Column(
-        String(10), nullable=False, default="es-ES"
-    )  # Consumido por next-intl en frontend
-    jurisdiction = Column(
-        String(20), nullable=False, default="ES_TAX"
-    )  # Consumido por RAG retriever filter
+    ui_locale = Column(String(10), nullable=False, default="es-ES")  # Consumido por next-intl en frontend
+    jurisdiction = Column(String(20), nullable=False, default="ES_TAX")  # Consumido por RAG retriever filter
     # Firma digital (certificado PKCS#12 para XAdES-BES)
     cert_path = Column(String(500), nullable=True)
     cert_password = Column(Text, nullable=True)
@@ -66,6 +62,7 @@ class User(Base):
 
 class ClientPortalToken(Base):
     """Token de acceso de cliente al portal externo."""
+
     __tablename__ = "client_portal_tokens"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -91,6 +88,7 @@ class PasswordResetToken(Base):
 
 class UserInvitation(Base):
     """Invitación de acceso al tenant. El admin genera una y comparte el enlace; el invitado pone su contraseña al aceptar."""
+
     __tablename__ = "user_invitations"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

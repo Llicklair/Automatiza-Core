@@ -1,4 +1,5 @@
 """Calendario unificado — agrega eventos de múltiples módulos."""
+
 from datetime import date
 
 from fastapi import APIRouter, Depends, Query, Request

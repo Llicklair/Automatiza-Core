@@ -34,14 +34,8 @@ def upgrade() -> None:
         )
         """
     )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_sepa_remittances_tenant_id "
-        "ON sepa_remittances (tenant_id)"
-    )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_sepa_remittances_msg_id "
-        "ON sepa_remittances (msg_id)"
-    )
+    op.execute("CREATE INDEX IF NOT EXISTS ix_sepa_remittances_tenant_id " "ON sepa_remittances (tenant_id)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_sepa_remittances_msg_id " "ON sepa_remittances (msg_id)")
     op.execute(
         """
         CREATE TABLE IF NOT EXISTS sepa_remittance_orders (

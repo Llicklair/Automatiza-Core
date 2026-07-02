@@ -36,9 +36,7 @@ class SepaRemittance(Base):
     sha256 = Column(String(64), nullable=False)
 
     executed_at = Column(DateTime(timezone=True), nullable=True)
-    bank_transaction_id = Column(
-        UUID(as_uuid=True), ForeignKey("bank_transactions.id"), nullable=True
-    )
+    bank_transaction_id = Column(UUID(as_uuid=True), ForeignKey("bank_transactions.id"), nullable=True)
 
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)

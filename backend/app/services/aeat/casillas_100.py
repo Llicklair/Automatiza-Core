@@ -39,15 +39,34 @@ def build_casillas_100(data: dict) -> list[Casilla]:
     resultado = round2(data.get("resultado_declaracion"))
 
     return [
-        Casilla("0224", CASILLAS_100["0224"], rendimiento,
-                nota="Estimación directa; importe agregado de la actividad económica."),
+        Casilla(
+            "0224",
+            CASILLAS_100["0224"],
+            rendimiento,
+            nota="Estimación directa; importe agregado de la actividad económica.",
+        ),
         Casilla("0500", CASILLAS_100["0500"], base_liquidable),
-        Casilla("0519", CASILLAS_100["0519"], minimo, editable=True,
-                nota="Depende de circunstancias personales y familiares; revísalo."),
-        Casilla("0595", CASILLAS_100["0595"], cuota_integra, editable=True,
-                nota="El modelo desglosa cuota estatal (0545) + autonómica (0546); preview agregado sin deducciones."),
-        Casilla("0596", CASILLAS_100["0596"], retenciones, editable=True,
-                nota="El modelo separa trabajo (0596) y actividades económicas (0599); aquí agregadas."),
+        Casilla(
+            "0519",
+            CASILLAS_100["0519"],
+            minimo,
+            editable=True,
+            nota="Depende de circunstancias personales y familiares; revísalo.",
+        ),
+        Casilla(
+            "0595",
+            CASILLAS_100["0595"],
+            cuota_integra,
+            editable=True,
+            nota="El modelo desglosa cuota estatal (0545) + autonómica (0546); preview agregado sin deducciones.",
+        ),
+        Casilla(
+            "0596",
+            CASILLAS_100["0596"],
+            retenciones,
+            editable=True,
+            nota="El modelo separa trabajo (0596) y actividades económicas (0599); aquí agregadas.",
+        ),
         Casilla("0604", CASILLAS_100["0604"], pagos),
         Casilla("0670", CASILLAS_100["0670"], resultado),
     ]

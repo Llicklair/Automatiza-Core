@@ -28,9 +28,7 @@ router = APIRouter()
 
 @router.get("/company-snapshot", response_model=CompanySnapshot)
 async def get_company_snapshot(
-    month: str = Query(
-        default=None, description="Mes en formato YYYY-MM. Por defecto: mes actual."
-    ),
+    month: str = Query(default=None, description="Mes en formato YYYY-MM. Por defecto: mes actual."),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -47,9 +45,7 @@ async def get_company_snapshot(
 
 @router.post("/company-snapshot/generate", response_model=ReportOut, status_code=201)
 async def generate_company_snapshot_pdf(
-    month: str = Query(
-        default=None, description="Mes en formato YYYY-MM. Por defecto: mes actual."
-    ),
+    month: str = Query(default=None, description="Mes en formato YYYY-MM. Por defecto: mes actual."),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -103,9 +99,7 @@ async def download_report(
 
     file_path = resolve_report_file_path(doc)
     if not file_path:
-        raise HTTPException(
-            status_code=404, detail=f"Archivo no disponible (ruta: {doc.file_path})"
-        )
+        raise HTTPException(status_code=404, detail=f"Archivo no disponible (ruta: {doc.file_path})")
 
     return FileResponse(
         path=file_path,

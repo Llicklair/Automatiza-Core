@@ -39,9 +39,18 @@ async def _dispatch_report(state: OrchestratorState, subtask: dict) -> AgentResu
     # E2E 2026-06-23: "Registro de Auditoría" falso). No inventes: devuelve fallo claro.
     _il = intent.lower()
     _OUT_OF_SCOPE = (
-        "auditoria", "auditoría", "cumplimiento", "compliance",
-        "gdpr", "rgpd", "proteccion de datos", "protección de datos",
-        "blanqueo", "lopd", "registro de auditoria", "registro de auditoría",
+        "auditoria",
+        "auditoría",
+        "cumplimiento",
+        "compliance",
+        "gdpr",
+        "rgpd",
+        "proteccion de datos",
+        "protección de datos",
+        "blanqueo",
+        "lopd",
+        "registro de auditoria",
+        "registro de auditoría",
     )
     if any(t in _il for t in _OUT_OF_SCOPE):
         return {
@@ -111,9 +120,7 @@ async def _dispatch_report(state: OrchestratorState, subtask: dict) -> AgentResu
 
             # RRHH
             emp_q = await db.execute(
-                select(Employee).where(
-                    and_(Employee.tenant_id == tenant_id, Employee.status == "active")
-                )
+                select(Employee).where(and_(Employee.tenant_id == tenant_id, Employee.status == "active"))
             )
             employees = emp_q.scalars().all()
             payroll_q = await db.execute(
@@ -216,9 +223,7 @@ async def _dispatch_report(state: OrchestratorState, subtask: dict) -> AgentResu
                 company_name=company_name,
                 month=month_str,
             )
-            upload_dir = os.path.abspath(
-                os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "uploads")
-            )
+            upload_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "uploads"))
             os.makedirs(upload_dir, exist_ok=True)
             file_name = f"informe_{month_str}_{uuid.uuid4().hex[:8]}.pdf"
             file_path = os.path.join(upload_dir, file_name)

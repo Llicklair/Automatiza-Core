@@ -34,13 +34,16 @@ def build_modelo_303_xml(
     str
         XML como string UTF-8.
     """
-    root = Element("Modelo303", attrib={
-        "version": "1.0",
-        "ejercicio": str(year),
-        "periodo": f"{quarter}T",
-        "generador": "AutomatizaCore",
-        "tipo": "auxiliar",  # explícito: no es envío oficial
-    })
+    root = Element(
+        "Modelo303",
+        attrib={
+            "version": "1.0",
+            "ejercicio": str(year),
+            "periodo": f"{quarter}T",
+            "generador": "AutomatizaCore",
+            "tipo": "auxiliar",  # explícito: no es envío oficial
+        },
+    )
 
     decl = SubElement(root, "Declarante")
     SubElement(decl, "NIF").text = tenant_nif or ""
@@ -48,10 +51,14 @@ def build_modelo_303_xml(
 
     cas_root = SubElement(root, "Casillas")
     for c in casillas:
-        cas = SubElement(cas_root, "Casilla", attrib={
-            "codigo": c.codigo,
-            "editable": "true" if c.editable else "false",
-        })
+        cas = SubElement(
+            cas_root,
+            "Casilla",
+            attrib={
+                "codigo": c.codigo,
+                "editable": "true" if c.editable else "false",
+            },
+        )
         SubElement(cas, "Descripcion").text = c.descripcion
         SubElement(cas, "Valor").text = f"{float(c.valor):.2f}"
         if c.nota:

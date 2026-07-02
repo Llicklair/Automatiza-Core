@@ -1,4 +1,4 @@
-﻿from uuid import UUID
+from uuid import UUID
 
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,12 +27,8 @@ async def create_project(db: AsyncSession, tenant_id: UUID, data: dict) -> Proje
     return project
 
 
-async def update_project(
-    db: AsyncSession, tenant_id: UUID, project_id: UUID, data: dict
-) -> Project:
-    result = await db.execute(
-        select(Project).where(Project.id == project_id, Project.tenant_id == tenant_id)
-    )
+async def update_project(db: AsyncSession, tenant_id: UUID, project_id: UUID, data: dict) -> Project:
+    result = await db.execute(select(Project).where(Project.id == project_id, Project.tenant_id == tenant_id))
     project = result.scalar_one_or_none()
     if not project:
         raise LookupError("Project not found")
@@ -46,9 +42,7 @@ async def update_project(
 
 
 async def delete_project(db: AsyncSession, tenant_id: UUID, project_id: UUID) -> None:
-    result = await db.execute(
-        select(Project).where(Project.id == project_id, Project.tenant_id == tenant_id)
-    )
+    result = await db.execute(select(Project).where(Project.id == project_id, Project.tenant_id == tenant_id))
     project = result.scalar_one_or_none()
     if not project:
         raise LookupError("Project not found")
@@ -64,11 +58,7 @@ async def list_tasks(
     tenant_id: UUID,
     project_id: UUID | None = None,
 ) -> list[ProjectTask]:
-    query = (
-        select(ProjectTask)
-        .where(ProjectTask.tenant_id == tenant_id)
-        .options(selectinload(ProjectTask.project))
-    )
+    query = select(ProjectTask).where(ProjectTask.tenant_id == tenant_id).options(selectinload(ProjectTask.project))
     if project_id:
         query = query.where(ProjectTask.project_id == project_id)
     query = query.order_by(desc(ProjectTask.created_at))
@@ -83,17 +73,13 @@ async def create_task(db: AsyncSession, tenant_id: UUID, data: dict) -> ProjectT
     db.add(task)
     await db.commit()
     result = await db.execute(
-        select(ProjectTask)
-        .where(ProjectTask.id == task.id)
-        .options(selectinload(ProjectTask.project))
+        select(ProjectTask).where(ProjectTask.id == task.id).options(selectinload(ProjectTask.project))
     )
     return result.scalar_one()
 
 
 async def update_task(db: AsyncSession, tenant_id: UUID, task_id: UUID, data: dict) -> ProjectTask:
-    result = await db.execute(
-        select(ProjectTask).where(ProjectTask.id == task_id, ProjectTask.tenant_id == tenant_id)
-    )
+    result = await db.execute(select(ProjectTask).where(ProjectTask.id == task_id, ProjectTask.tenant_id == tenant_id))
     task = result.scalar_one_or_none()
     if not task:
         raise LookupError("Task not found")
@@ -105,17 +91,13 @@ async def update_task(db: AsyncSession, tenant_id: UUID, task_id: UUID, data: di
         setattr(task, key, value)
     await db.commit()
     result = await db.execute(
-        select(ProjectTask)
-        .where(ProjectTask.id == task_id)
-        .options(selectinload(ProjectTask.project))
+        select(ProjectTask).where(ProjectTask.id == task_id).options(selectinload(ProjectTask.project))
     )
     return result.scalar_one()
 
 
 async def delete_task(db: AsyncSession, tenant_id: UUID, task_id: UUID) -> None:
-    result = await db.execute(
-        select(ProjectTask).where(ProjectTask.id == task_id, ProjectTask.tenant_id == tenant_id)
-    )
+    result = await db.execute(select(ProjectTask).where(ProjectTask.id == task_id, ProjectTask.tenant_id == tenant_id))
     task = result.scalar_one_or_none()
     if not task:
         raise LookupError("Task not found")

@@ -25,8 +25,14 @@ from app.core.config import settings
 _log = logging.getLogger(__name__)
 
 ALLOWED_CATEGORIES = {
-    "urgente", "factura", "consulta", "proveedor",
-    "rrhh", "marketing", "spam", "otro",
+    "urgente",
+    "factura",
+    "consulta",
+    "proveedor",
+    "rrhh",
+    "marketing",
+    "spam",
+    "otro",
 }
 
 _CLASSIFY_PROMPT = """Eres un asistente que clasifica mensajes de email de una PYME española.
@@ -136,7 +142,7 @@ async def classify_messages(messages: list[dict]) -> list[EmailClassification]:
         # Procesar en lotes; el LLM se vuelve flojo si le metes 100 a la vez.
         out = []
         for i in range(0, len(messages), 30):
-            out.extend(await classify_messages(messages[i:i + 30]))
+            out.extend(await classify_messages(messages[i : i + 30]))
         return out
 
     client = _get_client()
@@ -154,10 +160,12 @@ async def classify_messages(messages: list[dict]) -> list[EmailClassification]:
         model=_model(),
         max_tokens=2000,
         system=_CLASSIFY_PROMPT,
-        messages=[{
-            "role": "user",
-            "content": "Clasifica estos mensajes:\n" + json.dumps(items_payload, ensure_ascii=False, indent=2),
-        }],
+        messages=[
+            {
+                "role": "user",
+                "content": "Clasifica estos mensajes:\n" + json.dumps(items_payload, ensure_ascii=False, indent=2),
+            }
+        ],
     )
     text_blocks = [b.text for b in resp.content if getattr(b, "type", None) == "text"]
     if not text_blocks:
@@ -176,13 +184,15 @@ async def classify_messages(messages: list[dict]) -> list[EmailClassification]:
         except (TypeError, ValueError):
             urgency = 2
         urgency = max(1, min(5, urgency))
-        results.append(EmailClassification(
-            id=str(raw.get("id", "")),
-            category=cat,
-            urgency=urgency,
-            requires_reply=bool(raw.get("requires_reply", False)),
-            suggested_action=str(raw.get("suggested_action", ""))[:120],
-        ))
+        results.append(
+            EmailClassification(
+                id=str(raw.get("id", "")),
+                category=cat,
+                urgency=urgency,
+                requires_reply=bool(raw.get("requires_reply", False)),
+                suggested_action=str(raw.get("suggested_action", ""))[:120],
+            )
+        )
     return results
 
 
@@ -213,10 +223,13 @@ async def draft_reply(
         model=_model(),
         max_tokens=1500,
         system=_DRAFT_PROMPT.replace("{firma_placeholder}", firma),
-        messages=[{
-            "role": "user",
-            "content": "Redacta una respuesta para este mensaje:\n" + json.dumps(user_msg, ensure_ascii=False, indent=2),
-        }],
+        messages=[
+            {
+                "role": "user",
+                "content": "Redacta una respuesta para este mensaje:\n"
+                + json.dumps(user_msg, ensure_ascii=False, indent=2),
+            }
+        ],
     )
 
     text_blocks = [b.text for b in resp.content if getattr(b, "type", None) == "text"]

@@ -112,15 +112,11 @@ async def _create_invoice_async(
                 local_client = result.scalars().first()
                 if not local_client:
                     result = await db.execute(
-                        select(Client).where(
-                            Client.tenant_id == UUID(tenant_id), Client.nif == resolved_nif
-                        )
+                        select(Client).where(Client.tenant_id == UUID(tenant_id), Client.nif == resolved_nif)
                     )
                     local_client = result.scalars().first()
             if not local_client:
-                local_client = Client(
-                    tenant_id=UUID(tenant_id), nif=resolved_nif, name=resolved_name
-                )
+                local_client = Client(tenant_id=UUID(tenant_id), nif=resolved_nif, name=resolved_name)
                 db.add(local_client)
                 await db.flush()
 

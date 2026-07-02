@@ -22,9 +22,7 @@ class CampaignInSendingError(Exception):
 
 async def list_campaigns(tenant_id: UUID, db: AsyncSession) -> list[EmailCampaign]:
     result = await db.execute(
-        select(EmailCampaign)
-        .where(EmailCampaign.tenant_id == tenant_id)
-        .order_by(EmailCampaign.created_at.desc())
+        select(EmailCampaign).where(EmailCampaign.tenant_id == tenant_id).order_by(EmailCampaign.created_at.desc())
     )
     return list(result.scalars().all())
 
@@ -79,9 +77,7 @@ async def create_campaign(payload: Any, tenant_id: UUID, db: AsyncSession) -> Em
     return campaign
 
 
-async def update_campaign(
-    campaign_id: UUID, payload: Any, tenant_id: UUID, db: AsyncSession
-) -> EmailCampaign | None:
+async def update_campaign(campaign_id: UUID, payload: Any, tenant_id: UUID, db: AsyncSession) -> EmailCampaign | None:
     """Actualiza una campaña aún editable (draft/scheduled). None si no existe/ya enviada."""
     campaign = await _get_campaign(campaign_id, tenant_id, db, statuses=_EDITABLE_STATUSES)
     if campaign is None:
@@ -114,8 +110,6 @@ async def delete_campaign(campaign_id: UUID, tenant_id: UUID, db: AsyncSession) 
     return True
 
 
-async def get_sendable_campaign(
-    campaign_id: UUID, tenant_id: UUID, db: AsyncSession
-) -> EmailCampaign | None:
+async def get_sendable_campaign(campaign_id: UUID, tenant_id: UUID, db: AsyncSession) -> EmailCampaign | None:
     """Campaña en estado enviable (draft/scheduled), para la ruta /send."""
     return await _get_campaign(campaign_id, tenant_id, db, statuses=_EDITABLE_STATUSES)

@@ -104,10 +104,7 @@ async def seed_default_routines(
             Workflow.trigger_type == "event_based",
         )
     )
-    existing_keys = {
-        (cfg or {}).get("routine_key")
-        for (cfg,) in res.all()
-    }
+    existing_keys = {(cfg or {}).get("routine_key") for (cfg,) in res.all()}
 
     created: list[str] = []
     for key, spec in DEFAULT_ROUTINES.items():
@@ -139,6 +136,8 @@ async def seed_default_routines(
     if created:
         logger.info(
             "[ROUTINES] %d rutina(s) de oficio sembradas en tenant %s: %s",
-            len(created), tenant_id, ", ".join(created),
+            len(created),
+            tenant_id,
+            ", ".join(created),
         )
     return created

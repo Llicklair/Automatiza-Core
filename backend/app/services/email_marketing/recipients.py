@@ -23,9 +23,7 @@ def recipients_filter(tenant_id: UUID) -> tuple[Any, ...]:
 
 
 async def count_recipients(tenant_id: UUID, db: AsyncSession) -> int:
-    result = await db.execute(
-        select(func.count()).select_from(Client).where(*recipients_filter(tenant_id))
-    )
+    result = await db.execute(select(func.count()).select_from(Client).where(*recipients_filter(tenant_id)))
     return result.scalar() or 0
 
 

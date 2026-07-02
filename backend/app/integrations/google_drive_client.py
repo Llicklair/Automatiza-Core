@@ -103,14 +103,10 @@ class GoogleDriveClient:
         resp.raise_for_status()
         return resp.json()
 
-    async def sync_document(
-        self, name: str, content: bytes, mime_type: str, folder_id: str = "root"
-    ) -> dict:
+    async def sync_document(self, name: str, content: bytes, mime_type: str, folder_id: str = "root") -> dict:
         """Upload a document from the internal system to Drive."""
         return await self.upload_file(name, content, mime_type, folder_id)
 
-    async def backup_invoice(
-        self, invoice_name: str, pdf_bytes: bytes, folder_id: str = "root"
-    ) -> dict:
+    async def backup_invoice(self, invoice_name: str, pdf_bytes: bytes, folder_id: str = "root") -> dict:
         """Backup an invoice PDF to Drive."""
         return await self.upload_file(invoice_name, pdf_bytes, "application/pdf", folder_id)

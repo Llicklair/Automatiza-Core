@@ -44,6 +44,7 @@ def _ensure_java():
         return True
     # Buscar JRE portable en el data dir de la app (descargado por jre-manager.js)
     from app.core.paths import app_data_dir
+
     jre_path = str(app_data_dir("jre"))
     java_exe = os.path.join(jre_path, "bin", "java.exe")
     if os.path.exists(java_exe):
@@ -89,11 +90,7 @@ def _parse_with_opendataloader(file_path: str) -> ParsedDocument | None:
         if json_files:
             try:
                 raw_json = json.loads(json_files[0].read_text(encoding="utf-8"))
-                items = (
-                    raw_json
-                    if isinstance(raw_json, list)
-                    else raw_json.get("elements", raw_json.get("items", []))
-                )
+                items = raw_json if isinstance(raw_json, list) else raw_json.get("elements", raw_json.get("items", []))
                 for item in items:
                     if not isinstance(item, dict):
                         continue

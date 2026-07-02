@@ -97,23 +97,14 @@ _DOMAIN_DIRECTIVES = {
         "asunto y devuelve citas o respuestas basadas en lo encontrado."
     ),
     "compliance": (
-        "Verifica obligaciones fiscales/normativas relacionadas (modelos AEAT "
-        "aplicables, vencimientos, riesgos)."
+        "Verifica obligaciones fiscales/normativas relacionadas (modelos AEAT " "aplicables, vencimientos, riesgos)."
     ),
     "advisory": (
-        "Aporta análisis fiscal-asesor: implicaciones impositivas, "
-        "deducciones aplicables y recomendaciones."
+        "Aporta análisis fiscal-asesor: implicaciones impositivas, " "deducciones aplicables y recomendaciones."
     ),
-    "report": (
-        "Genera el informe ejecutivo con totales, alertas clave y próximos "
-        "pasos accionables."
-    ),
-    "marketing": (
-        "Prepara el contenido de marketing/comunicación pública relacionado."
-    ),
-    "recruitment": (
-        "Aporta contexto de selección de personal (candidatos, vacantes)."
-    ),
+    "report": ("Genera el informe ejecutivo con totales, alertas clave y próximos " "pasos accionables."),
+    "marketing": ("Prepara el contenido de marketing/comunicación pública relacionado."),
+    "recruitment": ("Aporta contexto de selección de personal (candidatos, vacantes)."),
 }
 
 
@@ -195,9 +186,7 @@ def plan_to_ui_graph(plan: list, trigger_type: str) -> tuple[list, list]:
             deps = step.get("depends_on", [])
             if deps:
                 for dep_id in deps:
-                    edges.append(
-                        {"id": f"e-{dep_id}-{step_id}", "source": dep_id, "target": step_id}
-                    )
+                    edges.append({"id": f"e-{dep_id}-{step_id}", "source": dep_id, "target": step_id})
             else:
                 edges.append({"id": f"e-trigger-{step_id}", "source": "trigger", "target": step_id})
 
@@ -330,9 +319,7 @@ def generate_preview_nodes(payload: dict, employees=None) -> tuple[list, list]:
                 "id": join_id,
                 "type": "skill",
                 "position": {"x": CENTER_X, "y": 330},
-                "data": _skill_data(
-                    "Informe de resumen", "billing", consolidate_instr, employees
-                ),
+                "data": _skill_data("Informe de resumen", "billing", consolidate_instr, employees),
             }
         )
         for bid in branch_ids:

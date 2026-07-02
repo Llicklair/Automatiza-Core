@@ -160,9 +160,7 @@ async def update_employee_budget(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await svc.update_budget(
-        employee_id, current_user.tenant_id, payload.budget_limit_usd, db
-    )
+    result = await svc.update_budget(employee_id, current_user.tenant_id, payload.budget_limit_usd, db)
     if not result:
         raise HTTPException(status_code=404, detail="Empleado no encontrado")
     return result

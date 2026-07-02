@@ -50,9 +50,7 @@ def _strip_accents(text: str) -> str:
     """Quita diacríticos (tildes, ñ→n) vía NFKD. Hace el matching de keywords
     tolerante a que el usuario omita tildes ('perdidas' == 'pérdidas'). Ver auditoría
     E2E 2026-06-23: la insensibilidad a tildes provocaba misrouting (accounting→report)."""
-    return "".join(
-        c for c in unicodedata.normalize("NFKD", text) if not unicodedata.combining(c)
-    )
+    return "".join(c for c in unicodedata.normalize("NFKD", text) if not unicodedata.combining(c))
 
 
 def _normalize_for_cache(text: str) -> str:
@@ -233,12 +231,14 @@ def _meets_employee_contract(emp) -> bool:
     tono/expertise) y NO debe interceptar el routing de un dominio builtin por una
     mención incidental de su nombre/rol: eso dispara un dispatch custom lento
     (timeout 180s) sin valor añadido. Ver tasks/lessons.md."""
-    caps = sum((
-        emp.scope is not None,
-        bool(getattr(emp, "memory_enabled", False)),
-        bool(getattr(emp, "knowledge_enabled", False)),
-        emp.workflows is not None,
-    ))
+    caps = sum(
+        (
+            emp.scope is not None,
+            bool(getattr(emp, "memory_enabled", False)),
+            bool(getattr(emp, "knowledge_enabled", False)),
+            emp.workflows is not None,
+        )
+    )
     return caps >= 2
 
 
@@ -311,7 +311,9 @@ async def _resolve_custom_employee(state: OrchestratorState, intent_lower: str) 
                 metadata["addressed_employee_id"] = str(emp.id)
                 logger.info(
                     "[CLASSIFY] empleado custom resuelto por mención '%s': %s (%s)",
-                    tok, emp.name, emp.id,
+                    tok,
+                    emp.name,
+                    emp.id,
                 )
                 return metadata
 
@@ -365,14 +367,13 @@ async def classify_node(state: OrchestratorState) -> OrchestratorState:
             from app.db.models.ai_employees import AIEmployee
 
             async with AsyncSessionLocal() as db:
-                _r = await db.execute(
-                    select(AIEmployee).where(AIEmployee.id == UUID(addressed_id))
-                )
+                _r = await db.execute(select(AIEmployee).where(AIEmployee.id == UUID(addressed_id)))
                 _emp = _r.scalar_one_or_none()
             if _emp and _emp.is_builtin and _emp.domain in VALID_DOMAINS:
                 logger.info(
                     "[CLASSIFY] builtin direccionado: %s (domain=%s) → respetar",
-                    _emp.name, _emp.domain,
+                    _emp.name,
+                    _emp.domain,
                 )
                 return {
                     **state,
@@ -441,9 +442,7 @@ async def classify_node(state: OrchestratorState) -> OrchestratorState:
 
     # ── Paso 5: cachear el resultado (cualquier vía: keyword o LLM) ──────────
     try:
-        await llm_cache.set(
-            tenant_id, cache_key, domain, ttl_override=_classify_cache_ttl()
-        )
+        await llm_cache.set(tenant_id, cache_key, domain, ttl_override=_classify_cache_ttl())
     except Exception as e:
         logger.debug("No se pudo cachear classification: %s", e)
 

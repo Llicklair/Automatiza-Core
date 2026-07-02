@@ -113,7 +113,7 @@ def messages_already_generated_pdf(messages: list) -> bool:
     if not messages:
         return False
     for msg in messages:
-        for tc in (getattr(msg, "tool_calls", None) or []):
+        for tc in getattr(msg, "tool_calls", None) or []:
             name = tc.get("name") if isinstance(tc, dict) else getattr(tc, "name", None)
             if name in _PDF_TOOL_NAMES:
                 return True
@@ -149,16 +149,19 @@ async def save_ai_result_as_document(
         # otro dispatcher o por una tool del agente), no añadir snapshot.
         async with AsyncSessionLocal() as db_check:
             existing = await db_check.execute(
-                select(TenantDocument).where(
+                select(TenantDocument)
+                .where(
                     TenantDocument.tenant_id == uuid.UUID(tenant_id),
                     TenantDocument.task_id == uuid.UUID(task_id),
-                ).limit(1)
+                )
+                .limit(1)
             )
             if existing.scalars().first():
                 return
 
         # Ruta de uploads — usa el resolver canónico (AppData/.../uploads/<cat>/)
         from app.agents.agent_tools.reports import _resolve_upload_dir
+
         upload_dir = _resolve_upload_dir(category)
 
         # Nombre de fichero determinista (ahora .pdf)
@@ -194,9 +197,7 @@ async def save_ai_result_as_document(
             if existing_doc:
                 # INTENTAR BLOQUEO PARA CONCURRENCIA
                 if not await lock_document(db, existing_doc.id, uuid.UUID(task_id)):
-                    logger.warning(
-                        f"[ORCHESTRATOR] Archivo {filename} bloqueado por otro agente. Esperando..."
-                    )
+                    logger.warning(f"[ORCHESTRATOR] Archivo {filename} bloqueado por otro agente. Esperando...")
                     # En una implementación real, reintentaríamos. Aquí lo forzamos tras aviso si es el mismo task
 
                 # Sobreescribir: actualizar campos
@@ -228,9 +229,7 @@ async def save_ai_result_as_document(
         logger.exception("Error guardando resultado como documento")
 
 
-async def save_ai_result_as_csv(
-    tenant_id: str, task_id: str, category: str, filename: str, data: list[dict]
-) -> None:
+async def save_ai_result_as_csv(tenant_id: str, task_id: str, category: str, filename: str, data: list[dict]) -> None:
     """Exporta una lista de diccionarios a CSV y la registra en TenantDocument."""
     import csv
     import os
@@ -251,9 +250,7 @@ async def save_ai_result_as_csv(
         from app.core.security import sanitize_spreadsheet_cell
 
         keys = data[0].keys()
-        safe_rows = [
-            {k: sanitize_spreadsheet_cell(v) for k, v in row.items()} for row in data
-        ]
+        safe_rows = [{k: sanitize_spreadsheet_cell(v) for k, v in row.items()} for row in data]
         with open(file_path, "w", newline="", encoding="utf-8") as f:
             dict_writer = csv.DictWriter(f, fieldnames=keys)
             dict_writer.writeheader()

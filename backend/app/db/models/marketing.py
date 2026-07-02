@@ -29,9 +29,9 @@ class SocialAccount(Base):
         ForeignKey("marketing_provider_config.id", ondelete="SET NULL"),
         nullable=True,
     )
-    platform = Column(String(50), nullable=False)          # instagram | facebook | linkedin | twitter
-    account_id = Column(String(255), nullable=False)        # ID devuelto por la plataforma
-    account_name = Column(String(255), nullable=True)       # nombre legible (@handle o nombre de página)
+    platform = Column(String(50), nullable=False)  # instagram | facebook | linkedin | twitter
+    account_id = Column(String(255), nullable=False)  # ID devuelto por la plataforma
+    account_name = Column(String(255), nullable=True)  # nombre legible (@handle o nombre de página)
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
@@ -86,9 +86,7 @@ class ScheduledPost(Base):
     tenant = relationship("Tenant")
     campaign = relationship("Campaign", back_populates="posts")
     social_account = relationship("SocialAccount", back_populates="posts")
-    metrics = relationship(
-        "ScheduledPostMetrics", back_populates="post", cascade="all, delete-orphan"
-    )
+    metrics = relationship("ScheduledPostMetrics", back_populates="post", cascade="all, delete-orphan")
 
 
 class ScheduledPostMetrics(Base):
@@ -99,9 +97,7 @@ class ScheduledPostMetrics(Base):
     """
 
     __tablename__ = "scheduled_post_metrics"
-    __table_args__ = (
-        UniqueConstraint("scheduled_post_id", "metric_date", name="uq_post_metric_day"),
-    )
+    __table_args__ = (UniqueConstraint("scheduled_post_id", "metric_date", name="uq_post_metric_day"),)
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)

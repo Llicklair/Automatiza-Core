@@ -94,8 +94,11 @@ async def scan_invoice(
                 if hint:
                     try:
                         data = await extract_invoice_data(
-                            content, mime, few_shot_hint=hint,
-                            tenant_id=current_user.tenant_id, db=db,
+                            content,
+                            mime,
+                            few_shot_hint=hint,
+                            tenant_id=current_user.tenant_id,
+                            db=db,
                         )
                         payload = data.to_dict()
                     except Exception as e:
@@ -137,9 +140,7 @@ async def learn_scan_correction(
     if not nif:
         raise HTTPException(status_code=422, detail="supplier_nif requerido.")
 
-    diff = await save_correction(
-        db, current_user.tenant_id, nif, original=original, corrected=corrected
-    )
+    diff = await save_correction(db, current_user.tenant_id, nif, original=original, corrected=corrected)
     return {"saved": bool(diff), "overrides": diff}
 
 
@@ -191,8 +192,11 @@ async def scan_invoices_batch(
                 continue
 
             data = await extract_invoice_data(
-                content, mime, few_shot_hint=None,
-                tenant_id=current_user.tenant_id, db=db,
+                content,
+                mime,
+                few_shot_hint=None,
+                tenant_id=current_user.tenant_id,
+                db=db,
             )
             payload = data.to_dict()
             nif = (payload.get("emisor") or {}).get("nif")
@@ -246,9 +250,7 @@ async def import_invoices(
     if not isinstance(drafts, list) or not drafts:
         raise HTTPException(status_code=422, detail="Se requiere 'drafts' (lista no vacía).")
 
-    results = await import_received_invoices(
-        db, current_user.tenant_id, drafts, current_user.id
-    )
+    results = await import_received_invoices(db, current_user.tenant_id, drafts, current_user.id)
     # 'created' = facturas realmente nuevas. Los duplicados se devuelven con
     # ok=True + skipped=True (idempotencia), pero NO cuentan como creadas.
     created = sum(1 for r in results if r.get("ok") and not r.get("skipped"))
@@ -398,9 +400,7 @@ async def create_rectificativa(
     reason = (payload or {}).get("reason") or ""
     serie = (payload or {}).get("serie") or "R"
     try:
-        rect = await svc.create_rectificativa(
-            invoice_id, reason, current_user.tenant_id, db, serie=serie
-        )
+        rect = await svc.create_rectificativa(invoice_id, reason, current_user.tenant_id, db, serie=serie)
     except ValueError as e:
         code = 404 if "no encontrada" in str(e) else 400
         raise HTTPException(status_code=code, detail=str(e)) from e
@@ -506,6 +506,7 @@ async def download_facturae(
     if tenant and tenant.cert_path and Path(tenant.cert_path).exists():
         try:
             from app.services.billing.xades_signer import sign_xml
+
             xml_bytes = sign_xml(xml_bytes, tenant.cert_path, tenant.cert_password or "")
         except Exception as exc:
             logger.warning("XAdES signing failed, returning unsigned XML: %s", exc)
@@ -533,8 +534,6 @@ async def send_to_verifactu(
     from app.services.billing.verifactu_submit import submit_invoice_to_verifactu
 
     try:
-        return await submit_invoice_to_verifactu(
-            db, invoice_id, current_user.tenant_id, confirmed=False
-        )
+        return await submit_invoice_to_verifactu(db, invoice_id, current_user.tenant_id, confirmed=False)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e

@@ -1,4 +1,5 @@
 """Employee self-service portal — data scoped to the logged-in user's employee record."""
+
 import uuid
 
 from fastapi import APIRouter, Body, Depends, HTTPException

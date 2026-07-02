@@ -74,9 +74,7 @@ async def upload_cv(
 ):
     """Sube un CV (PDF), lo parsea con IA, puntua y guarda el candidato."""
     try:
-        return await svc.upload_cv(
-            db, current_user.tenant_id, position_id, file.filename, file.file
-        )
+        return await svc.upload_cv(db, current_user.tenant_id, position_id, file.filename, file.file)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
@@ -93,9 +91,7 @@ async def update_candidate_status(
     current_user=Depends(get_current_user),
 ):
     try:
-        return await svc.update_candidate_status(
-            db, current_user.tenant_id, candidate_id, payload.status
-        )
+        return await svc.update_candidate_status(db, current_user.tenant_id, candidate_id, payload.status)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except LookupError as exc:

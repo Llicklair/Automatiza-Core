@@ -42,13 +42,9 @@ def upgrade() -> None:
         sa.Column("tokens_in", sa.BigInteger(), nullable=False, server_default="0"),
         sa.Column("tokens_out", sa.BigInteger(), nullable=False, server_default="0"),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-        sa.UniqueConstraint(
-            "tenant_id", "month", "agent", "provider", name="uq_llm_usage_monthly_dims"
-        ),
+        sa.UniqueConstraint("tenant_id", "month", "agent", "provider", name="uq_llm_usage_monthly_dims"),
     )
-    op.create_index(
-        "ix_llm_usage_monthly_tenant_id", "llm_usage_monthly", ["tenant_id"]
-    )
+    op.create_index("ix_llm_usage_monthly_tenant_id", "llm_usage_monthly", ["tenant_id"])
     op.create_index("ix_llm_usage_monthly_month", "llm_usage_monthly", ["month"])
 
 

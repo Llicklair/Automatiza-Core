@@ -26,9 +26,7 @@ from app.services.llm_cache import llm_cache
 logger = logging.getLogger(__name__)
 
 
-async def _employee_passes_health_check(
-    emp: AIEmployee, db, *, builtin_fallback_domain: str | None = None
-) -> bool:
+async def _employee_passes_health_check(emp: AIEmployee, db, *, builtin_fallback_domain: str | None = None) -> bool:
     """Health-check pre-dispatch para AIEmployees custom.
 
     Un empleado custom se considera SANO (apto para interceptar un dominio
@@ -55,16 +53,12 @@ async def _employee_passes_health_check(
         reasons.append("system_prompt vacío")
 
     try:
-        skills_count_row = await db.execute(
-            select(func.count(AgentSkill.id)).where(AgentSkill.employee_id == emp.id)
-        )
+        skills_count_row = await db.execute(select(func.count(AgentSkill.id)).where(AgentSkill.employee_id == emp.id))
         skills_count = int(skills_count_row.scalar() or 0)
     except Exception as e:
         # Si la query falla preferimos NO bloquear al empleado por seguridad de
         # disponibilidad (mejor intentar el custom que dejar al tenant sin nada).
-        logger.debug(
-            "[HEALTH] No se pudo contar skills de '%s' (%s): %s", emp.name, emp.id, e
-        )
+        logger.debug("[HEALTH] No se pudo contar skills de '%s' (%s): %s", emp.name, emp.id, e)
         skills_count = -1  # señal: no se pudo verificar
 
     if skills_count == 0:
@@ -72,8 +66,7 @@ async def _employee_passes_health_check(
 
     if reasons:
         logger.warning(
-            "AIEmployee '%s' (%s) custom omitido por health-check (%s), "
-            "usando builtin '%s'",
+            "AIEmployee '%s' (%s) custom omitido por health-check (%s), " "usando builtin '%s'",
             emp.name,
             emp.id,
             "; ".join(reasons),
@@ -138,8 +131,7 @@ def _custom_employees_block(employees: list[AIEmployee]) -> str:
         return snippet
 
     lines = [
-        f'  - "{emp.name}" — {emp.role} (employee_id: "{emp.id}")\n'
-        f"      Expertise: {_expertise_snippet(emp)}"
+        f'  - "{emp.name}" — {emp.role} (employee_id: "{emp.id}")\n' f"      Expertise: {_expertise_snippet(emp)}"
         for emp in employees
     ]
     return (
@@ -242,9 +234,7 @@ async def _plan_from_llm(state: OrchestratorState) -> "list[SubTask]":
             description="Dominios válidos: hr, crm, excel, email, billing, documents, banking, rag, workflow, compliance, recruitment, marketing, inventory, chat, custom"
         )
         action: str = Field(description="Acción corta, ej: extract_data, create_report, send_email")
-        instruction: str = Field(
-            description="Instrucción muy detallada en español para el agente actual."
-        )
+        instruction: str = Field(description="Instrucción muy detallada en español para el agente actual.")
         needs_output_from: list[int] = Field(
             default_factory=list, description="Índices (1-based) de pasos anteriores requeridos."
         )
@@ -291,9 +281,7 @@ async def _plan_from_llm(state: OrchestratorState) -> "list[SubTask]":
                         "agent": agent,
                         "action": step.get("action", "process"),
                         "params": params,
-                        "depends_on": [
-                            f"step_{d}" for d in raw_deps if isinstance(d, int) and 1 <= d <= idx
-                        ],
+                        "depends_on": [f"step_{d}" for d in raw_deps if isinstance(d, int) and 1 <= d <= idx],
                         "status": "pending",
                     }
                 )
@@ -344,20 +332,16 @@ async def _plan_from_llm(state: OrchestratorState) -> "list[SubTask]":
                 if attempt == 0 and settings.GROQ_API_KEY:
                     logger.warning("[PLAN] Proveedor principal caído, intentando Groq...")
                     try:
-                        structured_llm = get_llm(
-                            temperature=0, provider="groq"
-                        ).with_structured_output(MultiAgentPlan, method="json_mode")
+                        structured_llm = get_llm(temperature=0, provider="groq").with_structured_output(
+                            MultiAgentPlan, method="json_mode"
+                        )
                         continue
                     except Exception:
                         logger.debug("Fallback a Groq falló", exc_info=True)
                 fallback_llm = (
-                    get_llm(temperature=0, provider="openai")
-                    if settings.OPENAI_API_KEY
-                    else get_llm(temperature=0)
+                    get_llm(temperature=0, provider="openai") if settings.OPENAI_API_KEY else get_llm(temperature=0)
                 )
-                structured_llm = fallback_llm.with_structured_output(
-                    MultiAgentPlan, method="json_mode"
-                )
+                structured_llm = fallback_llm.with_structured_output(MultiAgentPlan, method="json_mode")
                 continue
             elif attempt < 2:
                 await asyncio.sleep(5 * (attempt + 1))
@@ -406,18 +390,14 @@ async def _plan_from_llm(state: OrchestratorState) -> "list[SubTask]":
         if agent == "custom" and emp_id and emp_id in valid_employee_ids:
             params["employee_id"] = emp_id
         elif agent == "custom" and emp_id and emp_id not in valid_employee_ids:
-            logger.warning(
-                "[PLAN] LLM devolvió employee_id desconocido '%s', ignorando", emp_id
-            )
+            logger.warning("[PLAN] LLM devolvió employee_id desconocido '%s', ignorando", emp_id)
         plan.append(
             {
                 "id": f"step_{idx + 1}",
                 "agent": agent,
                 "action": step.action,
                 "params": params,
-                "depends_on": [
-                    f"step_{d}" for d in raw_deps if isinstance(d, int) and 1 <= d <= idx
-                ],
+                "depends_on": [f"step_{d}" for d in raw_deps if isinstance(d, int) and 1 <= d <= idx],
                 "status": "pending",
             }
         )
@@ -440,14 +420,10 @@ async def plan_node(state: OrchestratorState) -> dict:
                 wf = wf_res.scalar_one_or_none()
                 plan = await _plan_from_blueprint(state, wf)
                 if plan is not None:
-                    status = (
-                        TaskStatus.DONE if plan[0].get("status") == "done" else TaskStatus.EXECUTING
-                    )
+                    status = TaskStatus.DONE if plan[0].get("status") == "done" else TaskStatus.EXECUTING
                     return {"plan": plan, "status": status}
         except Exception as e:
-            logger.warning(
-                "[PLAN] Error cargando blueprint: %s. Cayendo a planificación estándar.", e
-            )
+            logger.warning("[PLAN] Error cargando blueprint: %s. Cayendo a planificación estándar.", e)
 
     # 2. LLM coordinator
     domain = state["classified_domain"]
@@ -478,9 +454,7 @@ async def plan_node(state: OrchestratorState) -> dict:
         if addressed_id:
             try:
                 async with AsyncSessionLocal() as db:
-                    _r = await db.execute(
-                        select(AIEmployee).where(AIEmployee.id == UUID(addressed_id))
-                    )
+                    _r = await db.execute(select(AIEmployee).where(AIEmployee.id == UUID(addressed_id)))
                     _emp = _r.scalar_one_or_none()
                 if _emp and _emp.is_builtin and _emp.domain in VALID_DOMAINS:
                     plan = [
@@ -528,7 +502,8 @@ async def plan_node(state: OrchestratorState) -> dict:
                     except Exception as e:
                         logger.warning(
                             "[PLAN] escalación a planner falló (%s), caigo a builtin '%s'",
-                            e, single_agent,
+                            e,
+                            single_agent,
                         )
             except Exception as e:
                 logger.debug("[PLAN] custom lookup falló: %s", e)

@@ -49,14 +49,8 @@ def upgrade() -> None:
         "CREATE INDEX IF NOT EXISTS ix_agent_exec_trace_tenant_created "
         "ON agent_execution_trace(tenant_id, created_at)"
     )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_agent_exec_trace_execution "
-        "ON agent_execution_trace(execution_id)"
-    )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_agent_exec_trace_task "
-        "ON agent_execution_trace(task_id)"
-    )
+    op.execute("CREATE INDEX IF NOT EXISTS ix_agent_exec_trace_execution " "ON agent_execution_trace(execution_id)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_agent_exec_trace_task " "ON agent_execution_trace(task_id)")
 
     # Triggers append-only (solo Postgres)
     bind = op.get_bind()

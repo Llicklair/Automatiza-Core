@@ -45,6 +45,7 @@ if REPORTLAB_AVAILABLE:
     from reportlab.lib.units import mm
     from reportlab.platypus import HRFlowable, Paragraph, Spacer, Table, TableStyle
 
+
 def _eur(v) -> str:
     try:
         return f"{float(v or 0):.2f} €"
@@ -59,9 +60,14 @@ def _footer(s, C) -> list:
         Spacer(1, 3 * mm),
         Paragraph(
             "Documento informativo generado automáticamente. No sustituye la presentación oficial ante la AEAT.",
-            ParagraphStyle("Foot", parent=s["styles"]["Normal"], fontSize=8,
-                           fontName="Helvetica-Bold", textColor=colors.HexColor(C["RED"]),
-                           alignment=TA_CENTER),
+            ParagraphStyle(
+                "Foot",
+                parent=s["styles"]["Normal"],
+                fontSize=8,
+                fontName="Helvetica-Bold",
+                textColor=colors.HexColor(C["RED"]),
+                alignment=TA_CENTER,
+            ),
         ),
         Spacer(1, 2 * mm),
         Paragraph(f"Generado por AutomatizaCore · {datetime.now(BUSINESS_TZ).strftime('%d/%m/%Y %H:%M')}", s["footer"]),
@@ -100,6 +106,7 @@ def _build(elements) -> bytes:
 
 # ── Modelo 130 — IRPF pago fraccionado ────────────────────────────────────────
 
+
 def generate_modelo_130_pdf(data: dict) -> bytes:
     """Genera el PDF borrador del Modelo 130 con las casillas oficiales AEAT.
 
@@ -110,7 +117,8 @@ def generate_modelo_130_pdf(data: dict) -> bytes:
     """
     if not REPORTLAB_AVAILABLE:
         return f"MODELO 130 BORRADOR {data.get('periodo')}/{data.get('ejercicio')}\n".encode()
-    s = _common_styles(); C = s["C"]
+    s = _common_styles()
+    C = s["C"]
     quarter = _q(data.get("periodo", ""))
     year = data.get("ejercicio", "")
     casillas = build_casillas_130(data)
@@ -129,8 +137,7 @@ def generate_modelo_130_pdf(data: dict) -> bytes:
         _section_banner("2. Liquidación · Actividades económicas en estimación directa (Apartado I)", s),
         Spacer(1, 2 * mm),
     ]
-    tbl_i = _casillas_table(cmap, ["01", "02", "03", "04", "05", "06", "07"], s, C,
-                            emphasis=("03", "07"))
+    tbl_i = _casillas_table(cmap, ["01", "02", "03", "04", "05", "06", "07"], s, C, emphasis=("03", "07"))
     if tbl_i is not None:
         el.append(tbl_i)
 
@@ -139,8 +146,7 @@ def generate_modelo_130_pdf(data: dict) -> bytes:
         _section_banner("3. Total liquidación (Apartado III)", s),
         Spacer(1, 2 * mm),
     ]
-    tbl_iii = _casillas_table(cmap, ["12", "13", "14", "15", "16", "17", "18", "19"], s, C,
-                              emphasis=("19",))
+    tbl_iii = _casillas_table(cmap, ["12", "13", "14", "15", "16", "17", "18", "19"], s, C, emphasis=("19",))
     if tbl_iii is not None:
         el.append(tbl_iii)
 
@@ -148,22 +154,26 @@ def generate_modelo_130_pdf(data: dict) -> bytes:
     el += [Spacer(1, 5 * mm), _resultado_badge(resultado_19, s, neg_label="DECLARACIÓN NEGATIVA")]
 
     el.append(Spacer(1, 4 * mm))
-    el.append(Paragraph(
-        "Las casillas 05, 06, 13, 15, 16 y 18 dependen de datos del contribuyente "
-        "(retenciones, pagos previos, deducciones) y se muestran a 0 por defecto: "
-        "revísalas y ajústalas antes de presentar.",
-        s["body"],
-    ))
+    el.append(
+        Paragraph(
+            "Las casillas 05, 06, 13, 15, 16 y 18 dependen de datos del contribuyente "
+            "(retenciones, pagos previos, deducciones) y se muestran a 0 por defecto: "
+            "revísalas y ajústalas antes de presentar.",
+            s["body"],
+        )
+    )
     el += _footer(s, C)
     return _build(el)
 
 
 # ── Modelo 111 — Retenciones del trabajo ──────────────────────────────────────
 
+
 def generate_modelo_111_pdf(data: dict) -> bytes:
     if not REPORTLAB_AVAILABLE:
         return f"MODELO 111 BORRADOR {data.get('periodo')}/{data.get('ejercicio')}\n".encode()
-    s = _common_styles(); C = s["C"]
+    s = _common_styles()
+    C = s["C"]
     quarter = _q(data.get("periodo", ""))
     year = data.get("ejercicio", "")
     cmap = {c.codigo: c for c in build_casillas_111(data)}
@@ -190,20 +200,26 @@ def generate_modelo_111_pdf(data: dict) -> bytes:
     resultado = float(cmap["30"].valor) if "30" in cmap else 0.0
     el += [Spacer(1, 5 * mm), _resultado_badge(resultado, s)]
     el.append(Spacer(1, 4 * mm))
-    el.append(Paragraph(
-        "Las casillas 07-09 (actividades económicas/profesionales) son editables y se "
-        "muestran a 0 por defecto. Los bloques de retribución en especie, premios y otros "
-        "se omiten en este borrador. Revisa antes de presentar.", s["body"]))
+    el.append(
+        Paragraph(
+            "Las casillas 07-09 (actividades económicas/profesionales) son editables y se "
+            "muestran a 0 por defecto. Los bloques de retribución en especie, premios y otros "
+            "se omiten en este borrador. Revisa antes de presentar.",
+            s["body"],
+        )
+    )
     el += _footer(s, C)
     return _build(el)
 
 
 # ── Modelo 190 — Resumen anual de retenciones ─────────────────────────────────
 
+
 def generate_modelo_190_pdf(data: dict) -> bytes:
     if not REPORTLAB_AVAILABLE:
         return f"MODELO 190 BORRADOR {data.get('ejercicio')}\n".encode()
-    s = _common_styles(); C = s["C"]
+    s = _common_styles()
+    C = s["C"]
     year = data.get("ejercicio", "")
     cmap = {c.codigo: c for c in build_casillas_190(data)}
     perceptores = data.get("perceptores", []) or []
@@ -228,20 +244,27 @@ def generate_modelo_190_pdf(data: dict) -> bytes:
         _section_banner(f"3. Relación de perceptores ({len(perceptores)})", s),
         Spacer(1, 2 * mm),
     ]
-    rows = [[Paragraph("Clave", s["header"]), Paragraph("Perceptor", s["header"]),
-             Paragraph("NIF", s["header"]), Paragraph("Percepción íntegra", s["header"]),
-             Paragraph("Retención", s["header"])]]
+    rows = [
+        [
+            Paragraph("Clave", s["header"]),
+            Paragraph("Perceptor", s["header"]),
+            Paragraph("NIF", s["header"]),
+            Paragraph("Percepción íntegra", s["header"]),
+            Paragraph("Retención", s["header"]),
+        ]
+    ]
     for p in perceptores:
-        rows.append([
-            Paragraph(str(p.get("clave_percepcion") or "—"), s["body"]),
-            Paragraph(str(p.get("nombre") or "—"), s["body"]),
-            Paragraph(str(p.get("nif") or "—"), s["body"]),
-            Paragraph(_eur(p.get("percepcion_integra")), s["right"]),
-            Paragraph(_eur(p.get("retencion_practicada")), s["right"]),
-        ])
+        rows.append(
+            [
+                Paragraph(str(p.get("clave_percepcion") or "—"), s["body"]),
+                Paragraph(str(p.get("nombre") or "—"), s["body"]),
+                Paragraph(str(p.get("nif") or "—"), s["body"]),
+                Paragraph(_eur(p.get("percepcion_integra")), s["right"]),
+                Paragraph(_eur(p.get("retencion_practicada")), s["right"]),
+            ]
+        )
     if not perceptores:
-        rows.append([Paragraph("Sin perceptores en el ejercicio", s["body"])]
-                    + [Paragraph("", s["body"])] * 4)
+        rows.append([Paragraph("Sin perceptores en el ejercicio", s["body"])] + [Paragraph("", s["body"])] * 4)
     tbl = Table(rows, colWidths=[15 * mm, 60 * mm, 32 * mm, 36 * mm, 32 * mm])
     tbl.setStyle(TableStyle(_table_header_style() + [("ALIGN", (3, 0), (-1, -1), "RIGHT")]))
     el += [tbl]
@@ -251,10 +274,12 @@ def generate_modelo_190_pdf(data: dict) -> bytes:
 
 # ── Modelo 347 — Operaciones con terceros ─────────────────────────────────────
 
+
 def generate_modelo_347_pdf(data: dict) -> bytes:
     if not REPORTLAB_AVAILABLE:
         return f"MODELO 347 BORRADOR {data.get('ejercicio')}\n".encode()
-    s = _common_styles(); C = s["C"]
+    s = _common_styles()
+    C = s["C"]
     year = data.get("ejercicio", "")
     cmap = {c.codigo: c for c in build_casillas_347(data)}
     declarables = data.get("declarables", []) or []
@@ -277,22 +302,36 @@ def generate_modelo_347_pdf(data: dict) -> bytes:
     el += [
         Spacer(1, 5 * mm),
         _section_banner(
-            f"3. Relación de operaciones con terceros "
-            f"({data.get('num_declarables', len(declarables))})", s),
+            f"3. Relación de operaciones con terceros " f"({data.get('num_declarables', len(declarables))})", s
+        ),
         Spacer(1, 2 * mm),
     ]
-    rows = [[Paragraph("NIF", s["header"]), Paragraph("Nombre / Razón social", s["header"]),
-             Paragraph("Emitidas", s["header"]), Paragraph("Recibidas", s["header"])]]
+    rows = [
+        [
+            Paragraph("NIF", s["header"]),
+            Paragraph("Nombre / Razón social", s["header"]),
+            Paragraph("Emitidas", s["header"]),
+            Paragraph("Recibidas", s["header"]),
+        ]
+    ]
     for d in declarables:
-        rows.append([
-            Paragraph(str(d.get("nif") or "—"), s["body"]),
-            Paragraph(str(d.get("nombre") or "—"), s["body"]),
-            Paragraph(_eur(d.get("importe_emitidas")), s["right"]),
-            Paragraph(_eur(d.get("importe_recibidas")), s["right"]),
-        ])
+        rows.append(
+            [
+                Paragraph(str(d.get("nif") or "—"), s["body"]),
+                Paragraph(str(d.get("nombre") or "—"), s["body"]),
+                Paragraph(_eur(d.get("importe_emitidas")), s["right"]),
+                Paragraph(_eur(d.get("importe_recibidas")), s["right"]),
+            ]
+        )
     if not declarables:
-        rows.append([Paragraph("Sin operaciones que superen el umbral", s["body"]),
-                     Paragraph("", s["body"]), Paragraph("", s["body"]), Paragraph("", s["body"])])
+        rows.append(
+            [
+                Paragraph("Sin operaciones que superen el umbral", s["body"]),
+                Paragraph("", s["body"]),
+                Paragraph("", s["body"]),
+                Paragraph("", s["body"]),
+            ]
+        )
     tbl = Table(rows, colWidths=[32 * mm, 73 * mm, 35 * mm, 35 * mm])
     tbl.setStyle(TableStyle(_table_header_style() + [("ALIGN", (2, 0), (-1, -1), "RIGHT")]))
     el += [tbl]
@@ -302,10 +341,12 @@ def generate_modelo_347_pdf(data: dict) -> bytes:
 
 # ── Modelo 390 — Resumen anual de IVA ─────────────────────────────────────────
 
+
 def generate_modelo_390_pdf(data: dict) -> bytes:
     if not REPORTLAB_AVAILABLE:
         return f"MODELO 390 BORRADOR {data.get('ejercicio')}\n".encode()
-    s = _common_styles(); C = s["C"]
+    s = _common_styles()
+    C = s["C"]
     cmap = {c.codigo: c for c in build_casillas_390(data)}
     el: list = [
         Paragraph("Modelo 390 · Resumen anual del IVA", s["title"]),
@@ -320,8 +361,7 @@ def generate_modelo_390_pdf(data: dict) -> bytes:
         _section_banner("2. IVA devengado", s),
         Spacer(1, 2 * mm),
     ]
-    t1 = _casillas_table(cmap, ["01", "02", "03", "04", "05", "06", "33", "34", "47"], s, C,
-                         emphasis=("34", "47"))
+    t1 = _casillas_table(cmap, ["01", "02", "03", "04", "05", "06", "33", "34", "47"], s, C, emphasis=("34", "47"))
     if t1 is not None:
         el.append(t1)
     el += [Spacer(1, 5 * mm), _section_banner("3. IVA deducible", s), Spacer(1, 2 * mm)]
@@ -335,20 +375,26 @@ def generate_modelo_390_pdf(data: dict) -> bytes:
     resultado = float(cmap["86"].valor) if "86" in cmap else 0.0
     el += [Spacer(1, 5 * mm), _resultado_badge(resultado, s, neg_label="RESULTADO A COMPENSAR")]
     el.append(Spacer(1, 4 * mm))
-    el.append(Paragraph(
-        "Resumen de las casillas clave del Modelo 390 (régimen general). Recargo de "
-        "equivalencia, ISP, bienes de inversión, importaciones y prorrata se omiten o van "
-        "a 0. Revisa antes de presentar.", s["body"]))
+    el.append(
+        Paragraph(
+            "Resumen de las casillas clave del Modelo 390 (régimen general). Recargo de "
+            "equivalencia, ISP, bienes de inversión, importaciones y prorrata se omiten o van "
+            "a 0. Revisa antes de presentar.",
+            s["body"],
+        )
+    )
     el += _footer(s, C)
     return _build(el)
 
 
 # ── Modelo 115 — Retenciones por arrendamiento de inmuebles ───────────────────
 
+
 def generate_modelo_115_pdf(data: dict) -> bytes:
     if not REPORTLAB_AVAILABLE:
         return f"MODELO 115 BORRADOR {data.get('periodo')}/{data.get('ejercicio')}\n".encode()
-    s = _common_styles(); C = s["C"]
+    s = _common_styles()
+    C = s["C"]
     quarter = _q(data.get("periodo", ""))
     year = data.get("ejercicio", "")
     cmap = {c.codigo: c for c in build_casillas_115(data)}
@@ -376,10 +422,12 @@ def generate_modelo_115_pdf(data: dict) -> bytes:
 
 # ── Modelo 349 — Operaciones intracomunitarias ────────────────────────────────
 
+
 def generate_modelo_349_pdf(data: dict) -> bytes:
     if not REPORTLAB_AVAILABLE:
         return f"MODELO 349 BORRADOR {data.get('periodo')}/{data.get('ejercicio')}\n".encode()
-    s = _common_styles(); C = s["C"]
+    s = _common_styles()
+    C = s["C"]
     q = data.get("periodo", "")
     year = data.get("ejercicio", "")
     ops = data.get("operaciones", []) or []
@@ -398,29 +446,44 @@ def generate_modelo_349_pdf(data: dict) -> bytes:
         Spacer(1, 2 * mm),
     ]
     # La hoja-resumen del 349 no numera casillas: se rotulan los totales por etiqueta.
-    el.append(_kv_table([
-        ("Número total de operadores intracomunitarios", str(num_op), False),
-        ("Importe total de las operaciones intracomunitarias", _eur(data.get("total_base_imponible")), True),
-    ], s, C))
+    el.append(
+        _kv_table(
+            [
+                ("Número total de operadores intracomunitarios", str(num_op), False),
+                ("Importe total de las operaciones intracomunitarias", _eur(data.get("total_base_imponible")), True),
+            ],
+            s,
+            C,
+        )
+    )
     el += [
         Spacer(1, 5 * mm),
         _section_banner(f"3. Relación de operaciones intracomunitarias ({num_op})", s),
         Spacer(1, 2 * mm),
     ]
-    rows = [[Paragraph("NIF-IVA", s["header"]), Paragraph("País", s["header"]),
-             Paragraph("Contraparte", s["header"]), Paragraph("Clave", s["header"]),
-             Paragraph("Base imponible", s["header"])]]
+    rows = [
+        [
+            Paragraph("NIF-IVA", s["header"]),
+            Paragraph("País", s["header"]),
+            Paragraph("Contraparte", s["header"]),
+            Paragraph("Clave", s["header"]),
+            Paragraph("Base imponible", s["header"]),
+        ]
+    ]
     for o in ops:
-        rows.append([
-            Paragraph(str(o.get("nif_intracomunitario") or "—"), s["body"]),
-            Paragraph(str(o.get("pais_codigo") or "—"), s["body"]),
-            Paragraph(str(o.get("nombre_contraparte") or "—"), s["body"]),
-            Paragraph(str(o.get("tipo_operacion") or "—"), s["body"]),
-            Paragraph(_eur(o.get("base_imponible")), s["right"]),
-        ])
+        rows.append(
+            [
+                Paragraph(str(o.get("nif_intracomunitario") or "—"), s["body"]),
+                Paragraph(str(o.get("pais_codigo") or "—"), s["body"]),
+                Paragraph(str(o.get("nombre_contraparte") or "—"), s["body"]),
+                Paragraph(str(o.get("tipo_operacion") or "—"), s["body"]),
+                Paragraph(_eur(o.get("base_imponible")), s["right"]),
+            ]
+        )
     if not ops:
-        rows.append([Paragraph("Sin operaciones intracomunitarias en el período", s["body"])]
-                    + [Paragraph("", s["body"])] * 4)
+        rows.append(
+            [Paragraph("Sin operaciones intracomunitarias en el período", s["body"])] + [Paragraph("", s["body"])] * 4
+        )
     tbl = Table(rows, colWidths=[34 * mm, 16 * mm, 56 * mm, 22 * mm, 47 * mm])
     tbl.setStyle(TableStyle(_table_header_style() + [("ALIGN", (4, 0), (-1, -1), "RIGHT")]))
     el += [tbl]
@@ -438,10 +501,12 @@ def _q(periodo) -> int:
 
 # ── Modelo 200 — Impuesto sobre Sociedades ─────────────────────────────────────
 
+
 def generate_modelo_200_pdf(data: dict) -> bytes:
     if not REPORTLAB_AVAILABLE:
         return f"MODELO 200 BORRADOR {data.get('ejercicio')}\n".encode()
-    s = _common_styles(); C = s["C"]
+    s = _common_styles()
+    C = s["C"]
     year = data.get("ejercicio", "")
     cmap = {c.codigo: c for c in build_casillas_200(data)}
     el: list = [
@@ -457,37 +522,51 @@ def generate_modelo_200_pdf(data: dict) -> bytes:
         _section_banner("2. Liquidación · Casillas clave", s),
         Spacer(1, 2 * mm),
     ]
-    t = _casillas_table(cmap, ["00500", "00552", "00558", "00562", "00592", "00601", "00621"],
-                        s, C, emphasis=("00552", "00621"))
+    t = _casillas_table(
+        cmap, ["00500", "00552", "00558", "00562", "00592", "00601", "00621"], s, C, emphasis=("00552", "00621")
+    )
     if t is not None:
         el.append(t)
     resultado = float(cmap["00621"].valor) if "00621" in cmap else 0.0
     el += [Spacer(1, 5 * mm), _resultado_badge(resultado, s, neg_label="RESULTADO A DEVOLVER")]
     el.append(Spacer(1, 4 * mm))
-    el.append(Paragraph(
-        f"Preview de las casillas clave del Impuesto sobre Sociedades. Las correcciones al "
-        f"resultado contable (ajustes fiscales estimados {_eur(data.get('ajustes_fiscales'))}) no "
-        f"tienen casilla-resumen única (van en el rango 00355–00414) y las retenciones e ingresos "
-        f"a cuenta tampoco (rango 01785–01799); por eso no se detallan aquí. La cuota líquida "
-        f"(00592) se muestra sin deducciones aplicadas. Revisa antes de presentar.", s["body"]))
+    el.append(
+        Paragraph(
+            f"Preview de las casillas clave del Impuesto sobre Sociedades. Las correcciones al "
+            f"resultado contable (ajustes fiscales estimados {_eur(data.get('ajustes_fiscales'))}) no "
+            f"tienen casilla-resumen única (van en el rango 00355–00414) y las retenciones e ingresos "
+            f"a cuenta tampoco (rango 01785–01799); por eso no se detallan aquí. La cuota líquida "
+            f"(00592) se muestra sin deducciones aplicadas. Revisa antes de presentar.",
+            s["body"],
+        )
+    )
     warning = data.get("_warning")
     if warning:
         el.append(Spacer(1, 3 * mm))
-        el.append(Paragraph(
-            str(warning),
-            ParagraphStyle("Warn200", parent=s["styles"]["Normal"], fontSize=8,
-                           fontName="Helvetica-Oblique", textColor=colors.HexColor(C["AMBER"])),
-        ))
+        el.append(
+            Paragraph(
+                str(warning),
+                ParagraphStyle(
+                    "Warn200",
+                    parent=s["styles"]["Normal"],
+                    fontSize=8,
+                    fontName="Helvetica-Oblique",
+                    textColor=colors.HexColor(C["AMBER"]),
+                ),
+            )
+        )
     el += _footer(s, C)
     return _build(el)
 
 
 # ── Modelo 100 — IRPF (Declaración de la Renta, preview) ───────────────────────
 
+
 def generate_modelo_100_pdf(data: dict) -> bytes:
     if not REPORTLAB_AVAILABLE:
         return f"MODELO 100 BORRADOR {data.get('ejercicio')}\n".encode()
-    s = _common_styles(); C = s["C"]
+    s = _common_styles()
+    C = s["C"]
     year = data.get("ejercicio", "")
     cmap = {c.codigo: c for c in build_casillas_100(data)}
     el: list = [
@@ -503,25 +582,35 @@ def generate_modelo_100_pdf(data: dict) -> bytes:
         _section_banner("2. Liquidación · Casillas clave", s),
         Spacer(1, 2 * mm),
     ]
-    t = _casillas_table(cmap, ["0224", "0500", "0519", "0595", "0596", "0604", "0670"],
-                        s, C, emphasis=("0500", "0670"))
+    t = _casillas_table(cmap, ["0224", "0500", "0519", "0595", "0596", "0604", "0670"], s, C, emphasis=("0500", "0670"))
     if t is not None:
         el.append(t)
     resultado = float(cmap["0670"].valor) if "0670" in cmap else 0.0
     el += [Spacer(1, 5 * mm), _resultado_badge(resultado, s, neg_label="RESULTADO A DEVOLVER")]
     el.append(Spacer(1, 4 * mm))
-    el.append(Paragraph(
-        "Preview de las casillas clave de la Renta (numeración válida para Renta 2024/2025). La "
-        "cuota se muestra agregada —el modelo la desglosa en estatal (0545) y autonómica (0546)— y "
-        "sin deducciones aplicadas. Las retenciones (0596) y el mínimo personal y familiar (0519) "
-        "dependen de tus circunstancias: revísalos antes de presentar.", s["body"]))
+    el.append(
+        Paragraph(
+            "Preview de las casillas clave de la Renta (numeración válida para Renta 2024/2025). La "
+            "cuota se muestra agregada —el modelo la desglosa en estatal (0545) y autonómica (0546)— y "
+            "sin deducciones aplicadas. Las retenciones (0596) y el mínimo personal y familiar (0519) "
+            "dependen de tus circunstancias: revísalos antes de presentar.",
+            s["body"],
+        )
+    )
     warning = data.get("_warning")
     if warning:
         el.append(Spacer(1, 3 * mm))
-        el.append(Paragraph(
-            str(warning),
-            ParagraphStyle("Warn100", parent=s["styles"]["Normal"], fontSize=8,
-                           fontName="Helvetica-Oblique", textColor=colors.HexColor(C["AMBER"])),
-        ))
+        el.append(
+            Paragraph(
+                str(warning),
+                ParagraphStyle(
+                    "Warn100",
+                    parent=s["styles"]["Normal"],
+                    fontSize=8,
+                    fontName="Helvetica-Oblique",
+                    textColor=colors.HexColor(C["AMBER"]),
+                ),
+            )
+        )
     el += _footer(s, C)
     return _build(el)

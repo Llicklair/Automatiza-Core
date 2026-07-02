@@ -100,12 +100,8 @@ def build_casillas_303(data: dict) -> list[Casilla303]:
         "vat_deducted":  [{"rate": float, "base": float, "quota": float}, ...],
       }
     """
-    collected_by_rate: dict[float, dict] = {
-        float(r["rate"]): r for r in data.get("vat_collected", [])
-    }
-    deducted_by_rate: dict[float, dict] = {
-        float(r["rate"]): r for r in data.get("vat_deducted", [])
-    }
+    collected_by_rate: dict[float, dict] = {float(r["rate"]): r for r in data.get("vat_collected", [])}
+    deducted_by_rate: dict[float, dict] = {float(r["rate"]): r for r in data.get("vat_deducted", [])}
 
     casillas: list[Casilla303] = []
 
@@ -122,8 +118,7 @@ def build_casillas_303(data: dict) -> list[Casilla303]:
     otros_rates = sorted(
         rate
         for rate, r in collected_by_rate.items()
-        if rate not in _STD_RATES
-        and (_round2(r.get("quota", 0)) != 0 or _round2(r.get("base", 0)) != 0)
+        if rate not in _STD_RATES and (_round2(r.get("quota", 0)) != 0 or _round2(r.get("base", 0)) != 0)
     )
     cuota_otros = sum(
         (Decimal(str(collected_by_rate[rate].get("quota", 0))) for rate in otros_rates),
@@ -156,9 +151,7 @@ def build_casillas_303(data: dict) -> list[Casilla303]:
     ]
 
     # Recargo de equivalencia (16-24), un trío base/tipo/cuota por recargo
-    recargo_rows = {
-        float(r["recargo_rate"]): r for r in data.get("recargo_equivalencia", [])
-    }
+    recargo_rows = {float(r["recargo_rate"]): r for r in data.get("recargo_equivalencia", [])}
     for codigo_base, codigo_tipo, codigo_cuota, recargo in (
         ("16", "17", "18", 0.5),
         ("19", "20", "21", 1.4),
@@ -172,11 +165,7 @@ def build_casillas_303(data: dict) -> list[Casilla303]:
         ]
 
     total_devengado = sum(
-        (
-            c.valor
-            for c in casillas
-            if c.codigo in {"03", "06", "09", "11", "13", "18", "21", "24"}
-        ),
+        (c.valor for c in casillas if c.codigo in {"03", "06", "09", "11", "13", "18", "21", "24"}),
         Decimal("0"),
     )
     # Incluir la cuota de tipos fuera de 4/10/21 para no infradeclarar la 27.
@@ -189,27 +178,31 @@ def build_casillas_303(data: dict) -> list[Casilla303]:
             "cuota se ha sumado aquí pero el 303 oficial no tiene casilla propia "
             "para ellos. Revisa manualmente el desglose antes de presentar."
         )
-    casillas.append(
-        Casilla303("27", CASILLAS_303["27"], _round2(total_devengado), nota=nota_27)
-    )
+    casillas.append(Casilla303("27", CASILLAS_303["27"], _round2(total_devengado), nota=nota_27))
 
     # Deducible — agregamos todas las cuotas soportadas en operaciones corrientes (no bienes inversión)
     base_28 = sum((Decimal(str(r["base"])) for r in deducted_by_rate.values()), Decimal("0"))
     cuota_29 = sum((Decimal(str(r["quota"])) for r in deducted_by_rate.values()), Decimal("0"))
     casillas += [
         Casilla303(
-            "28", CASILLAS_303["28"], _round2(base_28),
+            "28",
+            CASILLAS_303["28"],
+            _round2(base_28),
             editable=True,
             nota="Si parte corresponde a bienes de inversión, muévelo a la casilla 30.",
         ),
         Casilla303("29", CASILLAS_303["29"], _round2(cuota_29)),
         Casilla303(
-            "30", CASILLAS_303["30"], Decimal("0"),
+            "30",
+            CASILLAS_303["30"],
+            Decimal("0"),
             editable=True,
             nota="Base de bienes de inversión (si los hay). Por defecto 0.",
         ),
         Casilla303(
-            "31", CASILLAS_303["31"], Decimal("0"),
+            "31",
+            CASILLAS_303["31"],
+            Decimal("0"),
             editable=True,
             nota="Cuota de bienes de inversión.",
         ),
@@ -235,7 +228,9 @@ def build_casillas_303(data: dict) -> list[Casilla303]:
         Casilla303("65", CASILLAS_303["65"], Decimal("100.00")),
         Casilla303("66", CASILLAS_303["66"], _round2(resultado_46)),
         Casilla303(
-            "67", CASILLAS_303["67"], Decimal("0"),
+            "67",
+            CASILLAS_303["67"],
+            Decimal("0"),
             editable=True,
             nota="Si tienes saldo a compensar del trimestre anterior, indícalo aquí.",
         ),

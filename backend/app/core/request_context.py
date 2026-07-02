@@ -20,9 +20,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 
-_current_request_id_ctx: ContextVar[str | None] = ContextVar(
-    "current_request_id", default=None
-)
+_current_request_id_ctx: ContextVar[str | None] = ContextVar("current_request_id", default=None)
 
 
 def set_current_request_id(request_id: str | None) -> None:

@@ -94,9 +94,7 @@ async def delete_albaran(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        await svc.delete_albaran(
-            albaran_id, current_user.tenant_id, db, user_id=current_user.id
-        )
+        await svc.delete_albaran(albaran_id, current_user.tenant_id, db, user_id=current_user.id)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -110,9 +108,7 @@ async def get_albaran_pdf(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        pdf_bytes, albaran_number = await svc.get_albaran_pdf_data(
-            albaran_id, current_user.tenant_id, db
-        )
+        pdf_bytes, albaran_number = await svc.get_albaran_pdf_data(albaran_id, current_user.tenant_id, db)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 

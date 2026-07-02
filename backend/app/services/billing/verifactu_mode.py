@@ -20,20 +20,14 @@ DEFAULT_MODE: VerifactuMode = "no_remission"
 
 async def get_mode(db: AsyncSession, *, tenant_id: UUID) -> VerifactuMode:
     """Devuelve el modo del tenant. Sin fila → default `no_remission`."""
-    result = await db.execute(
-        select(VerifactuConfig.mode).where(VerifactuConfig.tenant_id == tenant_id)
-    )
+    result = await db.execute(select(VerifactuConfig.mode).where(VerifactuConfig.tenant_id == tenant_id))
     mode = result.scalar_one_or_none()
     return mode if mode else DEFAULT_MODE  # type: ignore[return-value]
 
 
-async def get_config(
-    db: AsyncSession, *, tenant_id: UUID
-) -> VerifactuConfig:
+async def get_config(db: AsyncSession, *, tenant_id: UUID) -> VerifactuConfig:
     """Devuelve la fila persistida o la crea con el default."""
-    result = await db.execute(
-        select(VerifactuConfig).where(VerifactuConfig.tenant_id == tenant_id)
-    )
+    result = await db.execute(select(VerifactuConfig).where(VerifactuConfig.tenant_id == tenant_id))
     record = result.scalar_one_or_none()
     if record is not None:
         return record
@@ -62,7 +56,9 @@ async def set_mode(
     await db.flush()
     logger.info(
         "verifactu_mode.set tenant=%s mode=%s by=%s",
-        tenant_id, mode, updated_by,
+        tenant_id,
+        mode,
+        updated_by,
     )
     return record
 

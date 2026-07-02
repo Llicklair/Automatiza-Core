@@ -66,21 +66,15 @@ class MockChatModel(BaseChatModel):
 
         return RunnableLambda(_invoke)
 
-    def _generate(
-        self, messages: list[BaseMessage], stop=None, run_manager=None, **kwargs
-    ) -> ChatResult:
+    def _generate(self, messages: list[BaseMessage], stop=None, run_manager=None, **kwargs) -> ChatResult:
         ai_msg = self._build_response(messages, kwargs)
         return ChatResult(generations=[ChatGeneration(message=ai_msg)])
 
-    async def _agenerate(
-        self, messages: list[BaseMessage], stop=None, run_manager=None, **kwargs
-    ) -> ChatResult:
+    async def _agenerate(self, messages: list[BaseMessage], stop=None, run_manager=None, **kwargs) -> ChatResult:
         return self._generate(messages, stop, run_manager, **kwargs)
 
     def _build_response(self, messages: list[BaseMessage], kwargs: dict) -> AIMessage:
-        full_text = " ".join(
-            m.content if isinstance(m.content, str) else "" for m in messages
-        ).lower()
+        full_text = " ".join(m.content if isinstance(m.content, str) else "" for m in messages).lower()
         tools = kwargs.get("tools", [])
 
         # Si hay ToolMessage -> herramienta ejecutada -> respuesta final
@@ -159,9 +153,7 @@ class MockChatModel(BaseChatModel):
             )
 
         # -- Fallback generico --
-        return AIMessage(
-            content=json.dumps({"status": "ok", "message": "Respuesta simulada (MockLLM)"})
-        )
+        return AIMessage(content=json.dumps({"status": "ok", "message": "Respuesta simulada (MockLLM)"}))
 
     def _multi_agent_plan(self, text: str) -> str:
         """Genera un plan multi-agente en formato JSON para el coordinador."""
@@ -307,9 +299,7 @@ class MockChatModel(BaseChatModel):
 
         # -- HR: nominas --
         if any("payroll" in n or "nomina" in n for n in tool_names):
-            if "generate_all_payrolls" in tool_names and (
-                "todos" in full or "all" in full or "nominas" in full
-            ):
+            if "generate_all_payrolls" in tool_names and ("todos" in full or "all" in full or "nominas" in full):
                 return AIMessage(
                     content="",
                     tool_calls=[
@@ -336,9 +326,7 @@ class MockChatModel(BaseChatModel):
 
         # -- CRM: oportunidades --
         if any("opportunit" in n or "oportunidad" in n or "leads" in n for n in tool_names):
-            if "qualify_leads" in tool_names and (
-                "cualif" in full or "leads" in full or "analiz" in full
-            ):
+            if "qualify_leads" in tool_names and ("cualif" in full or "leads" in full or "analiz" in full):
                 return AIMessage(
                     content="",
                     tool_calls=[
@@ -378,15 +366,11 @@ class MockChatModel(BaseChatModel):
             )
 
         # -- Fallback: respuesta directa sin tool --
-        return AIMessage(
-            content="He procesado tu solicitud. Todo esta en orden (respuesta simulada)."
-        )
+        return AIMessage(content="He procesado tu solicitud. Todo esta en orden (respuesta simulada).")
 
     def _extract_tenant_id(self, messages: list[BaseMessage]) -> str:
         """Extrae el tenant_id del contexto de los mensajes."""
-        uuid_pattern = re.compile(
-            r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.IGNORECASE
-        )
+        uuid_pattern = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.IGNORECASE)
         for m in reversed(messages):
             if isinstance(m.content, str):
                 match = uuid_pattern.search(m.content)

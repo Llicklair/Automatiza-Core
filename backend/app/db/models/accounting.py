@@ -44,9 +44,7 @@ class JournalLine(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
-    entry_id = Column(
-        UUID(as_uuid=True), ForeignKey("journal_entries.id"), nullable=False, index=True
-    )
+    entry_id = Column(UUID(as_uuid=True), ForeignKey("journal_entries.id"), nullable=False, index=True)
 
     account_code = Column(String(50), nullable=False, index=True)
     account_name = Column(String(255), nullable=True)
@@ -115,8 +113,8 @@ class AccountingPeriod(Base):
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
 
     year = Column(Integer, nullable=False)
-    kind = Column(String(16), nullable=False)            # 'month' | 'quarter' | 'year'
-    period_index = Column(Integer, nullable=False)       # 1..12 mes, 1..4 trimestre, 0 año
+    kind = Column(String(16), nullable=False)  # 'month' | 'quarter' | 'year'
+    period_index = Column(Integer, nullable=False)  # 1..12 mes, 1..4 trimestre, 0 año
 
     status = Column(String(16), nullable=False, default="closed")  # 'closed' | 'reopened'
     closed_at = Column(DateTime(timezone=True), nullable=False, default=utcnow)

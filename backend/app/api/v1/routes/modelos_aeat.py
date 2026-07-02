@@ -145,6 +145,7 @@ async def get_preventive_check(
 
 # ── Descarga de PDF borrador imprimible por modelo ────────────────────────────
 
+
 def _pdf_response(pdf: bytes, filename: str) -> Response:
     return Response(
         content=pdf,

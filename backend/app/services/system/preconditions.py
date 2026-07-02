@@ -25,6 +25,7 @@ async def check_invoice_preconditions(db: AsyncSession) -> dict:
     Usado por el endpoint `/api/v1/system/preconditions` y por el dependency
     `require_invoice_preconditions` que protege los endpoints de creación.
     """
+
     def _check_tables(sync_conn) -> dict[str, bool]:
         inspector = inspect(sync_conn)
         existing = set(inspector.get_table_names())

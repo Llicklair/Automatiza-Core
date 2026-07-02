@@ -143,11 +143,7 @@ def extract_zip_entries(contents: bytes) -> list[tuple[str, bytes, str | None]]:
         if len(infos) > MAX_ZIP_ENTRIES:
             raise ValueError(f"El ZIP contiene demasiados ficheros (máx. {MAX_ZIP_ENTRIES})")
         for info in infos:
-            if (
-                info.is_dir()
-                or info.filename.startswith("__MACOSX")
-                or info.filename.startswith(".")
-            ):
+            if info.is_dir() or info.filename.startswith("__MACOSX") or info.filename.startswith("."):
                 continue
             original_name = os.path.basename(info.filename)
             if not original_name:
@@ -156,8 +152,7 @@ def extract_zip_entries(contents: bytes) -> list[tuple[str, bytes, str | None]]:
             total_uncompressed += len(extracted_data)
             if total_uncompressed > MAX_ZIP_TOTAL_SIZE:
                 raise ValueError(
-                    f"El ZIP supera el máximo total descomprimido de "
-                    f"{MAX_ZIP_TOTAL_SIZE // (1024 * 1024)}MB"
+                    f"El ZIP supera el máximo total descomprimido de " f"{MAX_ZIP_TOTAL_SIZE // (1024 * 1024)}MB"
                 )
             mime_type, _ = mimetypes.guess_type(original_name)
             entries.append((original_name, extracted_data, mime_type))

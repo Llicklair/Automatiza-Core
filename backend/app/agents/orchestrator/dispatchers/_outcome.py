@@ -24,37 +24,91 @@ from typing import Any
 # Verbos de acción en el INTENT del usuario. Una acción contra el ERP siempre
 # pasa por una @tool (escribe en BD); si no se invocó ninguna, no se ejecutó.
 _ACTION_INTENT_KW = (
-    "crea ", "crear", "genera", "generar", "emite", "emitir",
-    "actualiza", "actualizar", "modifica", "modificar", "cambia ", "cambiar",
-    "elimina", "eliminar", "borra ", "borrar", "envia", "envía", "enviar",
-    "manda ", "mandar", "paga ", "pagar", "marca ", "marcar",
-    "da de alta", "dar de alta", "alta de", "registra", "registrar",
-    "añade", "añadir", "agrega", "agregar", "concilia", "conciliar",
-    "calcula", "calcular", "aprueba", "aprobar", "asigna", "asignar",
-    "reconcilia", "abre ", "abrir", "publica ", "publicar",
+    "crea ",
+    "crear",
+    "genera",
+    "generar",
+    "emite",
+    "emitir",
+    "actualiza",
+    "actualizar",
+    "modifica",
+    "modificar",
+    "cambia ",
+    "cambiar",
+    "elimina",
+    "eliminar",
+    "borra ",
+    "borrar",
+    "envia",
+    "envía",
+    "enviar",
+    "manda ",
+    "mandar",
+    "paga ",
+    "pagar",
+    "marca ",
+    "marcar",
+    "da de alta",
+    "dar de alta",
+    "alta de",
+    "registra",
+    "registrar",
+    "añade",
+    "añadir",
+    "agrega",
+    "agregar",
+    "concilia",
+    "conciliar",
+    "calcula",
+    "calcular",
+    "aprueba",
+    "aprobar",
+    "asigna",
+    "asignar",
+    "reconcilia",
+    "abre ",
+    "abrir",
+    "publica ",
+    "publicar",
 )
 
 # Frases INEQUÍVOCAS de fallo en la respuesta del LLM.
 _FAIL_PHRASES = (
-    "no se pudo", "no fue posible", "no he podido", "no puedo completar",
-    "falló", "fallo al", "imposible", "problema técnico",
-    "uuid malformado", "no such tool",
-    "necesito el nif", "necesito que me proporciones",
-    "podrías proporcionarme", "podrías proporcionármelo",
+    "no se pudo",
+    "no fue posible",
+    "no he podido",
+    "no puedo completar",
+    "falló",
+    "fallo al",
+    "imposible",
+    "problema técnico",
+    "uuid malformado",
+    "no such tool",
+    "necesito el nif",
+    "necesito que me proporciones",
+    "podrías proporcionarme",
+    "podrías proporcionármelo",
 )
 
 # Refusal de herramientas: el LLM dice que sus tools no están disponibles. Solo
 # cuenta si menciona "herramienta"/"tool" (para no confundir con "el campo X no
 # está disponible" en una respuesta legítima).
 _TOOL_REFUSAL_PHRASES = (
-    "no están disponibles", "no disponibles en mi contexto",
-    "no tengo acceso a", "no está disponible",
-    "no dispongo de", "no cuento con",
+    "no están disponibles",
+    "no disponibles en mi contexto",
+    "no tengo acceso a",
+    "no está disponible",
+    "no dispongo de",
+    "no cuento con",
 )
 
 # Ambiguas: solo fallo cuando la operación NO es una consulta.
 _NOT_FOUND_PHRASES = (
-    "no se encontró", "no se ha encontrado", "no encontrado", "no existe",
+    "no se encontró",
+    "no se ha encontrado",
+    "no encontrado",
+    "no existe",
 )
 
 
@@ -72,8 +126,18 @@ def tool_was_invoked(messages: list[Any]) -> bool:
 # Excluidos a propósito: "pay" (colisiona con list_payrolls, lectura) y "generate"
 # (ambiguo). "create" ya cubre calculate_and_create_payroll. Ver lessons 2026-06-23.
 _WRITE_TOOL_MARKERS = (
-    "create", "update", "delete", "remove", "send", "register",
-    "add", "upsert", "approve", "reconcile", "propose", "import",
+    "create",
+    "update",
+    "delete",
+    "remove",
+    "send",
+    "register",
+    "add",
+    "upsert",
+    "approve",
+    "reconcile",
+    "propose",
+    "import",
 )
 
 
@@ -107,9 +171,7 @@ def detect_failure(
         return True, final_text
     if any(p in low for p in _FAIL_PHRASES):
         return True, final_text
-    if ("herramienta" in low or "tool" in low) and any(
-        p in low for p in _TOOL_REFUSAL_PHRASES
-    ):
+    if ("herramienta" in low or "tool" in low) and any(p in low for p in _TOOL_REFUSAL_PHRASES):
         return True, final_text
     if strict_not_found and any(p in low for p in _NOT_FOUND_PHRASES):
         return True, final_text

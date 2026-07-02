@@ -25,9 +25,7 @@ from .tools import tools
 
 async def excel_agent_node(state: AgentState):
     if "messages" not in state or not state["messages"]:
-        sys_msg = make_cached_system_message(
-            EXCEL_SYSTEM_PROMPT.format(tenant_id=state.get("tenant_id", ""))
-        )
+        sys_msg = make_cached_system_message(EXCEL_SYSTEM_PROMPT.format(tenant_id=state.get("tenant_id", "")))
         user_msg = HumanMessage(content=state["user_intent"])
         extra_init_messages = [sys_msg, user_msg]
         state["messages"] = extra_init_messages
@@ -41,9 +39,7 @@ async def excel_agent_node(state: AgentState):
         step_id=f"excel_step_{datetime.now(UTC).timestamp()}",
         description="Procesando solicitud de Excel...",
         status="completed",
-        action_taken="Invocando herramientas de Excel"
-        if response.tool_calls
-        else "Asistencia Excel completada.",
+        action_taken="Invocando herramientas de Excel" if response.tool_calls else "Asistencia Excel completada.",
     )
 
     if "agent_results" not in state:
@@ -58,9 +54,7 @@ def excel_finalize_node(state: AgentState):
         step_id="excel_final",
         description="Agente de Excel ha finalizado.",
         status="completed",
-        action_taken=last_msg.content
-        if isinstance(last_msg.content, str)
-        else "Operación Excel completada.",
+        action_taken=last_msg.content if isinstance(last_msg.content, str) else "Operación Excel completada.",
     )
     return {"status": "done", "agent_results": [final_result.model_dump()]}
 

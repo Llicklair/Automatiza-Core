@@ -5,6 +5,7 @@ Each wrapper runs the async orchestrator inside asyncio.run(), which is safe
 with Celery's default prefork pool (each worker is its own OS process with no
 pre-existing event loop). Do NOT use with gevent/eventlet pools.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -92,4 +93,4 @@ if celery_app is not None:
 else:
     # Stubs so import never fails regardless of Redis availability
     celery_execute_orchestrator = None  # type: ignore[assignment]
-    celery_resume_orchestrator = None   # type: ignore[assignment]
+    celery_resume_orchestrator = None  # type: ignore[assignment]

@@ -6,11 +6,7 @@ from pydantic import BaseModel, ConfigDict, model_validator
 
 def _check_date_range(model):
     """Valida que due_date no sea anterior a start_date (ambos presentes)."""
-    if (
-        model.start_date is not None
-        and model.due_date is not None
-        and model.due_date < model.start_date
-    ):
+    if model.start_date is not None and model.due_date is not None and model.due_date < model.start_date:
         raise ValueError("due_date no puede ser anterior a start_date")
     return model
 

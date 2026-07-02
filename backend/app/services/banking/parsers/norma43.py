@@ -168,8 +168,7 @@ def parse_norma43(content: bytes | str) -> list[Norma43Account]:
                 m.saldo = saldo
             if abs(saldo - account.saldo_final) > 0.005:
                 raise Norma43Error(
-                    f"Saldo final declarado {account.saldo_final} no cuadra con "
-                    f"el calculado {saldo}"
+                    f"Saldo final declarado {account.saldo_final} no cuadra con " f"el calculado {saldo}"
                 )
             last_mov = None
 

@@ -42,9 +42,7 @@ async def execute_skill_node(engine: NodeEngine, node: dict, db: AsyncSession) -
 
     try:
         action_str = (
-            result.get("output", {}).get("action", "execute")
-            if isinstance(result.get("output"), dict)
-            else "execute"
+            result.get("output", {}).get("action", "execute") if isinstance(result.get("output"), dict) else "execute"
         )
         await log_action(
             db,
@@ -58,9 +56,7 @@ async def execute_skill_node(engine: NodeEngine, node: dict, db: AsyncSession) -
         )
         await db.flush()
     except Exception:
-        _logger.warning(
-            "Failed to audit skill node execution for node %s", node["id"], exc_info=True
-        )
+        _logger.warning("Failed to audit skill node execution for node %s", node["id"], exc_info=True)
 
     return result.get("output", {})
 
@@ -89,9 +85,7 @@ async def run_agent_parallel(engine: NodeEngine, node: dict) -> dict:
         }
 
     try:
-        domain, _instruction, subtask, mini_state = _build_skill_dispatch(
-            engine, node, extra_meta={"parallel": True}
-        )
+        domain, _instruction, subtask, mini_state = _build_skill_dispatch(engine, node, extra_meta={"parallel": True})
         result = await _dispatch_agent(engine, domain, mini_state, subtask)
         return {
             "status": COMPLETED if result.get("success", True) else FAILED,
@@ -121,9 +115,7 @@ def execute_conditional_node(engine: NodeEngine, node: dict) -> str:
         if last_pred in engine.node_states:
             context["prev"] = engine.node_states[last_pred]
 
-    _logger.info(
-        f"[CONDITIONAL] node={node['id']} condition={condition} context_keys={list(context.keys())}"
-    )
+    _logger.info(f"[CONDITIONAL] node={node['id']} condition={condition} context_keys={list(context.keys())}")
     field = condition.get("field", "")
     resolved = _resolve_field(field, context)
     _logger.info(f"[CONDITIONAL] field='{field}' resolved_to={resolved}")
@@ -165,9 +157,7 @@ async def execute_delay_node(engine: NodeEngine, node: dict, db: AsyncSession) -
 async def execute_approval_gate(engine: NodeEngine, node: dict, db: AsyncSession) -> dict:
     """Crea PendingApproval y pausa la ejecución."""
     data = node.get("data", {})
-    description = (
-        data.get("description") or data.get("label") or "Aprobación requerida para continuar"
-    )
+    description = data.get("description") or data.get("label") or "Aprobación requerida para continuar"
     node_id = node["id"]
 
     engine.node_states[node_id]["status"] = PAUSED

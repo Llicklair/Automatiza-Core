@@ -141,8 +141,6 @@ async def purge_expired_keys() -> int:
     from app.db.base import AsyncSessionLocal  # noqa: PLC0415
 
     async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            delete(IdempotencyKey).where(IdempotencyKey.expires_at <= datetime.now(UTC))
-        )
+        result = await db.execute(delete(IdempotencyKey).where(IdempotencyKey.expires_at <= datetime.now(UTC)))
         await db.commit()
         return result.rowcount or 0

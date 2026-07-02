@@ -126,12 +126,8 @@ def generate_liquidacion_finiquito_pdf(liquidacion_data: dict) -> bytes:
             [
                 c.get("concepto", ""),
                 str(c.get("unidad", "")),
-                Paragraph(_eur(float(c.get("devengos", 0))), right_sty)
-                if float(c.get("devengos", 0))
-                else "",
-                Paragraph(_eur(float(c.get("deducciones", 0))), right_sty)
-                if float(c.get("deducciones", 0))
-                else "",
+                Paragraph(_eur(float(c.get("devengos", 0))), right_sty) if float(c.get("devengos", 0)) else "",
+                Paragraph(_eur(float(c.get("deducciones", 0))), right_sty) if float(c.get("deducciones", 0)) else "",
             ]
         )
 

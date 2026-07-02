@@ -52,9 +52,7 @@ async def get_due_reminders(
 
     Pensado para que un cron diario lo invoque y envíe los emails.
     """
-    steps = await invoices_due_for_reminder(
-        db, current_user.tenant_id, today=fire_date
-    )
+    steps = await invoices_due_for_reminder(db, current_user.tenant_id, today=fire_date)
     return {
         "fire_date": (fire_date or local_today()).isoformat(),
         "count": len(steps),

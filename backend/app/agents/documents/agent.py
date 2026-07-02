@@ -18,9 +18,7 @@ from .tools import tools
 
 async def documents_agent_node(state: AgentState):
     if "messages" not in state or not state["messages"]:
-        sys_msg = make_cached_system_message(
-            DOCUMENTS_SYSTEM_PROMPT.format(tenant_id=state.get("tenant_id", ""))
-        )
+        sys_msg = make_cached_system_message(DOCUMENTS_SYSTEM_PROMPT.format(tenant_id=state.get("tenant_id", "")))
         user_msg = HumanMessage(content=state["user_intent"])
         extra_init_messages = [sys_msg, user_msg]
         state["messages"] = extra_init_messages
@@ -51,9 +49,7 @@ def documents_finalize_node(state: AgentState):
         step_id="documents_final",
         description="Agente de Documentos ha finalizado.",
         status="completed",
-        action_taken=last_msg.content
-        if isinstance(last_msg.content, str)
-        else "Operación documental completada.",
+        action_taken=last_msg.content if isinstance(last_msg.content, str) else "Operación documental completada.",
     )
     return {"status": "done", "agent_results": [final_result.model_dump()]}
 

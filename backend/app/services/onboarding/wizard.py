@@ -20,9 +20,7 @@ STEP_KEYS: tuple[StepKey, ...] = ("company", "cert", "data", "use_case", "llm_co
 
 async def get_state(db: AsyncSession, *, tenant_id: UUID) -> TenantOnboarding:
     """Devuelve el registro de onboarding del tenant; lo crea si no existe."""
-    result = await db.execute(
-        select(TenantOnboarding).where(TenantOnboarding.tenant_id == tenant_id)
-    )
+    result = await db.execute(select(TenantOnboarding).where(TenantOnboarding.tenant_id == tenant_id))
     record = result.scalar_one_or_none()
     if record is not None:
         return record

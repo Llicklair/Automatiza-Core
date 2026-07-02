@@ -42,23 +42,25 @@ EventName = Literal[
     "ai_agent.invocation_overage",
 ]
 
-CANONICAL_EVENTS: frozenset[str] = frozenset({
-    "user.signup",
-    "tenant.onboarding_completed",
-    "invoice.first_created",
-    "invoice.created",
-    "model_aeat.first_presented",
-    "model_aeat.presented",
-    "fiscal_approval.requested",
-    "fiscal_approval.approved",
-    "fiscal_approval.rejected",
-    "subscription.upgraded",
-    "subscription.cancelled",
-    "backup.first_completed",
-    "backup.completed",
-    "telemetry.opted_out",
-    "ai_agent.invocation_overage",
-})
+CANONICAL_EVENTS: frozenset[str] = frozenset(
+    {
+        "user.signup",
+        "tenant.onboarding_completed",
+        "invoice.first_created",
+        "invoice.created",
+        "model_aeat.first_presented",
+        "model_aeat.presented",
+        "fiscal_approval.requested",
+        "fiscal_approval.approved",
+        "fiscal_approval.rejected",
+        "subscription.upgraded",
+        "subscription.cancelled",
+        "backup.first_completed",
+        "backup.completed",
+        "telemetry.opted_out",
+        "ai_agent.invocation_overage",
+    }
+)
 
 
 async def track_event(
@@ -99,7 +101,9 @@ async def track_event(
             # Fallback: log estructurado local
             logger.info(
                 "event=%s distinct_id=%s properties=%s",
-                event, distinct_id, clean_props,
+                event,
+                distinct_id,
+                clean_props,
             )
         return True
     except Exception as e:  # nunca bloquear caller
@@ -108,7 +112,10 @@ async def track_event(
 
 
 async def _send_to_posthog(
-    distinct_id: str, event: str, properties: dict[str, Any], api_key: str,
+    distinct_id: str,
+    event: str,
+    properties: dict[str, Any],
+    api_key: str,
 ) -> None:
     """Envía el evento a la PostHog API.
 

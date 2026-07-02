@@ -82,9 +82,7 @@ def generate_text_report_pdf(title: str, content: str, category: str = "Informe"
     elements.append(Paragraph(datetime.now(UTC).strftime("%d/%m/%Y %H:%M"), date_style))
     elements.append(Paragraph(category, category_style))
     elements.append(Paragraph(title, title_style))
-    elements.append(
-        HRFlowable(width="100%", thickness=1, color=colors.HexColor("#e2e8f0"), spaceAfter=15)
-    )
+    elements.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#e2e8f0"), spaceAfter=15))
 
     for line in content.split("\n"):
         if not line.strip():

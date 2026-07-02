@@ -95,9 +95,7 @@ def format_summary(agent: str, output: dict, success: bool, error: str | None = 
         if resumen:
             return f"✅ {resumen}"
         if saldos:
-            saldo_txt = ", ".join(
-                f"{s.get('nombre', 'Cuenta')}: {s.get('saldo', '?')}€" for s in saldos[:3]
-            )
+            saldo_txt = ", ".join(f"{s.get('nombre', 'Cuenta')}: {s.get('saldo', '?')}€" for s in saldos[:3])
             return f"✅ Saldos bancarios: {saldo_txt}."
         return "✅ Consulta bancaria completada."
 
@@ -172,9 +170,7 @@ def extract_month_year(intent: str) -> tuple[int, int]:
     if re.search(r"mes\s+(pasado|anterior)", text):
         d = now.replace(day=1) - timedelta(days=1)
         return d.month, d.year
-    if re.search(
-        r"(próximo|siguiente|que\s+viene)\s+mes|mes\s+(próximo|siguiente|que\s+viene)", text
-    ):
+    if re.search(r"(próximo|siguiente|que\s+viene)\s+mes|mes\s+(próximo|siguiente|que\s+viene)", text):
         d = now.replace(day=28) + timedelta(days=4)
         return d.month, d.year
 

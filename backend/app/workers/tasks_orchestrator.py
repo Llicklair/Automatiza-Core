@@ -55,18 +55,14 @@ async def _retry(label: str, task_id: str, fn, guard, *, attempts: int, backoff_
     exc = None
     for attempt in range(attempts):
         countdown = backoff_base * (2**attempt)
-        logger.warning(
-            "[RETRY] %s:%s intento %d/%d en %ds", label, task_id, attempt + 1, attempts, countdown
-        )
+        logger.warning("[RETRY] %s:%s intento %d/%d en %ds", label, task_id, attempt + 1, attempts, countdown)
         await asyncio.sleep(countdown)
         try:
             result = await fn()
             await guard.mark_executed(label, task_id, {"status": "done"})
             return result
         except Exception as retry_exc:
-            logger.warning(
-                "[RETRY] %s:%s fallo intento %d: %s", label, task_id, attempt + 1, retry_exc
-            )
+            logger.warning("[RETRY] %s:%s fallo intento %d: %s", label, task_id, attempt + 1, retry_exc)
             exc = retry_exc
     await _mark_task_failed(task_id, str(exc))
     raise exc
@@ -149,6 +145,7 @@ async def _set_agent_status(db, employee_id: str, tenant_id: str, status: str) -
     from sqlalchemy import select as _select
 
     from app.db.models.ai_employees import AIEmployee
+
     result = await db.execute(
         _select(AIEmployee).where(
             AIEmployee.id == _uuid.UUID(employee_id),
@@ -163,6 +160,7 @@ async def _set_agent_status(db, employee_id: str, tenant_id: str, status: str) -
 async def _log_task_completion(db, task, final_state: dict, employee_id: str | None, tenant_id: str):
     """Crea entrada de actividad con el resultado del agente."""
     from app.services.workflow.activity import log_activity
+
     results = final_state.get("agent_results", [])
     error = final_state.get("error_message")
     is_clarification = bool((final_state.get("additional_metadata") or {}).get("clarification"))
@@ -179,8 +177,13 @@ async def _log_task_completion(db, task, final_state: dict, employee_id: str | N
     else:
         message, icon = f"Completado: {task.user_intent[:100]}", "✅"
     return await log_activity(
-        db=db, tenant_id=tenant_id, category="task",
-        message=message, employee_id=employee_id, task_id=str(task.id), icon=icon,
+        db=db,
+        tenant_id=tenant_id,
+        category="task",
+        message=message,
+        employee_id=employee_id,
+        task_id=str(task.id),
+        icon=icon,
     )
 
 
@@ -213,6 +216,7 @@ async def _record_run_usage(
     # de agent_execution_trace (insertadas por dispatch) no llevan tokens/cost y
     # el modal de consumo muestra 0 €.
     from app.services.observability import record_task_cost_trace
+
     await record_task_cost_trace(
         db,
         tenant_id=task.tenant_id,
@@ -225,6 +229,7 @@ async def _record_run_usage(
     )
     if employee_id:
         from app.services.ai.employee_crud import record_token_usage
+
         await record_token_usage(
             employee_id=employee_id,
             tenant_id=tenant_id,
@@ -256,8 +261,7 @@ async def _execute_orchestrator(task_id: str, tenant_id_hint: str | None = None)
     # None con el ContextVar ya fijado por el caller).
     if not tenant_id_hint and not get_current_tenant():
         logger.error(
-            "Orchestrator sin tenant (hint None y ContextVar vacío); aborto para "
-            "no correr sin aislamiento. task=%s",
+            "Orchestrator sin tenant (hint None y ContextVar vacío); aborto para " "no correr sin aislamiento. task=%s",
             task_id,
         )
         return
@@ -279,9 +283,15 @@ async def _execute_orchestrator(task_id: str, tenant_id_hint: str | None = None)
         if employee_id:
             await _set_agent_status(db, employee_id, tenant_id, "working")
             await db.commit()
-            await _broadcast(manager, tenant_id, {
-                "type": "agent_status_changed", "employee_id": employee_id, "status": "working",
-            })
+            await _broadcast(
+                manager,
+                tenant_id,
+                {
+                    "type": "agent_status_changed",
+                    "employee_id": employee_id,
+                    "status": "working",
+                },
+            )
 
         initial_state = await _build_initial_state(task, task_id, db)
         log_push(task_id, "Iniciando automatizacion...")
@@ -303,14 +313,16 @@ async def _execute_orchestrator(task_id: str, tenant_id_hint: str | None = None)
             # a 0 tras detener. Best-effort: nunca tapa la excepción original.
             try:
                 await _record_run_usage(
-                    db, task=task, task_id=task_id, tenant_id=tenant_id,
-                    employee_id=employee_id, usage_cb=usage_cb,
+                    db,
+                    task=task,
+                    task_id=task_id,
+                    tenant_id=tenant_id,
+                    employee_id=employee_id,
+                    usage_cb=usage_cb,
                 )
                 await db.commit()
             except Exception:
-                logger.warning(
-                    "No se pudo registrar consumo parcial (task=%s)", task_id, exc_info=True
-                )
+                logger.warning("No se pudo registrar consumo parcial (task=%s)", task_id, exc_info=True)
             if employee_id:
                 # La excepción original pudo dejar la sesión en transacción fallida;
                 # sin rollback, el UPDATE de status + commit también fallarían y el
@@ -320,7 +332,8 @@ async def _execute_orchestrator(task_id: str, tenant_id_hint: str | None = None)
                 except Exception:
                     logger.debug(
                         "rollback previo a restaurar status falló (task=%s)",
-                        task_id, exc_info=True,
+                        task_id,
+                        exc_info=True,
                     )
                 await _set_agent_status(db, employee_id, tenant_id, "idle")
                 try:
@@ -333,12 +346,21 @@ async def _execute_orchestrator(task_id: str, tenant_id_hint: str | None = None)
                     logger.warning(
                         "Commit fallido restaurando status='idle' del empleado %s "
                         "tras error en orchestrator (task=%s, tenant=%s): %s: %s",
-                        employee_id, task_id, tenant_id,
-                        type(commit_err).__name__, commit_err,
+                        employee_id,
+                        task_id,
+                        tenant_id,
+                        type(commit_err).__name__,
+                        commit_err,
                     )
-                await _broadcast(manager, tenant_id, {
-                    "type": "agent_status_changed", "employee_id": employee_id, "status": "idle",
-                })
+                await _broadcast(
+                    manager,
+                    tenant_id,
+                    {
+                        "type": "agent_status_changed",
+                        "employee_id": employee_id,
+                        "status": "idle",
+                    },
+                )
             raise
 
         await _save_final_state(task, final_state, db)
@@ -359,22 +381,32 @@ async def _execute_orchestrator(task_id: str, tenant_id_hint: str | None = None)
         await db.commit()
 
         if employee_id:
-            await _broadcast(manager, tenant_id, {
-                "type": "agent_status_changed", "employee_id": employee_id, "status": "idle",
-            })
-        if entry:
-            await _broadcast(manager, tenant_id, {
-                "type": "activity_new",
-                "entry": {
-                    "id": str(entry.id),
-                    "employee_id": str(entry.employee_id) if entry.employee_id else None,
-                    "category": entry.category,
-                    "icon": entry.icon,
-                    "message": entry.message,
-                    "metadata": entry.metadata_json,
-                    "created_at": entry.created_at.isoformat(),
+            await _broadcast(
+                manager,
+                tenant_id,
+                {
+                    "type": "agent_status_changed",
+                    "employee_id": employee_id,
+                    "status": "idle",
                 },
-            })
+            )
+        if entry:
+            await _broadcast(
+                manager,
+                tenant_id,
+                {
+                    "type": "activity_new",
+                    "entry": {
+                        "id": str(entry.id),
+                        "employee_id": str(entry.employee_id) if entry.employee_id else None,
+                        "category": entry.category,
+                        "icon": entry.icon,
+                        "message": entry.message,
+                        "metadata": entry.metadata_json,
+                        "created_at": entry.created_at.isoformat(),
+                    },
+                },
+            )
 
 
 async def _resume_orchestrator(task_id: str, tenant_id_hint: str | None = None):
@@ -432,9 +464,7 @@ async def _resume_orchestrator(task_id: str, tenant_id_hint: str | None = None):
         from app.core.llm_callbacks import UsageTrackingCallback
 
         employee_id = (task.additional_metadata or {}).get("addressed_employee_id")
-        usage_cb = UsageTrackingCallback(
-            tenant_id=str(task.tenant_id), agent_name=task.domain or "unknown"
-        )
+        usage_cb = UsageTrackingCallback(tenant_id=str(task.tenant_id), agent_name=task.domain or "unknown")
         try:
             final_state = await orchestrator.ainvoke(
                 initial_state, config={"recursion_limit": 50, "callbacks": [usage_cb]}
@@ -443,14 +473,19 @@ async def _resume_orchestrator(task_id: str, tenant_id_hint: str | None = None):
             # Cancelación/error en la reanudación: registra el consumo parcial.
             try:
                 await _record_run_usage(
-                    db, task=task, task_id=task_id, tenant_id=str(task.tenant_id),
-                    employee_id=employee_id, usage_cb=usage_cb,
+                    db,
+                    task=task,
+                    task_id=task_id,
+                    tenant_id=str(task.tenant_id),
+                    employee_id=employee_id,
+                    usage_cb=usage_cb,
                 )
                 await db.commit()
             except Exception:
                 logger.warning(
                     "No se pudo registrar consumo parcial en reanudación (task=%s)",
-                    task_id, exc_info=True,
+                    task_id,
+                    exc_info=True,
                 )
             raise
 

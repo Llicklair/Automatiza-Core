@@ -110,9 +110,7 @@ async def cleanup_all(db: AsyncSession, tenant_id: UUID) -> int:
                 for tid in pending_task_ids:
                     await cancel_task(str(tid))
             except Exception as e:
-                logger.warning(
-                    "Error al revocar tareas pendientes durante cancelación masiva: %s", e
-                )
+                logger.warning("Error al revocar tareas pendientes durante cancelación masiva: %s", e)
 
         pending_exec_ids = [a.execution_id for a in pending if a.execution_id]
         if pending_exec_ids:
@@ -126,9 +124,7 @@ async def cleanup_all(db: AsyncSession, tenant_id: UUID) -> int:
             )
 
     result = await db.execute(
-        sql_delete(PendingApproval)
-        .where(PendingApproval.tenant_id == tenant_id)
-        .returning(PendingApproval.id)
+        sql_delete(PendingApproval).where(PendingApproval.tenant_id == tenant_id).returning(PendingApproval.id)
     )
     deleted = len(result.fetchall())
     await db.commit()
@@ -148,15 +144,11 @@ async def _resume_after_approval(approval: PendingApproval, db: AsyncSession) ->
             if node_id:
                 from app.services.workflow.task_dispatch import dispatch_resume_node_engine
 
-                await dispatch_resume_node_engine(
-                    str(approval.execution_id), node_id, tenant_id=tenant_id
-                )
+                await dispatch_resume_node_engine(str(approval.execution_id), node_id, tenant_id=tenant_id)
                 return
 
         from app.services.workflow.task_dispatch import dispatch_resume_orchestrator
 
         await dispatch_resume_orchestrator(str(approval.task_id), tenant_id=tenant_id)
     except Exception as e:
-        logger.warning(
-            "Error al reanudar flujo tras aprobación (task_id=%s): %s", approval.task_id, e
-        )
+        logger.warning("Error al reanudar flujo tras aprobación (task_id=%s): %s", approval.task_id, e)

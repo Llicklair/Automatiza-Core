@@ -191,11 +191,7 @@ def generate_albaran_pdf(albaran_data: dict, theme_config: dict | None = None) -
             ]
         )
     lines_table = Table(table_data, colWidths=col_widths)
-    lines_table.setStyle(
-        TableStyle(
-            table_style_commands(th, len(alb_lines)) + [("ALIGN", (-1, 0), (-1, -1), "RIGHT")]
-        )
-    )
+    lines_table.setStyle(TableStyle(table_style_commands(th, len(alb_lines)) + [("ALIGN", (-1, 0), (-1, -1), "RIGHT")]))
     elements.append(lines_table)
     elements.append(Spacer(1, 6 * mm))
 
@@ -249,8 +245,7 @@ def generate_albaran_pdf(albaran_data: dict, theme_config: dict | None = None) -
     elements.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#e2e8f0")))
     elements.append(Spacer(1, 3 * mm))
     footer_text = (
-        th.get("footer_text")
-        or "Documento generado automáticamente por AutomatizaCore · Gracias por su confianza."
+        th.get("footer_text") or "Documento generado automáticamente por AutomatizaCore · Gracias por su confianza."
     )
     elements.append(
         Paragraph(

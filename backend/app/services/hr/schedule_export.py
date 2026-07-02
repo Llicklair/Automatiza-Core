@@ -13,18 +13,14 @@ from app.db.models.models import Employee
 DAY_NAMES = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
 
 
-async def fetch_schedule_grid(
-    db: AsyncSession, tenant_id, employee_id=None
-) -> list[dict]:
+async def fetch_schedule_grid(db: AsyncSession, tenant_id, employee_id=None) -> list[dict]:
     """Devuelve [{employee: str, days: {0..6: 'HH:MM-HH:MM' | None}}] ordenado por nombre."""
     emp_q = select(Employee).where(Employee.tenant_id == tenant_id)
     if employee_id is not None:
         emp_q = emp_q.where(Employee.id == employee_id)
     employees = (await db.execute(emp_q.order_by(Employee.name))).scalars().all()
 
-    sched_q = select(WorkSchedule).where(
-        WorkSchedule.tenant_id == tenant_id, WorkSchedule.active.is_(True)
-    )
+    sched_q = select(WorkSchedule).where(WorkSchedule.tenant_id == tenant_id, WorkSchedule.active.is_(True))
     if employee_id is not None:
         sched_q = sched_q.where(WorkSchedule.employee_id == employee_id)
     schedules = (await db.execute(sched_q)).scalars().all()
@@ -93,9 +89,7 @@ def build_schedules_pdf(grid: list[dict], company_name: str = "") -> bytes:
     if not REPORTLAB_AVAILABLE:
         lines = ["HORARIOS DE TRABAJO", ""]
         for row in grid:
-            days = ", ".join(
-                f"{DAY_NAMES[d]} {row['days'][d]}" for d in sorted(row["days"])
-            )
+            days = ", ".join(f"{DAY_NAMES[d]} {row['days'][d]}" for d in sorted(row["days"]))
             lines.append(f"{row['employee']}: {days or 'sin horario'}")
         return "\n".join(lines).encode("utf-8")
 

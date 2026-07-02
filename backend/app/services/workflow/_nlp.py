@@ -106,9 +106,7 @@ async def fire_event(
             continue
 
         if not evaluate_conditions(wf.trigger_config.get("conditions"), context):
-            logger.debug(
-                "[FIRE_EVENT] Workflow '%s' bloqueado por condiciones no cumplidas.", wf.name
-            )
+            logger.debug("[FIRE_EVENT] Workflow '%s' bloqueado por condiciones no cumplidas.", wf.name)
             continue
 
         execution = models.WorkflowExecution(

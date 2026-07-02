@@ -143,9 +143,7 @@ def build_report_text(snap: CompanySnapshot, company_name: str) -> str:
     ]
 
     if c.top_client_name:
-        lines.append(
-            f"  Cliente principal:              {c.top_client_name} ({c.top_client_amount:,.2f} €)"
-        )
+        lines.append(f"  Cliente principal:              {c.top_client_name} ({c.top_client_amount:,.2f} €)")
 
     lines += [
         "",
@@ -160,9 +158,7 @@ def build_report_text(snap: CompanySnapshot, company_name: str) -> str:
 # ─── Main aggregation ────────────────────────────────────────────────────────
 
 
-async def aggregate(
-    db: AsyncSession, tenant_id: uuid.UUID, start: date, end: date
-) -> CompanySnapshot:
+async def aggregate(db: AsyncSession, tenant_id: uuid.UUID, start: date, end: date) -> CompanySnapshot:
     """Agrega datos de la empresa para un rango de fechas y genera snapshot."""
     from app.services.reports.summaries import generate_resumen_ejecutivo
 
@@ -226,9 +222,7 @@ async def aggregate(
     )
 
     # ── RRHH ──
-    emp_q = await db.execute(
-        select(Employee).where(and_(Employee.tenant_id == tenant_id, Employee.status == "active"))
-    )
+    emp_q = await db.execute(select(Employee).where(and_(Employee.tenant_id == tenant_id, Employee.status == "active")))
     employees = emp_q.scalars().all()
 
     payroll_q = await db.execute(
@@ -285,9 +279,7 @@ async def aggregate(
         )
         new_clients = nc_q.scalar() or 0
 
-    total_q = await db.execute(
-        select(func.count()).select_from(Client).where(Client.tenant_id == tenant_id)
-    )
+    total_q = await db.execute(select(func.count()).select_from(Client).where(Client.tenant_id == tenant_id))
     total_clients = total_q.scalar() or 0
 
     client_section = SnapshotSectionClients(

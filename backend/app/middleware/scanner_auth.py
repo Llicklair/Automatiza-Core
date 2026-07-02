@@ -62,18 +62,12 @@ def decode_scanner_token(token: str) -> dict:
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
     except jwt.ExpiredSignatureError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Token de scanner expirado"
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token de scanner expirado") from exc
     except jwt.InvalidTokenError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Token de scanner inválido"
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token de scanner inválido") from exc
 
     if payload.get("sub") != "scanner_auth":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Token no es de tipo scanner"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Token no es de tipo scanner")
 
     return payload
 

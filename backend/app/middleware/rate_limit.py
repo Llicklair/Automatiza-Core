@@ -26,9 +26,7 @@ def _client_ip(request: Request) -> str:
     """
     peer = get_remote_address(request)
     if peer in _LOOPBACK:
-        forwarded = request.headers.get("CF-Connecting-IP") or request.headers.get(
-            "X-Forwarded-For"
-        )
+        forwarded = request.headers.get("CF-Connecting-IP") or request.headers.get("X-Forwarded-For")
         if forwarded:
             return forwarded.split(",")[0].strip()
     return peer

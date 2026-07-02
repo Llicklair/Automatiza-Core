@@ -39,10 +39,7 @@ async def list_albaranes(tenant_id: str, status: str = "") -> str:
             notes = result.scalars().all()
             if not notes:
                 return "No hay albaranes registrados."
-            lines = [
-                f"- {n.albaran_number} | {n.date} | {n.status} | {float(n.amount_total):.2f}€"
-                for n in notes
-            ]
+            lines = [f"- {n.albaran_number} | {n.date} | {n.status} | {float(n.amount_total):.2f}€" for n in notes]
             return "Albaranes:\n" + "\n".join(lines)
     except Exception as e:
         return f"Error listando albaranes: {e}"
@@ -84,11 +81,7 @@ async def create_albaran(
             )
             last = last_result.scalar_one_or_none()
             try:
-                num = (
-                    int(last.albaran_number.split("-")[-1]) + 1
-                    if last and last.albaran_number
-                    else 1
-                )
+                num = int(last.albaran_number.split("-")[-1]) + 1 if last and last.albaran_number else 1
             except (ValueError, IndexError):
                 num = 1
             albaran_number = f"ALB-{num:05d}"
@@ -96,9 +89,7 @@ async def create_albaran(
             amount_base = Decimal("0")
             tax_amount = Decimal("0")
             for line in lines_data:
-                base = Decimal(str(line.get("quantity", 1))) * Decimal(
-                    str(line.get("unit_price", 0))
-                )
+                base = Decimal(str(line.get("quantity", 1))) * Decimal(str(line.get("unit_price", 0)))
                 tax_amount += base * Decimal(str(line.get("tax_percentage", 21))) / Decimal("100")
                 amount_base += base
             amount_total = amount_base + tax_amount
@@ -117,9 +108,7 @@ async def create_albaran(
             await db.flush()
 
             for line in lines_data:
-                base = Decimal(str(line.get("quantity", 1))) * Decimal(
-                    str(line.get("unit_price", 0))
-                )
+                base = Decimal(str(line.get("quantity", 1))) * Decimal(str(line.get("unit_price", 0)))
                 total = base + base * Decimal(str(line.get("tax_percentage", 21))) / Decimal("100")
                 db.add(
                     DeliveryNoteLine(

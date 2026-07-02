@@ -11,6 +11,7 @@ para que el worker pueda fijar el ContextVar ANTES de la query de
 bootstrap. Si es None, el worker hace fallback al tenant_id de la fila
 recuperada desde la DB (comportamiento previo).
 """
+
 import logging
 
 from app.core.config import settings
@@ -21,39 +22,38 @@ _log = logging.getLogger(__name__)
 
 def _celery_available() -> bool:
     from app.celery_app import celery_app
+
     return celery_app is not None and bool(settings.REDIS_URL)
 
 
 async def dispatch_orchestrator(task_id: str, tenant_id: str | None = None) -> None:
     if _celery_available():
         from app.workers.celery_tasks import celery_execute_orchestrator
+
         celery_execute_orchestrator.delay(task_id, tenant_id)
         _log.info("Tarea %s encolada en Celery (queue=orchestrator)", task_id)
     else:
         from app.workers.tasks_orchestrator import execute_orchestrator
-        await task_runner.submit(
-            "run_orchestrator", execute_orchestrator(task_id, tenant_id), task_id
-        )
+
+        await task_runner.submit("run_orchestrator", execute_orchestrator(task_id, tenant_id), task_id)
 
 
 async def dispatch_resume_orchestrator(task_id: str, tenant_id: str | None = None) -> None:
     if _celery_available():
         from app.workers.celery_tasks import celery_resume_orchestrator
+
         celery_resume_orchestrator.delay(task_id, tenant_id)
         _log.info("Reanudación %s encolada en Celery", task_id)
     else:
         from app.workers.tasks_orchestrator import resume_orchestrator
-        await task_runner.submit(
-            "resume_orchestrator", resume_orchestrator(task_id, tenant_id), f"resume:{task_id}"
-        )
+
+        await task_runner.submit("resume_orchestrator", resume_orchestrator(task_id, tenant_id), f"resume:{task_id}")
 
 
 async def dispatch_node_engine(execution_id: str, tenant_id: str | None = None) -> None:
     from app.workers.tasks_node_engine import run_node_engine
 
-    await task_runner.submit(
-        "run_node_engine", run_node_engine(execution_id, tenant_id), f"node:{execution_id}"
-    )
+    await task_runner.submit("run_node_engine", run_node_engine(execution_id, tenant_id), f"node:{execution_id}")
 
 
 async def dispatch_resume_node_engine(

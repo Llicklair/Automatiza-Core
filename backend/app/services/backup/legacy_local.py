@@ -98,14 +98,19 @@ async def create_backup(backup_dir: Path | None = None) -> Path | None:
 
     cmd = [
         str(pg_dump),
-        "--host", str(db["host"]),
-        "--port", str(db["port"]),
-        "--username", str(db["user"]),
-        "--dbname", str(db["dbname"]),
+        "--host",
+        str(db["host"]),
+        "--port",
+        str(db["port"]),
+        "--username",
+        str(db["user"]),
+        "--dbname",
+        str(db["dbname"]),
         "--format=custom",
         "--no-owner",
         "--no-privileges",
-        "--file", str(out_file),
+        "--file",
+        str(out_file),
     ]
 
     env = {**os.environ, "PGPASSWORD": str(db["password"])}
@@ -137,9 +142,7 @@ async def create_backup(backup_dir: Path | None = None) -> Path | None:
 
     duration = time.monotonic() - start
     size_mb = out_file.stat().st_size / (1024 * 1024)
-    logger.info(
-        "backup: %s (%.1f MB en %.1fs)", out_file.name, size_mb, duration
-    )
+    logger.info("backup: %s (%.1f MB en %.1fs)", out_file.name, size_mb, duration)
     return out_file
 
 
@@ -289,10 +292,14 @@ async def restore_backup(filename: str) -> dict[str, str | None]:
     db = _parse_db_url(settings.DATABASE_URL)
     cmd = [
         str(pg_restore),
-        "--host", str(db["host"]),
-        "--port", str(db["port"]),
-        "--username", str(db["user"]),
-        "--dbname", str(db["dbname"]),
+        "--host",
+        str(db["host"]),
+        "--port",
+        str(db["port"]),
+        "--username",
+        str(db["user"]),
+        "--dbname",
+        str(db["dbname"]),
         "--clean",
         "--if-exists",
         "--no-owner",

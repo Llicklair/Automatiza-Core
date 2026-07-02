@@ -13,9 +13,7 @@ from app.db.models.marketing import Campaign
 
 async def list_campaigns(tenant_id, db: AsyncSession) -> list[Campaign]:
     result = await db.execute(
-        select(Campaign)
-        .where(Campaign.tenant_id == tenant_id)
-        .order_by(Campaign.created_at.desc())
+        select(Campaign).where(Campaign.tenant_id == tenant_id).order_by(Campaign.created_at.desc())
     )
     return list(result.scalars().all())
 

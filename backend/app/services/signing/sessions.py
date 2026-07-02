@@ -93,9 +93,7 @@ async def process_signed_callback(
     documento firmado, calcula el hash del resultado. Devuelve el dict
     actualizado.
     """
-    res = await db.execute(
-        sa.select(SignedDocument).where(SignedDocument.session_token == session_token)
-    )
+    res = await db.execute(sa.select(SignedDocument).where(SignedDocument.session_token == session_token))
     sd = res.scalar_one_or_none()
     if sd is None:
         raise AutoFirmaError(f"Sesión de firma no encontrada: {session_token}")
@@ -148,9 +146,7 @@ async def process_signed_callback(
     return _signed_doc_to_dict(sd) | {"signed_bytes": signed_bytes}
 
 
-async def get_signing_status(
-    db: AsyncSession, tenant_id: UUID, session_token: str
-) -> dict | None:
+async def get_signing_status(db: AsyncSession, tenant_id: UUID, session_token: str) -> dict | None:
     """Estado de una sesión de firma (para polling del frontend). None si no existe."""
     res = await db.execute(
         sa.select(SignedDocument).where(

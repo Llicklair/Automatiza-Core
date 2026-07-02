@@ -37,6 +37,4 @@ def spawn(coro: Coroutine[Any, Any, Any], *, name: str | None = None) -> asyncio
 def _on_task_done(task: asyncio.Task[Any]) -> None:
     _background_tasks.discard(task)
     if not task.cancelled() and task.exception() is not None:
-        logger.error(
-            "Task de fondo %r terminó con excepción", task.get_name(), exc_info=task.exception()
-        )
+        logger.error("Task de fondo %r terminó con excepción", task.get_name(), exc_info=task.exception())

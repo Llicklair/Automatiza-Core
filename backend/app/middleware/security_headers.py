@@ -25,9 +25,7 @@ class SecurityHeadersMiddleware:
                 headers.append("X-XSS-Protection", "1; mode=block")
                 headers.append("Referrer-Policy", "strict-origin-when-cross-origin")
                 if settings.ENVIRONMENT == "production":
-                    headers.append(
-                        "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
-                    )
+                    headers.append("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
             await send(message)
 
         await self.app(scope, receive, send_with_headers)

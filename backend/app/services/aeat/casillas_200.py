@@ -42,9 +42,19 @@ def build_casillas_200(data: dict) -> list[Casilla]:
         Casilla("00552", CASILLAS_200["00552"], base_imponible),
         Casilla("00558", CASILLAS_200["00558"], tipo, formato="porcentaje"),
         Casilla("00562", CASILLAS_200["00562"], cuota_integra),
-        Casilla("00592", CASILLAS_200["00592"], cuota_integra, editable=True,
-                nota="En este borrador, sin deducciones, coincide con la cuota íntegra. Ajústala si procede."),
-        Casilla("00601", CASILLAS_200["00601"], pagos, editable=True,
-                nota="Pagos fraccionados estimados (Modelo 202); revísalos antes de presentar."),
+        Casilla(
+            "00592",
+            CASILLAS_200["00592"],
+            cuota_integra,
+            editable=True,
+            nota="En este borrador, sin deducciones, coincide con la cuota íntegra. Ajústala si procede.",
+        ),
+        Casilla(
+            "00601",
+            CASILLAS_200["00601"],
+            pagos,
+            editable=True,
+            nota="Pagos fraccionados estimados (Modelo 202); revísalos antes de presentar.",
+        ),
         Casilla("00621", CASILLAS_200["00621"], resultado),
     ]

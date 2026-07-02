@@ -51,9 +51,7 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        op.f("ix_tenant_integrations_tenant_id"), "tenant_integrations", ["tenant_id"], unique=False
-    )
+    op.create_index(op.f("ix_tenant_integrations_tenant_id"), "tenant_integrations", ["tenant_id"], unique=False)
     op.create_table(
         "users",
         sa.Column("id", sa.UUID(), nullable=False),
@@ -159,15 +157,9 @@ def upgrade() -> None:
         sa.Column("execution_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        op.f("ix_pending_approvals_status"), "pending_approvals", ["status"], unique=False
-    )
-    op.create_index(
-        op.f("ix_pending_approvals_task_id"), "pending_approvals", ["task_id"], unique=False
-    )
-    op.create_index(
-        op.f("ix_pending_approvals_tenant_id"), "pending_approvals", ["tenant_id"], unique=False
-    )
+    op.create_index(op.f("ix_pending_approvals_status"), "pending_approvals", ["status"], unique=False)
+    op.create_index(op.f("ix_pending_approvals_task_id"), "pending_approvals", ["task_id"], unique=False)
+    op.create_index(op.f("ix_pending_approvals_tenant_id"), "pending_approvals", ["tenant_id"], unique=False)
 
     # --- 480048dde7b6_add_tenant_documents_table ---
     op.create_table(
@@ -201,18 +193,10 @@ def upgrade() -> None:
         sa.Column("category", sa.String(length=50), nullable=True),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        op.f("ix_tenant_documents_created_at"), "tenant_documents", ["created_at"], unique=False
-    )
-    op.create_index(
-        op.f("ix_tenant_documents_status"), "tenant_documents", ["status"], unique=False
-    )
-    op.create_index(
-        op.f("ix_tenant_documents_task_id"), "tenant_documents", ["task_id"], unique=False
-    )
-    op.create_index(
-        op.f("ix_tenant_documents_tenant_id"), "tenant_documents", ["tenant_id"], unique=False
-    )
+    op.create_index(op.f("ix_tenant_documents_created_at"), "tenant_documents", ["created_at"], unique=False)
+    op.create_index(op.f("ix_tenant_documents_status"), "tenant_documents", ["status"], unique=False)
+    op.create_index(op.f("ix_tenant_documents_task_id"), "tenant_documents", ["task_id"], unique=False)
+    op.create_index(op.f("ix_tenant_documents_tenant_id"), "tenant_documents", ["tenant_id"], unique=False)
 
     # --- 856702bb2ab8_add_erp_models ---
     op.create_table(
@@ -300,9 +284,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_invoices_client_id"), "invoices", ["client_id"], unique=False)
-    op.create_index(
-        op.f("ix_invoices_invoice_number"), "invoices", ["invoice_number"], unique=False
-    )
+    op.create_index(op.f("ix_invoices_invoice_number"), "invoices", ["invoice_number"], unique=False)
     op.create_index(op.f("ix_invoices_tenant_id"), "invoices", ["tenant_id"], unique=False)
 
     # --- 0406749c1f9a_add_workflows_tables ---
@@ -372,9 +354,7 @@ def upgrade() -> None:
         sa.Column("paused_at", sa.DateTime(timezone=True), nullable=True),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        op.f("ix_workflow_executions_tenant_id"), "workflow_executions", ["tenant_id"], unique=False
-    )
+    op.create_index(op.f("ix_workflow_executions_tenant_id"), "workflow_executions", ["tenant_id"], unique=False)
     op.create_index(
         op.f("ix_workflow_executions_workflow_id"),
         "workflow_executions",
@@ -411,9 +391,7 @@ def upgrade() -> None:
         sa.Column("tenant_id", sa.UUID(), nullable=False),
         sa.Column("client_id", sa.UUID(), nullable=False),
         sa.Column("title", sa.String(length=255), nullable=False),
-        sa.Column(
-            "expected_value", sa.Numeric(precision=10, scale=2), nullable=False, server_default="0"
-        ),
+        sa.Column("expected_value", sa.Numeric(precision=10, scale=2), nullable=False, server_default="0"),
         sa.Column("stage", sa.String(length=50), nullable=False, server_default="new"),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
@@ -427,12 +405,8 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        op.f("ix_opportunities_tenant_id"), "opportunities", ["tenant_id"], unique=False
-    )
-    op.create_index(
-        op.f("ix_opportunities_client_id"), "opportunities", ["client_id"], unique=False
-    )
+    op.create_index(op.f("ix_opportunities_tenant_id"), "opportunities", ["tenant_id"], unique=False)
+    op.create_index(op.f("ix_opportunities_client_id"), "opportunities", ["client_id"], unique=False)
     op.create_table(
         "invoice_lines",
         sa.Column("id", sa.UUID(), nullable=False),
@@ -454,9 +428,7 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        op.f("ix_invoice_lines_invoice_id"), "invoice_lines", ["invoice_id"], unique=False
-    )
+    op.create_index(op.f("ix_invoice_lines_invoice_id"), "invoice_lines", ["invoice_id"], unique=False)
 
     # --- cf7da4c31523_add_quote_models ---
     op.create_table(
@@ -588,9 +560,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_activities_client_id"), "activities", ["client_id"], unique=False)
-    op.create_index(
-        op.f("ix_activities_opportunity_id"), "activities", ["opportunity_id"], unique=False
-    )
+    op.create_index(op.f("ix_activities_opportunity_id"), "activities", ["opportunity_id"], unique=False)
     op.create_index(op.f("ix_activities_tenant_id"), "activities", ["tenant_id"], unique=False)
 
     # --- bb642129ec99_add_start_date_to_projects_and_ ---
@@ -662,15 +632,9 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        op.f("ix_domain_events_created_at"), "domain_events", ["created_at"], unique=False
-    )
-    op.create_index(
-        op.f("ix_domain_events_event_name"), "domain_events", ["event_name"], unique=False
-    )
-    op.create_index(
-        op.f("ix_domain_events_tenant_id"), "domain_events", ["tenant_id"], unique=False
-    )
+    op.create_index(op.f("ix_domain_events_created_at"), "domain_events", ["created_at"], unique=False)
+    op.create_index(op.f("ix_domain_events_event_name"), "domain_events", ["event_name"], unique=False)
+    op.create_index(op.f("ix_domain_events_tenant_id"), "domain_events", ["tenant_id"], unique=False)
     op.create_table(
         "bank_transactions",
         sa.Column("id", sa.UUID(), nullable=False),
@@ -692,9 +656,7 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        op.f("ix_bank_transactions_tenant_id"), "bank_transactions", ["tenant_id"], unique=False
-    )
+    op.create_index(op.f("ix_bank_transactions_tenant_id"), "bank_transactions", ["tenant_id"], unique=False)
 
     # --- a79b087a3db7_add_tenant_knowledge_table ---
     op.create_table(
@@ -713,9 +675,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_tenant_knowledge_key"), "tenant_knowledge", ["key"], unique=False)
-    op.create_index(
-        op.f("ix_tenant_knowledge_tenant_id"), "tenant_knowledge", ["tenant_id"], unique=False
-    )
+    op.create_index(op.f("ix_tenant_knowledge_tenant_id"), "tenant_knowledge", ["tenant_id"], unique=False)
 
     # --- a3f7c9e2d1b4_add_node_engine_fields ---
     op.create_index("ix_pending_approvals_execution_id", "pending_approvals", ["execution_id"])
@@ -736,12 +696,8 @@ def upgrade() -> None:
             nullable=False,
             server_default="5",
         ),
-        sa.Column(
-            "residual_value", sa.Numeric(precision=15, scale=2), nullable=False, server_default="0"
-        ),
-        sa.Column(
-            "depreciation_method", sa.String(length=50), nullable=False, server_default="linear"
-        ),
+        sa.Column("residual_value", sa.Numeric(precision=15, scale=2), nullable=False, server_default="0"),
+        sa.Column("depreciation_method", sa.String(length=50), nullable=False, server_default="linear"),
         sa.Column("status", sa.String(length=50), nullable=False, server_default="active"),
         sa.Column("account_code", sa.String(length=50), nullable=True),
         sa.Column("reference_invoice", sa.String(length=255), nullable=True),
@@ -767,9 +723,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["tenant_id"], ["tenants.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        op.f("ix_journal_entries_tenant_id"), "journal_entries", ["tenant_id"], unique=False
-    )
+    op.create_index(op.f("ix_journal_entries_tenant_id"), "journal_entries", ["tenant_id"], unique=False)
     op.create_table(
         "journal_lines",
         sa.Column("id", sa.UUID(), nullable=False),
@@ -783,13 +737,9 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["entry_id"], ["journal_entries.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        op.f("ix_journal_lines_tenant_id"), "journal_lines", ["tenant_id"], unique=False
-    )
+    op.create_index(op.f("ix_journal_lines_tenant_id"), "journal_lines", ["tenant_id"], unique=False)
     op.create_index(op.f("ix_journal_lines_entry_id"), "journal_lines", ["entry_id"], unique=False)
-    op.create_index(
-        op.f("ix_journal_lines_account_code"), "journal_lines", ["account_code"], unique=False
-    )
+    op.create_index(op.f("ix_journal_lines_account_code"), "journal_lines", ["account_code"], unique=False)
 
     # --- c2d4f6e8a0b2_add_stock_and_sales_orders ---
     op.create_table(
@@ -820,9 +770,7 @@ def upgrade() -> None:
         sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("client_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("order_number", sa.String(100), nullable=True),
-        sa.Column(
-            "date", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")
-        ),
+        sa.Column("date", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
         sa.Column("expected_delivery", sa.DateTime(timezone=True), nullable=True),
         sa.Column("status", sa.String(50), nullable=False, server_default="draft"),
         sa.Column("amount_base", sa.Numeric(10, 2), nullable=False, server_default="0"),
@@ -874,9 +822,7 @@ def upgrade() -> None:
         sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("supplier_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("order_number", sa.String(100), nullable=True),
-        sa.Column(
-            "date", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")
-        ),
+        sa.Column("date", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
         sa.Column("expected_delivery", sa.DateTime(timezone=True), nullable=True),
         sa.Column("status", sa.String(50), nullable=False, server_default="draft"),
         sa.Column("amount_base", sa.Numeric(10, 2), nullable=False, server_default="0"),
@@ -950,19 +896,11 @@ def upgrade() -> None:
     op.create_index("ix_recurring_invoices_next_run_date", "recurring_invoices", ["next_run_date"])
 
     # --- f1a2b3c4d5e6_add_missing_indexes ---
-    op.create_index(
-        "ix_invoice_lines_product_id", "invoice_lines", ["product_id"], if_not_exists=True
-    )
+    op.create_index("ix_invoice_lines_product_id", "invoice_lines", ["product_id"], if_not_exists=True)
     op.create_index("ix_activities_client_id", "activities", ["client_id"], if_not_exists=True)
-    op.create_index(
-        "ix_activities_opportunity_id", "activities", ["opportunity_id"], if_not_exists=True
-    )
-    op.create_index(
-        "ix_invoices_tenant_created", "invoices", ["tenant_id", "created_at"], if_not_exists=True
-    )
-    op.create_index(
-        "ix_tasks_tenant_created", "tasks", ["tenant_id", "created_at"], if_not_exists=True
-    )
+    op.create_index("ix_activities_opportunity_id", "activities", ["opportunity_id"], if_not_exists=True)
+    op.create_index("ix_invoices_tenant_created", "invoices", ["tenant_id", "created_at"], if_not_exists=True)
+    op.create_index("ix_tasks_tenant_created", "tasks", ["tenant_id", "created_at"], if_not_exists=True)
 
     # --- e2f3a4b5c6d7_add_invoice_series_table ---
     op.create_table(
@@ -985,9 +923,7 @@ def upgrade() -> None:
             ["tenants.id"],
         ),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint(
-            "tenant_id", "serie", "year", name="uq_invoice_series_tenant_serie_year"
-        ),
+        sa.UniqueConstraint("tenant_id", "serie", "year", name="uq_invoice_series_tenant_serie_year"),
     )
     op.create_index("ix_invoice_series_tenant_id", "invoice_series", ["tenant_id"])
 
@@ -1017,9 +953,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index("ix_document_templates_tenant_id", "document_templates", ["tenant_id"])
-    op.create_index(
-        "ix_document_templates_type", "document_templates", ["tenant_id", "template_type"]
-    )
+    op.create_index("ix_document_templates_type", "document_templates", ["tenant_id", "template_type"])
 
     # --- a1b2c3d4e5f6_add_albaranes ---
     op.create_table(
@@ -1073,9 +1007,7 @@ def upgrade() -> None:
             unique=True,
         ),
         sa.Column("active_llm_provider", sa.String(50), nullable=False, server_default="claude_code"),
-        sa.Column(
-            "active_embeddings_provider", sa.String(50), nullable=False, server_default="local"
-        ),
+        sa.Column("active_embeddings_provider", sa.String(50), nullable=False, server_default="local"),
         sa.Column("encrypted_keys", sa.Text()),
         sa.Column("updated_at", sa.DateTime(timezone=True)),
         sa.PrimaryKeyConstraint("id"),
@@ -1086,9 +1018,7 @@ def upgrade() -> None:
     op.create_table(
         "password_reset_tokens",
         sa.Column("id", postgresql.UUID(as_uuid=True)),
-        sa.Column(
-            "user_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id"), nullable=False
-        ),
+        sa.Column("user_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id"), nullable=False),
         sa.Column("token_hash", sa.String(64), unique=True, nullable=False),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("used_at", sa.DateTime(timezone=True), nullable=True),
@@ -1099,9 +1029,7 @@ def upgrade() -> None:
     op.create_index("ix_password_reset_tokens_token_hash", "password_reset_tokens", ["token_hash"])
 
     # --- a6bf183c8e0c_add_category_to_tenantdocument ---
-    op.create_index(
-        op.f("ix_tenant_documents_category"), "tenant_documents", ["category"], unique=False
-    )
+    op.create_index(op.f("ix_tenant_documents_category"), "tenant_documents", ["category"], unique=False)
 
     # --- e9f0a1b2c3d4_add_ai_employees_activity_feed ---
     op.create_table(
@@ -1289,12 +1217,8 @@ def upgrade() -> None:
         sa.Column("employee_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("fecha_extincion", sa.DateTime(timezone=True), nullable=False),
         sa.Column("causa_extincion", sa.String(50), nullable=False),
-        sa.Column(
-            "vacaciones_pendientes_dias", sa.Numeric(5, 1), server_default="0", nullable=True
-        ),
-        sa.Column(
-            "vacaciones_pendientes_importe", sa.Numeric(10, 2), server_default="0", nullable=True
-        ),
+        sa.Column("vacaciones_pendientes_dias", sa.Numeric(5, 1), server_default="0", nullable=True),
+        sa.Column("vacaciones_pendientes_importe", sa.Numeric(10, 2), server_default="0", nullable=True),
         sa.Column("prorrata_paga_extra", sa.Numeric(10, 2), server_default="0", nullable=True),
         sa.Column("prorrata_aguinaldo", sa.Numeric(10, 2), server_default="0", nullable=True),
         sa.Column("indemnizacion", sa.Numeric(10, 2), server_default="0", nullable=True),
@@ -1308,12 +1232,8 @@ def upgrade() -> None:
         sa.Column("signed_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("notes", sa.Text(), nullable=True),
         sa.Column("status", sa.String(20), server_default="draft", nullable=False),
-        sa.Column(
-            "created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()
-        ),
-        sa.Column(
-            "updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()
-        ),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
         sa.ForeignKeyConstraint(["tenant_id"], ["tenants.id"]),
         sa.ForeignKeyConstraint(["employee_id"], ["employees.id"]),
         sa.PrimaryKeyConstraint("id"),
@@ -1334,17 +1254,13 @@ def upgrade() -> None:
         sa.Column("notas", sa.String(255), nullable=True),
         sa.Column("year", sa.Integer(), nullable=False),
         sa.Column("month", sa.Integer(), nullable=False),
-        sa.Column(
-            "created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()
-        ),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
         sa.ForeignKeyConstraint(["tenant_id"], ["tenants.id"]),
         sa.ForeignKeyConstraint(["employee_id"], ["employees.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index("ix_jornada_records_employee_id", "jornada_records", ["employee_id"])
-    op.create_index(
-        "ix_jornada_records_year_month", "jornada_records", ["employee_id", "year", "month"]
-    )
+    op.create_index("ix_jornada_records_year_month", "jornada_records", ["employee_id", "year", "month"])
 
     # --- document_embeddings (TEXT fallback for embedding, pgvector not required) ---
     op.create_table(
@@ -1367,9 +1283,7 @@ def upgrade() -> None:
         ["document_id"],
         unique=False,
     )
-    op.create_index(
-        op.f("ix_document_embeddings_tenant_id"), "document_embeddings", ["tenant_id"], unique=False
-    )
+    op.create_index(op.f("ix_document_embeddings_tenant_id"), "document_embeddings", ["tenant_id"], unique=False)
 
     # --- payrolls (from model, not in original migrations) ---
     op.create_table(

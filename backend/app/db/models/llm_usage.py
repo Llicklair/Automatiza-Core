@@ -25,11 +25,7 @@ from .common import (
 
 class LlmUsageMonthly(Base):
     __tablename__ = "llm_usage_monthly"
-    __table_args__ = (
-        UniqueConstraint(
-            "tenant_id", "month", "agent", "provider", name="uq_llm_usage_monthly_dims"
-        ),
-    )
+    __table_args__ = (UniqueConstraint("tenant_id", "month", "agent", "provider", name="uq_llm_usage_monthly_dims"),)
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(

@@ -11,9 +11,7 @@ from app.db.models.email_marketing import EmailTemplate
 
 async def list_templates(tenant_id: UUID, db: AsyncSession) -> list[EmailTemplate]:
     result = await db.execute(
-        select(EmailTemplate)
-        .where(EmailTemplate.tenant_id == tenant_id)
-        .order_by(EmailTemplate.created_at.desc())
+        select(EmailTemplate).where(EmailTemplate.tenant_id == tenant_id).order_by(EmailTemplate.created_at.desc())
     )
     return list(result.scalars().all())
 
@@ -41,9 +39,7 @@ async def create_template(payload: Any, tenant_id: UUID, db: AsyncSession) -> Em
     return tpl
 
 
-async def update_template(
-    template_id: UUID, payload: Any, tenant_id: UUID, db: AsyncSession
-) -> EmailTemplate | None:
+async def update_template(template_id: UUID, payload: Any, tenant_id: UUID, db: AsyncSession) -> EmailTemplate | None:
     tpl = await _get_template(template_id, tenant_id, db)
     if tpl is None:
         return None

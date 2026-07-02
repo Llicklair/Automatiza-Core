@@ -123,9 +123,7 @@ def build_pain001(
 
     today = (now or datetime.now(timezone.utc)).date()
     if execution_date < today:
-        raise Pain001Error(
-            f"La fecha de ejecución {execution_date} es anterior a hoy {today}."
-        )
+        raise Pain001Error(f"La fecha de ejecución {execution_date} es anterior a hoy {today}.")
 
     debtor_iban = _validate_iban(debtor.iban)
     initiator = _sanitize_txt(initiating_party_name or debtor.name, 70)
@@ -181,9 +179,7 @@ def build_pain001(
         amt_el = SubElement(tx, "Amt")
         SubElement(amt_el, "InstdAmt", attrib={"Ccy": "EUR"}).text = format(amt, "f")
         cdtr_agt = SubElement(tx, "CdtrAgt")
-        SubElement(SubElement(cdtr_agt, "FinInstnId"), "Othr").append(
-            _element("Id", "NOTPROVIDED")
-        )
+        SubElement(SubElement(cdtr_agt, "FinInstnId"), "Othr").append(_element("Id", "NOTPROVIDED"))
         cdtr = SubElement(tx, "Cdtr")
         SubElement(cdtr, "Nm").text = _sanitize_txt(ord_.creditor_name, 70)
         cdtr_acct = SubElement(tx, "CdtrAcct")
@@ -196,6 +192,7 @@ def build_pain001(
     xml_str = xml_bytes.decode("utf-8")
 
     import hashlib
+
     summary = {
         "msg_id": msg_id,
         "nb_of_txs": len(validated),
@@ -260,9 +257,7 @@ def build_pain008(
 
     today = (now or datetime.now(timezone.utc)).date()
     if collection_date < today:
-        raise Pain008Error(
-            f"La fecha de cobro {collection_date} es anterior a hoy {today}."
-        )
+        raise Pain008Error(f"La fecha de cobro {collection_date} es anterior a hoy {today}.")
 
     creditor_iban = _validate_iban(creditor.iban)
     creditor_name = _sanitize_txt(creditor.name, 70)
@@ -321,9 +316,7 @@ def build_pain008(
         SubElement(pmt_tp, "SeqTp").text = seq
         SubElement(pmt, "ReqdColltnDt").text = collection_date.isoformat()
         SubElement(SubElement(pmt, "Cdtr"), "Nm").text = creditor_name
-        SubElement(
-            SubElement(SubElement(pmt, "CdtrAcct"), "Id"), "IBAN"
-        ).text = creditor_iban
+        SubElement(SubElement(SubElement(pmt, "CdtrAcct"), "Id"), "IBAN").text = creditor_iban
         cdtr_agt = SubElement(pmt, "CdtrAgt")
         fin_inst = SubElement(cdtr_agt, "FinInstnId")
         if creditor.bic:
@@ -344,22 +337,17 @@ def build_pain008(
             SubElement(mndt, "MndtId").text = _sanitize_txt(ord_.mandate_id, 35)
             SubElement(mndt, "DtOfSgntr").text = ord_.mandate_date.isoformat()
             dbtr_agt = SubElement(tx, "DbtrAgt")
-            SubElement(SubElement(dbtr_agt, "FinInstnId"), "Othr").append(
-                _element("Id", "NOTPROVIDED")
-            )
-            SubElement(SubElement(tx, "Dbtr"), "Nm").text = _sanitize_txt(
-                ord_.debtor_name, 70
-            )
+            SubElement(SubElement(dbtr_agt, "FinInstnId"), "Othr").append(_element("Id", "NOTPROVIDED"))
+            SubElement(SubElement(tx, "Dbtr"), "Nm").text = _sanitize_txt(ord_.debtor_name, 70)
             SubElement(SubElement(SubElement(tx, "DbtrAcct"), "Id"), "IBAN").text = iban_ok
             if ord_.concept:
-                SubElement(SubElement(tx, "RmtInf"), "Ustrd").text = _sanitize_txt(
-                    ord_.concept, 140
-                )
+                SubElement(SubElement(tx, "RmtInf"), "Ustrd").text = _sanitize_txt(ord_.concept, 140)
 
     xml_bytes = tostring(doc, encoding="utf-8", xml_declaration=True)
     xml_str = xml_bytes.decode("utf-8")
 
     import hashlib
+
     summary = {
         "msg_id": msg_id,
         "nb_of_txs": len(validated),

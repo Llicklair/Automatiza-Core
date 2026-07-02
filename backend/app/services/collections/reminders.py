@@ -158,11 +158,7 @@ def build_reminder_schedule(
         interest_amount = 0.0
         if step_code == "formal_d30":
             interest_amount = float(
-                Decimal(amount)
-                * INTERES_DEMORA_PCT_ANUAL
-                / Decimal(100)
-                * Decimal(days_overdue)
-                / Decimal(365)
+                Decimal(amount) * INTERES_DEMORA_PCT_ANUAL / Decimal(100) * Decimal(days_overdue) / Decimal(365)
             )
 
         ctx = {

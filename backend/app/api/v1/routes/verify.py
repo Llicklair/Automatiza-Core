@@ -41,9 +41,7 @@ async def verify_invoice_by_huella(huella: str, db: AsyncSession = Depends(get_d
             detail="Huella inválida — se espera SHA-256 hexadecimal (64 chars).",
         )
 
-    result = await db.execute(
-        select(VerifactuRecord).where(VerifactuRecord.huella == huella)
-    )
+    result = await db.execute(select(VerifactuRecord).where(VerifactuRecord.huella == huella))
     record = result.scalar_one_or_none()
     if record is None:
         raise HTTPException(

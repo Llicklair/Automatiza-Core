@@ -1,6 +1,5 @@
 """Analytics dashboard endpoint — single aggregated source for the /analitica page."""
 
-
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,9 +29,7 @@ async def get_analytics_dashboard(
     if not period:
         # Sin periodo explícito: abrir en el último mes con actividad (evita que
         # el dashboard salga "vacío" a principio de mes). Fallback al mes actual.
-        period = await latest_period_with_data(db, current_user.tenant_id) or local_today().strftime(
-            "%Y-%m"
-        )
+        period = await latest_period_with_data(db, current_user.tenant_id) or local_today().strftime("%Y-%m")
 
     try:
         start, end = parse_month(period)

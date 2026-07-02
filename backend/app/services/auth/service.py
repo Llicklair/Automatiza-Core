@@ -200,9 +200,7 @@ async def forgot_password(email: str, db: AsyncSession) -> dict:
             for old_token in old.scalars().all():
                 old_token.used_at = datetime.now(UTC)
 
-            db.add(
-                PasswordResetToken(user_id=user.id, token_hash=token_hash, expires_at=expires_at)
-            )
+            db.add(PasswordResetToken(user_id=user.id, token_hash=token_hash, expires_at=expires_at))
             await db.commit()
 
             reset_url = f"{settings.FRONTEND_URL}/reset-password?token={raw_token}"
@@ -220,9 +218,7 @@ async def reset_password(token: str, new_password: str, db: AsyncSession) -> dic
     # El reset se identifica solo por el hash del token (PRE-tenant) → bypass RLS
     # para localizar el token y el usuario y reescribir la contraseña.
     with rls_bypass():
-        result = await db.execute(
-            select(PasswordResetToken).where(PasswordResetToken.token_hash == token_hash)
-        )
+        result = await db.execute(select(PasswordResetToken).where(PasswordResetToken.token_hash == token_hash))
         reset_token = result.scalar_one_or_none()
 
         if not reset_token:

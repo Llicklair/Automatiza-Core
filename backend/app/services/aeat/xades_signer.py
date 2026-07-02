@@ -20,8 +20,8 @@ _log = logging.getLogger(__name__)
 @dataclass
 class SignResult:
     signed_xml: str
-    signed: bool        # False si fue stub
-    method: str         # 'xades-bes' | 'stub'
+    signed: bool  # False si fue stub
+    method: str  # 'xades-bes' | 'stub'
     warnings: list[str]
 
 
@@ -32,7 +32,8 @@ class SigningError(RuntimeError):
 def _is_available() -> bool:
     try:
         import signxml  # noqa
-        import xmlsec   # noqa: F401
+        import xmlsec  # noqa: F401
+
         return True
     except ImportError:
         return False
@@ -50,9 +51,7 @@ def sign_xades_bes(xml_str: str, pfx_bytes: bytes, password: str) -> SignResult:
     warnings: list[str] = []
 
     if not _is_available():
-        warnings.append(
-            "Firma stub: signxml/xmlsec no instalados. Este XML NO es válido para la SEDE AEAT."
-        )
+        warnings.append("Firma stub: signxml/xmlsec no instalados. Este XML NO es válido para la SEDE AEAT.")
         wrapped = (
             '<?xml version="1.0" encoding="UTF-8"?>\n'
             '<UnsignedDraft generator="AutomatizaCore" note="stub-no-xmlsec">\n'
@@ -71,7 +70,8 @@ def sign_xades_bes(xml_str: str, pfx_bytes: bytes, password: str) -> SignResult:
 
     try:
         priv_key, cert, ca_chain = pkcs12.load_key_and_certificates(
-            pfx_bytes, password.encode("utf-8") if password else None,
+            pfx_bytes,
+            password.encode("utf-8") if password else None,
         )
     except Exception as e:
         raise SigningError(f"No se pudo cargar el PFX: {e}") from e

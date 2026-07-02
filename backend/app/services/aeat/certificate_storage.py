@@ -64,7 +64,8 @@ def _extract_metadata(pfx_bytes: bytes, password: str) -> CertificateMetadata:
 
     try:
         priv_key, cert, _ = pkcs12.load_key_and_certificates(
-            pfx_bytes, password.encode("utf-8") if password else None,
+            pfx_bytes,
+            password.encode("utf-8") if password else None,
         )
     except Exception as e:
         raise CertificateError(f"No se pudo leer el PFX (contraseña incorrecta o fichero inválido): {e}") from e
@@ -139,7 +140,8 @@ async def store_certificate(
 
 
 async def get_active_certificate(
-    db: AsyncSession, tenant_id: UUID,
+    db: AsyncSession,
+    tenant_id: UUID,
 ) -> TenantCertificate | None:
     res = await db.execute(
         select(TenantCertificate)
@@ -152,7 +154,8 @@ async def get_active_certificate(
 
 
 async def load_decrypted(
-    db: AsyncSession, tenant_id: UUID,
+    db: AsyncSession,
+    tenant_id: UUID,
 ) -> tuple[bytes, str]:
     """Devuelve (pfx_bytes, password) descifrados. Solo para firma en memoria."""
     cert = await get_active_certificate(db, tenant_id)
@@ -168,7 +171,9 @@ async def load_decrypted(
 
 
 async def revoke_certificate(
-    db: AsyncSession, tenant_id: UUID, certificate_id: UUID,
+    db: AsyncSession,
+    tenant_id: UUID,
+    certificate_id: UUID,
 ) -> TenantCertificate:
     res = await db.execute(
         select(TenantCertificate)

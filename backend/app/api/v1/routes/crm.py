@@ -51,9 +51,7 @@ async def update_opportunity(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        return await svc.update_opportunity(
-            db, current_user.tenant_id, opp_id, payload.model_dump(exclude_unset=True)
-        )
+        return await svc.update_opportunity(db, current_user.tenant_id, opp_id, payload.model_dump(exclude_unset=True))
     except LookupError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
 
@@ -84,14 +82,10 @@ async def list_activities(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return await svc.list_activities(
-        db, current_user.tenant_id, client_id=client_id, opportunity_id=opportunity_id
-    )
+    return await svc.list_activities(db, current_user.tenant_id, client_id=client_id, opportunity_id=opportunity_id)
 
 
-@router.post(
-    "/activities", response_model=schemas.ActivityResponse, status_code=status.HTTP_201_CREATED
-)
+@router.post("/activities", response_model=schemas.ActivityResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("30/minute")
 async def create_activity(
     request: Request,
@@ -150,9 +144,7 @@ async def update_event(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        return await svc.update_event(
-            db, current_user.tenant_id, event_id, payload.model_dump(exclude_unset=True)
-        )
+        return await svc.update_event(db, current_user.tenant_id, event_id, payload.model_dump(exclude_unset=True))
     except LookupError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
 
@@ -184,9 +176,7 @@ async def list_reservations(
     return await svc.list_reservations(db, current_user.tenant_id)
 
 
-@router.post(
-    "/reservations", response_model=schemas.ReservationResponse, status_code=status.HTTP_201_CREATED
-)
+@router.post("/reservations", response_model=schemas.ReservationResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("30/minute")
 async def create_reservation(
     request: Request,
@@ -207,9 +197,7 @@ async def update_reservation(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        return await svc.update_reservation(
-            db, current_user.tenant_id, res_id, payload.model_dump(exclude_unset=True)
-        )
+        return await svc.update_reservation(db, current_user.tenant_id, res_id, payload.model_dump(exclude_unset=True))
     except LookupError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
 

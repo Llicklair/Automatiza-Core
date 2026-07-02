@@ -39,9 +39,14 @@ async def list_configs_with_counts(db: AsyncSession, tenant_id) -> list[ZernioCo
                 SocialAccount.is_active.is_(True),
             )
         )
-        out.append(ZernioConfigInfo(
-            id=c.id, label=c.label, default_profile_id=c.default_profile_id, num_accounts=n or 0,
-        ))
+        out.append(
+            ZernioConfigInfo(
+                id=c.id,
+                label=c.label,
+                default_profile_id=c.default_profile_id,
+                num_accounts=n or 0,
+            )
+        )
     return out
 
 
@@ -59,11 +64,18 @@ async def add_zernio_config(
     profiles = await client.list_profiles()
     default_pid = str(profiles[0].get("_id") or profiles[0].get("id")) if profiles else None
     cfg = await add_provider_config(
-        db, tenant_id, api_key, label=label, default_profile_id=default_pid,
+        db,
+        tenant_id,
+        api_key,
+        label=label,
+        default_profile_id=default_pid,
     )
     await db.commit()
     return ZernioConfigInfo(
-        id=cfg.id, label=cfg.label, default_profile_id=cfg.default_profile_id, num_accounts=0,
+        id=cfg.id,
+        label=cfg.label,
+        default_profile_id=cfg.default_profile_id,
+        num_accounts=0,
     )
 
 
@@ -101,7 +113,10 @@ def client_for_config(cfg: MarketingProviderConfig | None) -> ZernioClient:
 
 
 async def add_provider_config(
-    db: AsyncSession, tenant_id, api_key: str, label: str | None = None,
+    db: AsyncSession,
+    tenant_id,
+    api_key: str,
+    label: str | None = None,
     default_profile_id: str | None = None,
 ) -> MarketingProviderConfig:
     """Añade una nueva cuenta de Zernio al tenant (varias permitidas)."""
@@ -134,9 +149,7 @@ async def delete_provider_config(db: AsyncSession, config_id, tenant_id) -> bool
 async def client_for_account(db: AsyncSession, account: SocialAccount) -> ZernioClient:
     """Resuelve el `ZernioClient` de la cuenta social, por su `provider_config_id`."""
     if not account.provider_config_id:
-        raise ZernioError(
-            "La cuenta no está vinculada a ninguna cuenta de Zernio; reconéctala."
-        )
+        raise ZernioError("La cuenta no está vinculada a ninguna cuenta de Zernio; reconéctala.")
     res = await db.execute(
         select(MarketingProviderConfig).where(
             MarketingProviderConfig.id == account.provider_config_id,

@@ -40,13 +40,11 @@ def upgrade() -> None:
         """
     )
     op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_notifications_tenant_created "
-        "ON notifications(tenant_id, created_at DESC)"
+        "CREATE INDEX IF NOT EXISTS ix_notifications_tenant_created " "ON notifications(tenant_id, created_at DESC)"
     )
     op.execute(
         "CREATE INDEX IF NOT EXISTS ix_notifications_unread "
-        "ON notifications(tenant_id, read_at) "
-        + ("WHERE read_at IS NULL" if bind.dialect.name == "postgresql" else "")
+        "ON notifications(tenant_id, read_at) " + ("WHERE read_at IS NULL" if bind.dialect.name == "postgresql" else "")
     )
 
 

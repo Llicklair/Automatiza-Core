@@ -6,11 +6,7 @@ from pydantic import BaseModel, ConfigDict, model_validator
 
 def _check_event_range(model):
     """Valida que end_time no sea anterior a start_time (ambos presentes)."""
-    if (
-        model.start_time is not None
-        and model.end_time is not None
-        and model.end_time < model.start_time
-    ):
+    if model.start_time is not None and model.end_time is not None and model.end_time < model.start_time:
         raise ValueError("end_time no puede ser anterior a start_time")
     return model
 

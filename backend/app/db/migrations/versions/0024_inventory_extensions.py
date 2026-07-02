@@ -39,12 +39,8 @@ def upgrade() -> None:
         "ADD COLUMN IF NOT EXISTS cost_price NUMERIC(10, 2), "
         "ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE"
     )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_products_barcode ON products(barcode)"
-    )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_products_category ON products(category)"
-    )
+    op.execute("CREATE INDEX IF NOT EXISTS ix_products_barcode ON products(barcode)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_products_category ON products(category)")
 
     # ── stock_movements ──────────────────────────────────────────────────────
     op.execute(
@@ -52,19 +48,12 @@ def upgrade() -> None:
         "ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id), "
         "ADD COLUMN IF NOT EXISTS unit_cost NUMERIC(10, 2)"
     )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_stock_movements_user_id "
-        "ON stock_movements(user_id)"
-    )
+    op.execute("CREATE INDEX IF NOT EXISTS ix_stock_movements_user_id " "ON stock_movements(user_id)")
 
 
 def downgrade() -> None:
     op.execute("DROP INDEX IF EXISTS ix_stock_movements_user_id")
-    op.execute(
-        "ALTER TABLE stock_movements "
-        "DROP COLUMN IF EXISTS unit_cost, "
-        "DROP COLUMN IF EXISTS user_id"
-    )
+    op.execute("ALTER TABLE stock_movements " "DROP COLUMN IF EXISTS unit_cost, " "DROP COLUMN IF EXISTS user_id")
 
     op.execute("DROP INDEX IF EXISTS ix_products_category")
     op.execute("DROP INDEX IF EXISTS ix_products_barcode")

@@ -13,10 +13,7 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute(
-        "ALTER TABLE scheduled_posts "
-        "ADD COLUMN IF NOT EXISTS retry_count INTEGER NOT NULL DEFAULT 0"
-    )
+    op.execute("ALTER TABLE scheduled_posts " "ADD COLUMN IF NOT EXISTS retry_count INTEGER NOT NULL DEFAULT 0")
 
 
 def downgrade() -> None:

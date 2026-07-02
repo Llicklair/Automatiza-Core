@@ -82,8 +82,7 @@ def install_rls_listener(engine) -> None:
         tenant, bypass = desired
         # Ambos GUC en un único round-trip; `true` = SET LOCAL (scope de tx).
         cursor.execute(
-            f"SELECT set_config('{_GUC}', '{tenant}', true), "
-            f"set_config('{_GUC_BYPASS}', '{bypass}', true)"
+            f"SELECT set_config('{_GUC}', '{tenant}', true), " f"set_config('{_GUC_BYPASS}', '{bypass}', true)"
         )
         conn.info[_CACHE_KEY] = desired
 

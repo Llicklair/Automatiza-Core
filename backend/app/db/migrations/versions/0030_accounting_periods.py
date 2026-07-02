@@ -36,9 +36,7 @@ def upgrade() -> None:
         )
         """
     )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_accounting_periods_tenant_id ON accounting_periods(tenant_id)"
-    )
+    op.execute("CREATE INDEX IF NOT EXISTS ix_accounting_periods_tenant_id ON accounting_periods(tenant_id)")
     op.execute(
         """
         CREATE UNIQUE INDEX IF NOT EXISTS ux_accounting_periods_unique

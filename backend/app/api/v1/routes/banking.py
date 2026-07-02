@@ -75,9 +75,7 @@ async def reconcile_transaction(
 ):
     """Concilia el movimiento contra una factura"""
     try:
-        return await svc.reconcile_transaction(
-            db, current_user.tenant_id, current_user.id, tx_id, payload.invoice_id
-        )
+        return await svc.reconcile_transaction(db, current_user.tenant_id, current_user.id, tx_id, payload.invoice_id)
     except LookupError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
     except ValueError as e:
@@ -138,9 +136,7 @@ async def reject_reconciliation_suggestion(
         tx_id = uuid.UUID(str(payload.get("transaction_id")))
         inv_id = uuid.UUID(str(payload.get("invoice_id")))
     except (TypeError, ValueError) as exc:
-        raise HTTPException(
-            status_code=422, detail="transaction_id e invoice_id deben ser UUIDs."
-        ) from exc
+        raise HTTPException(status_code=422, detail="transaction_id e invoice_id deben ser UUIDs.") from exc
     return await svc.reject_reconciliation_suggestion(
         db,
         current_user.tenant_id,

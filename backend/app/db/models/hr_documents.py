@@ -16,9 +16,7 @@ class HRDocument(Base):
     __tablename__ = "hr_documents"
     id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(PG_UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
-    doc_type = Column(
-        String(50), nullable=False
-    )  # contract, nda, termination, settlement, addendum, other
+    doc_type = Column(String(50), nullable=False)  # contract, nda, termination, settlement, addendum, other
     title = Column(String(255), nullable=False)
     employee_name = Column(String(200), nullable=True)
     content_html = Column(Text, nullable=False)

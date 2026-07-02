@@ -25,9 +25,7 @@ from app.db.models.models import (
 
 logger = logging.getLogger(__name__)
 
-UPLOAD_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads")
-)
+UPLOAD_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads"))
 VALID_IVA = {0.0, 4.0, 10.0, 21.0}
 
 
@@ -42,9 +40,7 @@ def _round2(d: Decimal) -> Decimal:
     return d.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
-def compute_invoice_totals(
-    lines_data: list[dict], *, allow_negative: bool = False
-) -> dict:
+def compute_invoice_totals(lines_data: list[dict], *, allow_negative: bool = False) -> dict:
     """Valida el IVA de cada línea y calcula los importes con Decimal.
 
     Pura y sin efectos. Centraliza la aritmética monetaria de la factura para
@@ -69,9 +65,7 @@ def compute_invoice_totals(
         discount = _d(ld.get("discount_percentage", 0))
         tax_perc = float(ld.get("tax_percentage", 21))
         if tax_perc not in VALID_IVA:
-            raise ValueError(
-                f"Tipo de IVA inválido: {tax_perc}%. Los valores permitidos son: 0%, 4%, 10%, 21%."
-            )
+            raise ValueError(f"Tipo de IVA inválido: {tax_perc}%. Los valores permitidos son: 0%, 4%, 10%, 21%.")
         line_base = qty * uprice
         if discount > 0:
             line_base -= line_base * (discount / Decimal("100"))
@@ -103,20 +97,12 @@ def compute_invoice_totals(
 # ── Invoice helpers ──────────────────────────────────────────────────────────
 
 
-async def _load_invoice(
-    invoice_id: UUID, tenant_id, db: AsyncSession, with_joins: bool = True
-):
-    query = select(Invoice).where(
-        Invoice.id == invoice_id, Invoice.tenant_id == tenant_id
-    )
+async def _load_invoice(invoice_id: UUID, tenant_id, db: AsyncSession, with_joins: bool = True):
+    query = select(Invoice).where(Invoice.id == invoice_id, Invoice.tenant_id == tenant_id)
     if with_joins:
         query = query.options(joinedload(Invoice.client), joinedload(Invoice.lines))
     result = await db.execute(query)
-    return (
-        result.unique().scalar_one_or_none()
-        if with_joins
-        else result.scalar_one_or_none()
-    )
+    return result.unique().scalar_one_or_none() if with_joins else result.scalar_one_or_none()
 
 
 async def _load_tenant(tenant_id, db: AsyncSession) -> tuple[str, str]:
@@ -136,9 +122,7 @@ async def _load_verifactu(invoice_id: UUID, db: AsyncSession) -> dict | None:
     contiene varios separados por comas). En producción esta URL debe ser
     pública y proxiar `/api/v1/verify/*` al backend.
     """
-    result = await db.execute(
-        select(VerifactuRecord).where(VerifactuRecord.invoice_id == invoice_id)
-    )
+    result = await db.execute(select(VerifactuRecord).where(VerifactuRecord.invoice_id == invoice_id))
     record = result.scalar_one_or_none()
     if record is None:
         return None
@@ -216,9 +200,7 @@ async def get_invoice(invoice_id: UUID, tenant_id, db: AsyncSession):
     return await _load_invoice(invoice_id, tenant_id, db)
 
 
-async def build_invoice_pdf(
-    invoice_id: UUID, tenant_id, db: AsyncSession
-) -> tuple[bytes, str]:
+async def build_invoice_pdf(invoice_id: UUID, tenant_id, db: AsyncSession) -> tuple[bytes, str]:
     """Genera PDF al vuelo. Lanza ValueError si no existe.
 
     Incluye QR Verifactu si la factura tiene VerifactuRecord encadenado
@@ -332,9 +314,7 @@ async def build_retention_pdf(
 # ── Accounting queries ───────────────────────────────────────────────────────
 
 
-async def list_journal_entries(
-    db: AsyncSession, tenant_id: UUID
-) -> list[JournalEntry]:
+async def list_journal_entries(db: AsyncSession, tenant_id: UUID) -> list[JournalEntry]:
     query = (
         select(JournalEntry)
         .where(JournalEntry.tenant_id == tenant_id)
@@ -347,9 +327,7 @@ async def list_journal_entries(
 
 async def list_fixed_assets(db: AsyncSession, tenant_id: UUID) -> list[FixedAsset]:
     result = await db.execute(
-        select(FixedAsset)
-        .where(FixedAsset.tenant_id == tenant_id)
-        .order_by(desc(FixedAsset.created_at))
+        select(FixedAsset).where(FixedAsset.tenant_id == tenant_id).order_by(desc(FixedAsset.created_at))
     )
     return list(result.scalars().all())
 

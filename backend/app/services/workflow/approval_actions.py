@@ -51,9 +51,7 @@ def is_registered(kind: str | None) -> bool:
     return bool(kind) and kind in _EXECUTORS
 
 
-async def execute_approved_action(
-    payload: dict, db: AsyncSession, tenant_id: str
-) -> tuple[bool, str]:
+async def execute_approved_action(payload: dict, db: AsyncSession, tenant_id: str) -> tuple[bool, str]:
     """Ejecuta la acción retenida descrita por `payload` (kind+params).
 
     No hace commit ni toca la Task: el caller (resume) hace el bookkeeping.
@@ -133,9 +131,7 @@ async def create_action_approval(
 
 
 @register_action("create_journal_entry")
-async def _exec_create_journal_entry(
-    params: dict, db: AsyncSession, tenant_id: str
-) -> tuple[bool, str]:
+async def _exec_create_journal_entry(params: dict, db: AsyncSession, tenant_id: str) -> tuple[bool, str]:
     lines = params.get("lines") or []
     total_debit = sum(Decimal(str(ln.get("debit", 0))) for ln in lines)
     entry = JournalEntry(
@@ -161,9 +157,7 @@ async def _exec_create_journal_entry(
 
 
 @register_action("approve_payroll")
-async def _exec_approve_payroll(
-    params: dict, db: AsyncSession, tenant_id: str
-) -> tuple[bool, str]:
+async def _exec_approve_payroll(params: dict, db: AsyncSession, tenant_id: str) -> tuple[bool, str]:
     tid = uuid.UUID(tenant_id)
     if params.get("approve_all"):
         from calendar import monthrange
@@ -193,9 +187,7 @@ async def _exec_approve_payroll(
     payroll_id = params.get("payroll_id")
     if not payroll_id:
         return False, "Falta payroll_id."
-    res = await db.execute(
-        select(Payroll).where(Payroll.tenant_id == tid, Payroll.id == uuid.UUID(payroll_id))
-    )
+    res = await db.execute(select(Payroll).where(Payroll.tenant_id == tid, Payroll.id == uuid.UUID(payroll_id)))
     payroll = res.scalar_one_or_none()
     if not payroll:
         return False, f"Nómina {payroll_id} no encontrada."
@@ -205,30 +197,22 @@ async def _exec_approve_payroll(
 
 
 @register_action("create_invoice")
-async def _exec_create_invoice(
-    params: dict, db: AsyncSession, tenant_id: str
-) -> tuple[bool, str]:
+async def _exec_create_invoice(params: dict, db: AsyncSession, tenant_id: str) -> tuple[bool, str]:
     tid = uuid.UUID(tenant_id)
     amount_base = Decimal(str(params.get("amount_base", "0")).replace(",", "."))
     vat_rate = Decimal(str(params.get("vat_rate", 21)))
     concept = params.get("concept", "Concepto por aprobación manual")
     client_nif = params.get("client_nif") or ""
     client_name = params.get("client_name") or "Cliente"
-    inv_date = date.fromisoformat(
-        params.get("invoice_date") or datetime.now(UTC).strftime("%Y-%m-%d")
-    )
+    inv_date = date.fromisoformat(params.get("invoice_date") or datetime.now(UTC).strftime("%Y-%m-%d"))
 
     client = None
     if client_nif:
-        res = await db.execute(
-            select(Client).where(Client.tenant_id == tid, Client.nif == client_nif)
-        )
+        res = await db.execute(select(Client).where(Client.tenant_id == tid, Client.nif == client_nif))
         client = res.scalars().first()
     if not client:
         # Resolver por nombre si no hay NIF / no existe
-        res = await db.execute(
-            select(Client).where(Client.tenant_id == tid, Client.name == client_name)
-        )
+        res = await db.execute(select(Client).where(Client.tenant_id == tid, Client.name == client_name))
         client = res.scalars().first()
     if not client:
         client = Client(tenant_id=tid, nif=client_nif or None, name=client_name)
@@ -237,9 +221,7 @@ async def _exec_create_invoice(
 
     tax_amount = round(amount_base * (vat_rate / Decimal("100")), 2)
     total_amount = amount_base + tax_amount
-    count_res = await db.execute(
-        select(func.count(Invoice.id)).where(Invoice.tenant_id == tid)
-    )
+    count_res = await db.execute(select(func.count(Invoice.id)).where(Invoice.tenant_id == tid))
     invoice_number = f"FAC-{inv_date.year}-{(count_res.scalar() or 0) + 1:04d}"
 
     invoice = Invoice(
@@ -270,9 +252,7 @@ async def _exec_create_invoice(
 
 
 @register_action("inventory_batch_adjust")
-async def _exec_inventory_batch_adjust(
-    params: dict, db: AsyncSession, tenant_id: str
-) -> tuple[bool, str]:
+async def _exec_inventory_batch_adjust(params: dict, db: AsyncSession, tenant_id: str) -> tuple[bool, str]:
     """Aplica un ajuste de stock por lotes que estaba pendiente de aprobación."""
     from app.services.inventory import batch_service
 
@@ -292,9 +272,7 @@ async def _exec_inventory_batch_adjust(
 
 
 @register_action("gated_tool_call")
-async def _exec_gated_tool_call(
-    params: dict, db: AsyncSession, tenant_id: str
-) -> tuple[bool, str]:
+async def _exec_gated_tool_call(params: dict, db: AsyncSession, tenant_id: str) -> tuple[bool, str]:
     """Re-ejecuta una tool retenida por `gated_tool` (CONFIRM), saltándose el gate.
 
     El payload guarda module/func/kwargs. Se importa dinámicamente y se invoca
@@ -325,9 +303,7 @@ async def _exec_gated_tool_call(
 
 
 @register_action("send_email")
-async def _exec_send_email(
-    params: dict, db: AsyncSession, tenant_id: str
-) -> tuple[bool, str]:
+async def _exec_send_email(params: dict, db: AsyncSession, tenant_id: str) -> tuple[bool, str]:
     """Envía un email retenido (recordatorios de pago, comunicaciones a clientes)."""
     from app.services.email.sender import send_email
 
@@ -347,9 +323,7 @@ async def _exec_send_email(
 
 
 @register_action("reconcile_transaction")
-async def _exec_reconcile_transaction(
-    params: dict, db: AsyncSession, tenant_id: str
-) -> tuple[bool, str]:
+async def _exec_reconcile_transaction(params: dict, db: AsyncSession, tenant_id: str) -> tuple[bool, str]:
     """Concilia manualmente un movimiento bancario contra una factura (aprobado)."""
     from app.services.banking.service import reconcile_transaction
 
@@ -372,16 +346,12 @@ async def _exec_reconcile_transaction(
 
 
 @register_action("inventory_batch_update")
-async def _exec_inventory_batch_update(
-    params: dict, db: AsyncSession, tenant_id: str
-) -> tuple[bool, str]:
+async def _exec_inventory_batch_update(params: dict, db: AsyncSession, tenant_id: str) -> tuple[bool, str]:
     """Aplica una actualización de catálogo por lotes pendiente de aprobación."""
     from app.services.inventory import batch_service
 
     tid = uuid.UUID(tenant_id)
-    res = await batch_service.batch_update_fields(
-        db, tid, params.get("items") or [], dry_run=False
-    )
+    res = await batch_service.batch_update_fields(db, tid, params.get("items") or [], dry_run=False)
     return True, (
         f"Actualización de catálogo aplicada tras aprobación: {res['applied']} "
         f"productos ({res['ok']} OK, {res['skipped']} omitidos)."

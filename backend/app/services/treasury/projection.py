@@ -132,13 +132,13 @@ async def project_cashflow(
 ) -> dict[str, Any]:
     """Devuelve la proyección de cashflow:
 
-        {
-          "opening_balance": float,
-          "days_ahead": int,
-          "series": [CashflowDay(...).to_dict()],
-          "summary": {"total_in": ..., "total_out": ..., "net": ..., "min_balance": ..., "min_balance_date": "YYYY-MM-DD"},
-          "alerts": [CashflowAlert(...).to_dict()],
-        }
+    {
+      "opening_balance": float,
+      "days_ahead": int,
+      "series": [CashflowDay(...).to_dict()],
+      "summary": {"total_in": ..., "total_out": ..., "net": ..., "min_balance": ..., "min_balance_date": "YYYY-MM-DD"},
+      "alerts": [CashflowAlert(...).to_dict()],
+    }
     """
     if days_ahead < 1 or days_ahead > 365:
         raise ValueError(f"days_ahead fuera de rango (1..365): {days_ahead}")
@@ -250,8 +250,7 @@ async def project_cashflow(
                     day=d,
                     deficit=-closing,
                     message=(
-                        f"Tensión de liquidez prevista para {d.isoformat()}: "
-                        f"saldo proyectado {closing:.2f} €."
+                        f"Tensión de liquidez prevista para {d.isoformat()}: " f"saldo proyectado {closing:.2f} €."
                     ),
                 )
             )

@@ -11,9 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models.marketing import ScheduledPost, SocialAccount
 
 
-async def list_posts(
-    tenant_id, db: AsyncSession, status_filter: Optional[str] = None
-) -> list[ScheduledPost]:
+async def list_posts(tenant_id, db: AsyncSession, status_filter: Optional[str] = None) -> list[ScheduledPost]:
     q = select(ScheduledPost).where(ScheduledPost.tenant_id == tenant_id)
     if status_filter:
         q = q.where(ScheduledPost.status == status_filter)

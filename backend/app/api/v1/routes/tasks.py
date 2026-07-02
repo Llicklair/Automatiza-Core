@@ -121,7 +121,9 @@ async def get_task_cost(
     from app.services.ai.task_cost import summarize_task_cost
 
     result = await summarize_task_cost(
-        db, tenant_id=current_user.tenant_id, task_id=task_id,
+        db,
+        tenant_id=current_user.tenant_id,
+        task_id=task_id,
     )
     if result["task_status"] is None:
         raise HTTPException(status_code=404, detail="Tarea no encontrada")

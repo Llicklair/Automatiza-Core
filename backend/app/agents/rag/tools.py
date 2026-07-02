@@ -86,9 +86,7 @@ async def search_documents(
             if embedder:
                 from app.db.models.auth import Tenant
 
-                j_res = await db.execute(
-                    sa.select(Tenant.jurisdiction).where(Tenant.id == uuid.UUID(tenant_id))
-                )
+                j_res = await db.execute(sa.select(Tenant.jurisdiction).where(Tenant.id == uuid.UUID(tenant_id)))
                 jurisdiction = j_res.scalar() or "ES_TAX"
 
                 query_vector = await embedder.aembed_query(query)
@@ -106,18 +104,14 @@ async def search_documents(
                     )
                     for match, _dist in scored:
                         doc_name_res = await db.execute(
-                            sa.select(TenantDocument.file_name).where(
-                                TenantDocument.id == match.document_id
-                            )
+                            sa.select(TenantDocument.file_name).where(TenantDocument.id == match.document_id)
                         )
                         doc_name = doc_name_res.scalar()
                         if doc_name:
                             source_names.add(doc_name)
                         page_info = f" [Pág. {match.page_number}]" if match.page_number else ""
                         type_info = f" ({match.element_type})" if match.element_type else ""
-                        retrieved_chunks.append(
-                            f"{match.text_content}{page_info}{type_info}"
-                        )
+                        retrieved_chunks.append(f"{match.text_content}{page_info}{type_info}")
                 except Exception as ve:
                     if _is_missing_table_or_extension(ve):
                         semantic_disabled = True
@@ -131,15 +125,10 @@ async def search_documents(
 
     if not retrieved_chunks:
         if semantic_disabled:
-            return (
-                f"No se encontraron documentos por nombre/categoría para "
-                f"'{query}'. {_SEMANTIC_DISABLED_NOTE}"
-            )
+            return f"No se encontraron documentos por nombre/categoría para " f"'{query}'. {_SEMANTIC_DISABLED_NOTE}"
         return f"No se encontraron documentos relevantes para: '{query}'"
 
-    result = (
-        f"Fragmentos encontrados ({len(retrieved_chunks)}) de {len(source_names)} documento(s):\n"
-    )
+    result = f"Fragmentos encontrados ({len(retrieved_chunks)}) de {len(source_names)} documento(s):\n"
     if semantic_disabled:
         result += f"{_SEMANTIC_DISABLED_NOTE}\n"
     result += f"Fuentes: {', '.join(source_names)}\n\n"
@@ -197,9 +186,7 @@ async def answer_from_documents(
             if embedder:
                 from app.db.models.auth import Tenant
 
-                j_res = await db.execute(
-                    sa.select(Tenant.jurisdiction).where(Tenant.id == uuid.UUID(tenant_id))
-                )
+                j_res = await db.execute(sa.select(Tenant.jurisdiction).where(Tenant.id == uuid.UUID(tenant_id)))
                 jurisdiction = j_res.scalar() or "ES_TAX"
 
                 query_vector = await embedder.aembed_query(question)
@@ -214,16 +201,12 @@ async def answer_from_documents(
                     )
                     for match, _dist in scored:
                         doc_name_res = await db.execute(
-                            sa.select(TenantDocument.file_name).where(
-                                TenantDocument.id == match.document_id
-                            )
+                            sa.select(TenantDocument.file_name).where(TenantDocument.id == match.document_id)
                         )
                         doc_name = doc_name_res.scalar()
                         if doc_name:
                             source_names.add(doc_name)
-                        page_ref = (
-                            f" [Página {match.page_number}]" if match.page_number else ""
-                        )
+                        page_ref = f" [Página {match.page_number}]" if match.page_number else ""
                         retrieved_chunks.append(
                             {
                                 "doc_id": str(match.document_id),

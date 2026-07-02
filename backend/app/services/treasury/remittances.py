@@ -61,7 +61,11 @@ async def create_transfer_remittance(
     _ensure_e2e(orders)
     xml_str, summary = build_pain001(debtor, execution_date, orders)
     return await _persist(
-        db, tenant_id, "pain.001", xml_str, summary,
+        db,
+        tenant_id,
+        "pain.001",
+        xml_str,
+        summary,
         party_iban=summary["debtor_iban"],
         execution_date=execution_date,
         orders=[
@@ -91,7 +95,11 @@ async def create_direct_debit_remittance(
     _ensure_e2e(orders)
     xml_str, summary = build_pain008(creditor, collection_date, orders)
     return await _persist(
-        db, tenant_id, "pain.008", xml_str, summary,
+        db,
+        tenant_id,
+        "pain.008",
+        xml_str,
+        summary,
         party_iban=summary["creditor_iban"],
         execution_date=collection_date,
         orders=[
@@ -161,24 +169,14 @@ async def list_remittances(
     base = select(SepaRemittance).where(SepaRemittance.tenant_id == tenant_id)
     if status:
         base = base.where(SepaRemittance.status == status)
-    total = (
-        await db.execute(
-            select(func.count()).select_from(base.subquery())
-        )
-    ).scalar_one()
+    total = (await db.execute(select(func.count()).select_from(base.subquery()))).scalar_one()
     rows = (
-        await db.execute(
-            base.order_by(SepaRemittance.created_at.desc())
-            .limit(limit)
-            .offset(offset)
-        )
-    ).scalars().all()
+        (await db.execute(base.order_by(SepaRemittance.created_at.desc()).limit(limit).offset(offset))).scalars().all()
+    )
     return list(rows), total
 
 
-async def get_remittance(
-    db: AsyncSession, tenant_id: uuid.UUID, remittance_id: uuid.UUID
-) -> SepaRemittance | None:
+async def get_remittance(db: AsyncSession, tenant_id: uuid.UUID, remittance_id: uuid.UUID) -> SepaRemittance | None:
     return (
         await db.execute(
             select(SepaRemittance).where(
@@ -207,9 +205,7 @@ async def update_remittance_status(
         raise RemittanceError("Remesa no encontrada.")
     allowed = _TRANSITIONS.get(remittance.status, set())
     if new_status not in allowed:
-        raise RemittanceError(
-            f"Transición inválida: {remittance.status} → {new_status}."
-        )
+        raise RemittanceError(f"Transición inválida: {remittance.status} → {new_status}.")
     remittance.status = new_status
     if new_status == "executed":
         remittance.executed_at = datetime.now(timezone.utc)

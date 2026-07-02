@@ -89,6 +89,7 @@ async def _generate_and_save_invoice_pdf(
         pdf_bytes = generate_invoice_pdf(pdf_data, theme_config)
 
         from app.agents.agent_tools.reports import _resolve_upload_dir
+
         upload_dir = _resolve_upload_dir("facturas")
 
         file_name = f"Factura_{invoice.invoice_number}.pdf"

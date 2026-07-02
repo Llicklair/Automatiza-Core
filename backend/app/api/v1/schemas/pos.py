@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class PosLineAdd(BaseModel):
     """Añadir línea al carrito. Si `product_id` viene, se completa
     description/unit_price/tax_percentage desde el producto al servidor."""
+
     product_id: UUID | None = None
     description: str | None = None
     quantity: int = Field(default=1, gt=0)

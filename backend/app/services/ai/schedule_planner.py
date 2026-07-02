@@ -77,10 +77,7 @@ async def suggest_schedules(
         for e in employees
     )
 
-    user_content = (
-        f"Empleados disponibles:\n{emp_lines}\n\n"
-        f"Instrucción del responsable:\n{instruction.strip()}"
-    )
+    user_content = f"Empleados disponibles:\n{emp_lines}\n\n" f"Instrucción del responsable:\n{instruction.strip()}"
 
     llm = get_llm(temperature=0)
     response = await llm.ainvoke(

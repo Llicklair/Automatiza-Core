@@ -26,9 +26,7 @@ def upgrade() -> None:
 
     tenant_columns = {c["name"] for c in inspector.get_columns("tenants")}
     if "logo_path" not in tenant_columns:
-        op.add_column(
-            "tenants", sa.Column("logo_path", sa.String(length=500), nullable=True)
-        )
+        op.add_column("tenants", sa.Column("logo_path", sa.String(length=500), nullable=True))
 
     bind.execute(
         sa.text(
@@ -48,11 +46,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     bind = op.get_bind()
-    bind.execute(
-        sa.text(
-            "DELETE FROM agent_skills WHERE tool_module = 'reports.create_pdf_report'"
-        )
-    )
+    bind.execute(sa.text("DELETE FROM agent_skills WHERE tool_module = 'reports.create_pdf_report'"))
     inspector = sa.inspect(bind)
     tenant_columns = {c["name"] for c in inspector.get_columns("tenants")}
     if "logo_path" in tenant_columns:

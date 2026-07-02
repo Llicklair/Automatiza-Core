@@ -29,13 +29,12 @@ async def init_tenant_node(state: OrchestratorState) -> dict:
     # invocadas en este flujo (orchestrator + built-in + custom) usen este
     # tenant_id, ignorando cualquier valor que el LLM intente pasar.
     from app.agents.tenant_context import set_active_tenant
+
     set_active_tenant(tenant_id)
 
     try:
         async with AsyncSessionLocal() as db:
-            cfg_result = await db.execute(
-                select(TenantLlmConfig).where(TenantLlmConfig.tenant_id == UUID(tenant_id))
-            )
+            cfg_result = await db.execute(select(TenantLlmConfig).where(TenantLlmConfig.tenant_id == UUID(tenant_id)))
             cfg = cfg_result.scalar_one_or_none()
             if cfg and cfg.encrypted_keys:
                 keys = decrypt_credentials(cfg.encrypted_keys)
@@ -70,13 +69,9 @@ async def load_knowledge_node(state: OrchestratorState) -> dict:
 
     try:
         async with AsyncSessionLocal() as db:
-            result = await db.execute(
-                select(TenantKnowledge).where(TenantKnowledge.tenant_id == UUID(tenant_id))
-            )
+            result = await db.execute(select(TenantKnowledge).where(TenantKnowledge.tenant_id == UUID(tenant_id)))
             facts = result.scalars().all()
-            knowledge_list = [
-                {"key": f.key, "value": f.value, "category": f.category} for f in facts
-            ]
+            knowledge_list = [{"key": f.key, "value": f.value, "category": f.category} for f in facts]
             return {
                 "tenant_knowledge": knowledge_list,
                 "additional_metadata": {

@@ -29,25 +29,17 @@ def upgrade() -> None:
     # Postgres soporta IF NOT EXISTS en ADD COLUMN; SQLite (tests) no.
     if dialect == "postgresql":
         op.execute(
-            "ALTER TABLE verifactu_chain "
-            "ADD COLUMN IF NOT EXISTS is_backfilled BOOLEAN NOT NULL DEFAULT FALSE"
+            "ALTER TABLE verifactu_chain " "ADD COLUMN IF NOT EXISTS is_backfilled BOOLEAN NOT NULL DEFAULT FALSE"
         )
-        op.execute(
-            "ALTER TABLE verifactu_chain "
-            "ADD COLUMN IF NOT EXISTS backfilled_at TIMESTAMP WITH TIME ZONE"
-        )
+        op.execute("ALTER TABLE verifactu_chain " "ADD COLUMN IF NOT EXISTS backfilled_at TIMESTAMP WITH TIME ZONE")
         op.execute(
             "CREATE INDEX IF NOT EXISTS ix_verifactu_chain_backfilled "
             "ON verifactu_chain(tenant_id, is_backfilled) WHERE is_backfilled = TRUE"
         )
     else:
         # SQLite: añade columnas con default sin IF NOT EXISTS.
-        op.execute(
-            "ALTER TABLE verifactu_chain ADD COLUMN is_backfilled BOOLEAN NOT NULL DEFAULT 0"
-        )
-        op.execute(
-            "ALTER TABLE verifactu_chain ADD COLUMN backfilled_at TIMESTAMP"
-        )
+        op.execute("ALTER TABLE verifactu_chain ADD COLUMN is_backfilled BOOLEAN NOT NULL DEFAULT 0")
+        op.execute("ALTER TABLE verifactu_chain ADD COLUMN backfilled_at TIMESTAMP")
 
 
 def downgrade() -> None:

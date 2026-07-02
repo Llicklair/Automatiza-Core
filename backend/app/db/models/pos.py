@@ -47,9 +47,7 @@ class PosSession(Base):
     closed_at = Column(DateTime(timezone=True), nullable=True)
 
     tenant = relationship("Tenant")
-    lines = relationship(
-        "PosSessionLine", back_populates="session", cascade="all, delete-orphan"
-    )
+    lines = relationship("PosSessionLine", back_populates="session", cascade="all, delete-orphan")
 
 
 class PosSessionLine(Base):

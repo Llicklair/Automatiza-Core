@@ -8,6 +8,7 @@ channels and forwards messages to the WebSocket clients.
 
 Only started when REDIS_URL is configured.
 """
+
 from __future__ import annotations
 
 import asyncio

@@ -69,8 +69,12 @@ class AutonomyDecision:
         return self.mode == "MANUAL"
 
     async def persist_pending_approval(
-        self, db: AsyncSession, *, expires_in_days: int = 7,
-        risk_level: str = "MEDIUM", kind: str | None = None,
+        self,
+        db: AsyncSession,
+        *,
+        expires_in_days: int = 7,
+        risk_level: str = "MEDIUM",
+        kind: str | None = None,
     ) -> PendingApproval:
         """Crea una `PendingApproval` para que un humano apruebe.
 
@@ -89,9 +93,7 @@ class AutonomyDecision:
             else self.action_payload
         )
         if not self.needs_approval:
-            raise ValueError(
-                "persist_pending_approval solo aplica en modo CONFIRM"
-            )
+            raise ValueError("persist_pending_approval solo aplica en modo CONFIRM")
         if self.task_id is None:
             raise ValueError(
                 "task_id es obligatorio para persistir PendingApproval. "
@@ -112,7 +114,9 @@ class AutonomyDecision:
         await db.flush()
         logger.info(
             "autonomy_gate.CONFIRM persisted approval=%s domain=%s tenant=%s",
-            approval.id, self.domain, self.tenant_id,
+            approval.id,
+            self.domain,
+            self.tenant_id,
         )
         try:
             from app.api.ws.notifications import manager as ws_manager
@@ -172,7 +176,9 @@ async def evaluate_autonomy(
     mode = await check_autonomy(db, tenant_id=tenant_id, domain=domain)
     logger.debug(
         "autonomy_gate eval domain=%s tenant=%s -> %s",
-        domain, tenant_id, mode,
+        domain,
+        tenant_id,
+        mode,
     )
     return AutonomyDecision(
         mode=mode,
@@ -240,23 +246,20 @@ def gated_tool(
                 "cancelada por seguridad."
             )
             if not tenant_raw:
-                logger.warning(
-                    "gated_tool FAIL-CLOSED: sin tenant_id para %s/%s", func.__name__, domain
-                )
+                logger.warning("gated_tool FAIL-CLOSED: sin tenant_id para %s/%s", func.__name__, domain)
                 return _deny
             try:
                 tenant_uuid = UUID(str(tenant_raw))
             except (ValueError, TypeError):
                 logger.warning(
                     "gated_tool FAIL-CLOSED: tenant_id no-UUID (%r) para %s/%s",
-                    tenant_raw, func.__name__, domain,
+                    tenant_raw,
+                    func.__name__,
+                    domain,
                 )
                 return _deny
 
-            summary = (
-                summary_fn(kwargs) if summary_fn
-                else f"Tool `{func.__name__}` sobre dominio `{domain}`"
-            )
+            summary = summary_fn(kwargs) if summary_fn else f"Tool `{func.__name__}` sobre dominio `{domain}`"
 
             async with AsyncSessionLocal() as db:
                 decision = await evaluate_autonomy(
@@ -264,9 +267,10 @@ def gated_tool(
                     tenant_id=tenant_uuid,
                     domain=domain,
                     action_summary=summary,
-                    action_payload={"tool": func.__name__, "kwargs": {
-                        k: str(v) for k, v in kwargs.items() if k != "tenant_id"
-                    }},
+                    action_payload={
+                        "tool": func.__name__,
+                        "kwargs": {k: str(v) for k, v in kwargs.items() if k != "tenant_id"},
+                    },
                 )
 
             if decision.can_execute:
@@ -283,9 +287,7 @@ def gated_tool(
                         "func": func.__name__,
                         # JSONB-safe: tipos no serializables se degradan a str
                         "kwargs": {
-                            k: v
-                            if isinstance(v, str | int | float | bool | list | dict | None)
-                            else str(v)
+                            k: v if isinstance(v, str | int | float | bool | list | dict | None) else str(v)
                             for k, v in kwargs.items()
                         },
                     },

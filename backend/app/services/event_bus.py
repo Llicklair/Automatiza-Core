@@ -59,9 +59,7 @@ async def emit_event(
     context = context or {}
 
     # 1. Persistir el evento para trazabilidad (DDD) e histórico IA
-    domain_event = DomainEvent(
-        tenant_id=tenant_id, user_id=user_id, event_name=event_name, payload=context
-    )
+    domain_event = DomainEvent(tenant_id=tenant_id, user_id=user_id, event_name=event_name, payload=context)
     db.add(domain_event)
     await db.flush()
 
@@ -91,24 +89,17 @@ async def emit_event(
         # workflow con condition "amount > 5000" se disparaba para CUALQUIER
         # invoice_created, ignorando el filtro y saturando el sistema.
         if not evaluate_conditions(wf_config.get("conditions"), context):
-            _logger.debug(
-                "[EVENT_BUS] Workflow '%s' bloqueado por conditions no cumplidas.", wf.name
-            )
+            _logger.debug("[EVENT_BUS] Workflow '%s' bloqueado por conditions no cumplidas.", wf.name)
             continue
 
         # 3. Construir instrucción IA enriquecida con el contexto del evento
         base_instruction = _build_instruction(wf)
         # Limitar contexto si es muy grande para no saturar el prompt
-        safe_ctx = {
-            k: v for k, v in context.items() if not isinstance(v, dict | list) or len(str(v)) < 200
-        }
+        safe_ctx = {k: v for k, v in context.items() if not isinstance(v, dict | list) or len(str(v)) < 200}
         ctx_str = ", ".join(f"{k}: {v}" for k, v in safe_ctx.items())
 
         full_instruction = (
-            (
-                f"Automatizacion '{wf.name}': {base_instruction}. "
-                f"[Contexto: {event_name} -> {ctx_str}]"
-            )
+            (f"Automatizacion '{wf.name}': {base_instruction}. " f"[Contexto: {event_name} -> {ctx_str}]")
             if ctx_str
             else base_instruction
         )
@@ -154,7 +145,9 @@ async def emit_event(
             triggered_ids.append(str(wf.id))
             _logger.info(
                 "[EVENT_BUS] Evento '%s' -> workflow '%s' iniciado (Task %s)",
-                event_name, wf.name, task.id,
+                event_name,
+                wf.name,
+                task.id,
             )
         except Exception as e:
             execution.status = "failed"
@@ -183,12 +176,7 @@ async def emit_event(
 def _build_instruction(workflow: Workflow) -> str:
     """Extrae la instrucción base del workflow."""
     action_config = workflow.action_config or {}
-    return (
-        action_config.get("instruction")
-        or workflow.description
-        or workflow.name
-        or "Procesar automatización"
-    )
+    return action_config.get("instruction") or workflow.description or workflow.name or "Procesar automatización"
 
 
 def _infer_domain(workflow: Workflow, instruction: str = "") -> str:

@@ -15,11 +15,7 @@ from app.db.models.models import Activity, Event, Opportunity, Reservation
 
 
 async def list_opportunities(db: AsyncSession, tenant_id: UUID) -> list[Opportunity]:
-    query = (
-        select(Opportunity)
-        .where(Opportunity.tenant_id == tenant_id)
-        .order_by(desc(Opportunity.created_at))
-    )
+    query = select(Opportunity).where(Opportunity.tenant_id == tenant_id).order_by(desc(Opportunity.created_at))
     result = await db.execute(query)
     return list(result.scalars().all())
 
@@ -56,11 +52,7 @@ async def list_events(db: AsyncSession, tenant_id: UUID) -> list[Event]:
 
 
 async def list_reservations(db: AsyncSession, tenant_id: UUID) -> list[Reservation]:
-    query = (
-        select(Reservation)
-        .where(Reservation.tenant_id == tenant_id)
-        .order_by(desc(Reservation.created_at))
-    )
+    query = select(Reservation).where(Reservation.tenant_id == tenant_id).order_by(desc(Reservation.created_at))
     result = await db.execute(query)
     return list(result.scalars().all())
 

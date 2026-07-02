@@ -40,6 +40,4 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute(
-        "ALTER TABLE work_schedules DROP CONSTRAINT IF EXISTS uq_work_schedule_emp_day"
-    )
+    op.execute("ALTER TABLE work_schedules DROP CONSTRAINT IF EXISTS uq_work_schedule_emp_day")

@@ -45,9 +45,7 @@ def upgrade() -> None:
         )
         """
     )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_tenant_certificates_tenant_id ON tenant_certificates(tenant_id)"
-    )
+    op.execute("CREATE INDEX IF NOT EXISTS ix_tenant_certificates_tenant_id ON tenant_certificates(tenant_id)")
     op.execute(
         """
         CREATE UNIQUE INDEX IF NOT EXISTS ux_tenant_certificates_active
@@ -80,9 +78,7 @@ def upgrade() -> None:
         )
         """
     )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_aeat_presentations_tenant_id ON aeat_presentations(tenant_id)"
-    )
+    op.execute("CREATE INDEX IF NOT EXISTS ix_aeat_presentations_tenant_id ON aeat_presentations(tenant_id)")
     op.execute(
         """
         CREATE INDEX IF NOT EXISTS ix_aeat_presentations_lookup

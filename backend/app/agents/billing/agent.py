@@ -42,9 +42,7 @@ async def billing_agent_node(state: AgentState):
         description="Procesando solicitud de facturación...",
         status="completed",
         action_taken=(
-            "Invocando herramientas de facturación"
-            if response.tool_calls
-            else "Asistencia de facturación completada."
+            "Invocando herramientas de facturación" if response.tool_calls else "Asistencia de facturación completada."
         ),
     )
 
@@ -64,9 +62,7 @@ def billing_finalize_node(state: AgentState):
         description="Agente de Facturación ha finalizado.",
         status="completed",
         action_taken=(
-            last_msg.content
-            if isinstance(last_msg.content, str)
-            else "Operación de facturación completada."
+            last_msg.content if isinstance(last_msg.content, str) else "Operación de facturación completada."
         ),
     )
 
@@ -81,9 +77,7 @@ workflow.add_node("tools", ToolNode(tools))
 workflow.add_node("finalize", billing_finalize_node)
 
 workflow.set_entry_point("billing_agent")
-workflow.add_conditional_edges(
-    "billing_agent", tools_condition, {"tools": "tools", "__end__": "finalize"}
-)
+workflow.add_conditional_edges("billing_agent", tools_condition, {"tools": "tools", "__end__": "finalize"})
 workflow.add_edge("tools", "billing_agent")
 workflow.add_edge("finalize", END)
 

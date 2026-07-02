@@ -156,9 +156,7 @@ async def fetch_erp_context(prompt: str, tenant_id, db: AsyncSession) -> str:
     if not sections:
         return ""
 
-    return "\n\n--- DATOS REALES DEL ERP (usa estos datos, NO inventes) ---\n\n" + "\n\n".join(
-        sections
-    )
+    return "\n\n--- DATOS REALES DEL ERP (usa estos datos, NO inventes) ---\n\n" + "\n\n".join(sections)
 
 
 async def generate_ui(

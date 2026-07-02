@@ -34,16 +34,18 @@ async def get_unified_calendar(
         .where(Event.tenant_id == tenant_id, Event.start_time >= start_dt, Event.start_time <= end_dt)
     )
     for ev in ev_rows.scalars():
-        items.append({
-            "id": str(ev.id),
-            "source": "event",
-            "title": ev.title,
-            "start": ev.start_time.isoformat(),
-            "end": ev.end_time.isoformat() if ev.end_time else None,
-            "color": "blue",
-            "href": "/crm/calendario",
-            "subtitle": ev.client.name if ev.client else ev.type,
-        })
+        items.append(
+            {
+                "id": str(ev.id),
+                "source": "event",
+                "title": ev.title,
+                "start": ev.start_time.isoformat(),
+                "end": ev.end_time.isoformat() if ev.end_time else None,
+                "color": "blue",
+                "href": "/crm/calendario",
+                "subtitle": ev.client.name if ev.client else ev.type,
+            }
+        )
 
     # ── Reservations ────────────────────────────────────────────────────────
     res_rows = await db.execute(
@@ -56,16 +58,18 @@ async def get_unified_calendar(
         )
     )
     for res in res_rows.scalars():
-        items.append({
-            "id": str(res.id),
-            "source": "reservation",
-            "title": f"Reserva · {res.client.name if res.client else '—'}",
-            "start": res.start_time.isoformat(),
-            "end": res.end_time.isoformat() if res.end_time else None,
-            "color": "purple",
-            "href": "/crm/reservas",
-            "subtitle": res.status,
-        })
+        items.append(
+            {
+                "id": str(res.id),
+                "source": "reservation",
+                "title": f"Reserva · {res.client.name if res.client else '—'}",
+                "start": res.start_time.isoformat(),
+                "end": res.end_time.isoformat() if res.end_time else None,
+                "color": "purple",
+                "href": "/crm/reservas",
+                "subtitle": res.status,
+            }
+        )
 
     # ── Invoice due dates ────────────────────────────────────────────────────
     inv_rows = await db.execute(
@@ -81,16 +85,18 @@ async def get_unified_calendar(
     )
     for inv in inv_rows.scalars():
         overdue = inv.due_date < now if inv.due_date else False
-        items.append({
-            "id": str(inv.id),
-            "source": "invoice_due",
-            "title": f"Vto. {inv.invoice_number or 'S/N'}",
-            "start": inv.due_date.isoformat(),
-            "end": None,
-            "color": "red" if overdue else "amber",
-            "href": "/ventas/facturas",
-            "subtitle": f"{inv.client.name if inv.client else '—'} · {float(inv.amount_total or 0):.2f} €",
-        })
+        items.append(
+            {
+                "id": str(inv.id),
+                "source": "invoice_due",
+                "title": f"Vto. {inv.invoice_number or 'S/N'}",
+                "start": inv.due_date.isoformat(),
+                "end": None,
+                "color": "red" if overdue else "amber",
+                "href": "/ventas/facturas",
+                "subtitle": f"{inv.client.name if inv.client else '—'} · {float(inv.amount_total or 0):.2f} €",
+            }
+        )
 
     # ── Payroll periods ──────────────────────────────────────────────────────
     pay_rows = await db.execute(
@@ -101,16 +107,18 @@ async def get_unified_calendar(
         )
     )
     for p in pay_rows.scalars():
-        items.append({
-            "id": str(p.id),
-            "source": "payroll",
-            "title": "Período nómina",
-            "start": p.period_start.isoformat(),
-            "end": p.period_end.isoformat() if p.period_end else None,
-            "color": "green",
-            "href": "/rrhh/nominas",
-            "subtitle": p.status,
-        })
+        items.append(
+            {
+                "id": str(p.id),
+                "source": "payroll",
+                "title": "Período nómina",
+                "start": p.period_start.isoformat(),
+                "end": p.period_end.isoformat() if p.period_end else None,
+                "color": "green",
+                "href": "/rrhh/nominas",
+                "subtitle": p.status,
+            }
+        )
 
     items.sort(key=lambda x: x["start"])
     return items

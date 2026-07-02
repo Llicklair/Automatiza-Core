@@ -110,11 +110,7 @@ def generate_invoice_pdf(invoice_data: dict, theme_config: dict | None = None) -
     client = invoice_data.get("client", {})
 
     # ── CABECERA según header_style ──
-    elements.extend(
-        _themed_header(
-            invoice_data, company, th, styles, title_sty, body_sty, right_sty, bold, font, acc
-        )
-    )
+    elements.extend(_themed_header(invoice_data, company, th, styles, title_sty, body_sty, right_sty, bold, font, acc))
 
     # ── CLIENTE ──
     elements.extend(_client_block(client, header_sty, body_sty, bold_font=bold))
@@ -182,8 +178,7 @@ def generate_invoice_pdf(invoice_data: dict, theme_config: dict | None = None) -
 
     # ── PIE ──
     footer_text = (
-        th.get("footer_text")
-        or "Documento generado automáticamente por AutomatizaCore · Gracias por su confianza."
+        th.get("footer_text") or "Documento generado automáticamente por AutomatizaCore · Gracias por su confianza."
     )
     elements.extend(_invoice_footer(footer_text, font=font))
 
@@ -303,9 +298,7 @@ def generate_rectificative_invoice_pdf(data: dict, theme_config: dict | None = N
                 ]
             )
         lines_table = Table(table_data, colWidths=col_widths)
-        lines_table.setStyle(
-            TableStyle(_table_header_style() + [("ALIGN", (1, 0), (-1, -1), "RIGHT")])
-        )
+        lines_table.setStyle(TableStyle(_table_header_style() + [("ALIGN", (1, 0), (-1, -1), "RIGHT")]))
         elements.append(lines_table)
         elements.append(Spacer(1, 5 * mm))
 
@@ -468,9 +461,7 @@ def generate_retention_invoice_pdf(data: dict, theme_config: dict | None = None)
     elements.append(totals_table)
 
     # ── PIE ──
-    elements.extend(
-        _invoice_footer("Factura con retención de IRPF conforme a la normativa vigente.")
-    )
+    elements.extend(_invoice_footer("Factura con retención de IRPF conforme a la normativa vigente."))
 
     doc.build(elements)
     return buffer.getvalue()

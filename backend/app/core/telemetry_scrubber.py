@@ -44,41 +44,37 @@ _IBAN_COMPACT_RE = re.compile(
 )
 
 # Email RFC-simplificado.
-_EMAIL_RE = re.compile(
-    r"\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b"
-)
+_EMAIL_RE = re.compile(r"\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b")
 
 # Número de tarjeta — secuencias de 13-19 dígitos con guiones/espacios opcionales.
-_CARD_RE = re.compile(
-    r"\b(?:\d[ -]?){13,19}\b"
-)
+_CARD_RE = re.compile(r"\b(?:\d[ -]?){13,19}\b")
 
 # IP IPv4.
-_IPV4_RE = re.compile(
-    r"\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d?\d)\b"
-)
+_IPV4_RE = re.compile(r"\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d?\d)\b")
 
 # Rutas absolutas a sustituir por <APP>.
 _PATH_WIN_RE = re.compile(r"[A-Za-z]:\\Users\\[^\\\s]+", re.IGNORECASE)
 _PATH_POSIX_RE = re.compile(r"(?:/home|/Users)/[^/\s]+")
 
 # Whitelist de campos top-level permitidos.
-ALLOWED_FIELDS = frozenset({
-    "tenant_id_hash",
-    "app_version",
-    "os_family",
-    "python_version",
-    "error_class",
-    "error_message",
-    "stack_trace",
-    "tool_name",
-    "model_used",
-    "agent_name",
-    "level",
-    "release",
-    "timestamp",
-    "transaction",
-})
+ALLOWED_FIELDS = frozenset(
+    {
+        "tenant_id_hash",
+        "app_version",
+        "os_family",
+        "python_version",
+        "error_class",
+        "error_message",
+        "stack_trace",
+        "tool_name",
+        "model_used",
+        "agent_name",
+        "level",
+        "release",
+        "timestamp",
+        "transaction",
+    }
+)
 
 _MAX_ERROR_MESSAGE_LEN = 200
 

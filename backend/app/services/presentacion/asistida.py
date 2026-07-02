@@ -64,22 +64,22 @@ def build_modelo_131_xml(tenant: TenantSummary) -> str:
     return (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<Modelo131 xmlns="http://www.agenciatributaria.gob.es/predeclaracion">\n'
-        '  <Declarante>\n'
-        f'    <NIF>{_xml_escape(tenant.nif)}</NIF>\n'
-        f'    <RazonSocial>{_xml_escape(tenant.name)}</RazonSocial>\n'
-        f'    <Domicilio>{_xml_escape(tenant.address)}</Domicilio>\n'
-        '  </Declarante>\n'
-        '  <Devengo>\n'
-        f'    <Ejercicio>{year}</Ejercicio>\n'
-        f'    <Periodo>{quarter}T</Periodo>\n'
-        '  </Devengo>\n'
-        '  <Liquidacion>\n'
-        '    <RendimientoTrimestral>0.00</RendimientoTrimestral>\n'
-        '    <PagoFraccionado>0.00</PagoFraccionado>\n'
-        '    <!-- Completar módulos y rendimientos en Sede AEAT -->\n'
-        '  </Liquidacion>\n'
+        "  <Declarante>\n"
+        f"    <NIF>{_xml_escape(tenant.nif)}</NIF>\n"
+        f"    <RazonSocial>{_xml_escape(tenant.name)}</RazonSocial>\n"
+        f"    <Domicilio>{_xml_escape(tenant.address)}</Domicilio>\n"
+        "  </Declarante>\n"
+        "  <Devengo>\n"
+        f"    <Ejercicio>{year}</Ejercicio>\n"
+        f"    <Periodo>{quarter}T</Periodo>\n"
+        "  </Devengo>\n"
+        "  <Liquidacion>\n"
+        "    <RendimientoTrimestral>0.00</RendimientoTrimestral>\n"
+        "    <PagoFraccionado>0.00</PagoFraccionado>\n"
+        "    <!-- Completar módulos y rendimientos en Sede AEAT -->\n"
+        "  </Liquidacion>\n"
         f'  <MetaPrerelleno generado="{_now_iso()}" sistema="AutomatizaCore"/>\n'
-        '</Modelo131>\n'
+        "</Modelo131>\n"
     )
 
 
@@ -92,23 +92,23 @@ def build_modelo_200_xml(tenant: TenantSummary) -> str:
     return (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<Modelo200 xmlns="http://www.agenciatributaria.gob.es/predeclaracion">\n'
-        '  <Declarante>\n'
-        f'    <NIF>{_xml_escape(tenant.nif)}</NIF>\n'
-        f'    <RazonSocial>{_xml_escape(tenant.name)}</RazonSocial>\n'
-        f'    <Domicilio>{_xml_escape(tenant.address)}</Domicilio>\n'
-        '  </Declarante>\n'
-        '  <Devengo>\n'
-        f'    <Ejercicio>{year}</Ejercicio>\n'
-        '    <Periodo>0A</Periodo>\n'
-        '  </Devengo>\n'
-        '  <Liquidacion>\n'
-        '    <BaseImponible>0.00</BaseImponible>\n'
-        '    <TipoGravamen>25</TipoGravamen>\n'
-        '    <CuotaIntegra>0.00</CuotaIntegra>\n'
-        '    <!-- Completar resultado contable, ajustes y deducciones en Sede AEAT -->\n'
-        '  </Liquidacion>\n'
+        "  <Declarante>\n"
+        f"    <NIF>{_xml_escape(tenant.nif)}</NIF>\n"
+        f"    <RazonSocial>{_xml_escape(tenant.name)}</RazonSocial>\n"
+        f"    <Domicilio>{_xml_escape(tenant.address)}</Domicilio>\n"
+        "  </Declarante>\n"
+        "  <Devengo>\n"
+        f"    <Ejercicio>{year}</Ejercicio>\n"
+        "    <Periodo>0A</Periodo>\n"
+        "  </Devengo>\n"
+        "  <Liquidacion>\n"
+        "    <BaseImponible>0.00</BaseImponible>\n"
+        "    <TipoGravamen>25</TipoGravamen>\n"
+        "    <CuotaIntegra>0.00</CuotaIntegra>\n"
+        "    <!-- Completar resultado contable, ajustes y deducciones en Sede AEAT -->\n"
+        "  </Liquidacion>\n"
         f'  <MetaPrerelleno generado="{_now_iso()}" sistema="AutomatizaCore"/>\n'
-        '</Modelo200>\n'
+        "</Modelo200>\n"
     )
 
 

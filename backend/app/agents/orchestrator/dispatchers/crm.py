@@ -22,9 +22,7 @@ async def _dispatch_crm(state: OrchestratorState, subtask: dict) -> AgentResult:
     from app.agents.crm import graph
 
     tenant_id = state["tenant_id"]
-    intent = subtask.get("params", {}).get(
-        "intent", state.get("current_intent", state["user_intent"])
-    )
+    intent = subtask.get("params", {}).get("intent", state.get("current_intent", state["user_intent"]))
 
     try:
         result_state = await graph.ainvoke(
@@ -73,9 +71,7 @@ async def _dispatch_crm(state: OrchestratorState, subtask: dict) -> AgentResult:
             "agent": "crm",
             "success": success,
             "output": _crm_output,
-            "summary": format_summary(
-                "crm", _crm_output, success, None if success else (error_text or final_text)
-            ),
+            "summary": format_summary("crm", _crm_output, success, None if success else (error_text or final_text)),
             "error": None if success else (error_text or final_text),
         }
 

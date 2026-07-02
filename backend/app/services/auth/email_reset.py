@@ -70,9 +70,7 @@ def send_password_reset_email(to_email: str, reset_url: str, user_name: str = ""
         if settings.ENVIRONMENT == "production":
             # En producción es una mala configuración: NO fingir que se envió ni
             # filtrar el token de reset (va en reset_url) en los logs.
-            logger.error(
-                "SMTP no configurado: no se pudo enviar el email de reset a %s", to_email
-            )
+            logger.error("SMTP no configurado: no se pudo enviar el email de reset a %s", to_email)
             return False
         # Modo desarrollo: mostrar el enlace en consola para poder probar el flujo.
         logger.info("[RESET PASSWORD dev] enlace de recuperación para %s: %s", to_email, reset_url)

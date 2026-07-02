@@ -15,6 +15,7 @@ un CSV/justificante. El `CSV` solo procede del acuse real parseado (`parse_acuse
 POR CONFIRMAR contra AEAT (no verificable sin certificado + preproducción): el endpoint exacto,
 el sobre SOAP y el perfil XAdES de VeriFactu. Ver `tasks/verifactu_envio_spec.md`.
 """
+
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
@@ -91,14 +92,16 @@ def parse_acuse(response_xml: str) -> VerifactuAck:
     except ET.ParseError as e:
         raise VerifactuSubmitError(f"Respuesta VeriFactu no es XML válido: {e}") from e
 
-    resp = root if _ln(root.tag) == "RespuestaRegFactuSistemaFacturacion" else next(
-        (e for e in root.iter() if _ln(e.tag) == "RespuestaRegFactuSistemaFacturacion"),
-        None,
+    resp = (
+        root
+        if _ln(root.tag) == "RespuestaRegFactuSistemaFacturacion"
+        else next(
+            (e for e in root.iter() if _ln(e.tag) == "RespuestaRegFactuSistemaFacturacion"),
+            None,
+        )
     )
     if resp is None:
-        raise VerifactuSubmitError(
-            "Respuesta sin RespuestaRegFactuSistemaFacturacion (¿fault SOAP?)"
-        )
+        raise VerifactuSubmitError("Respuesta sin RespuestaRegFactuSistemaFacturacion (¿fault SOAP?)")
 
     tiempo = _direct_text(resp, "TiempoEsperaEnvio")
     lineas: list[VerifactuLineAck] = []
@@ -146,9 +149,7 @@ def parse_acuse(response_xml: str) -> VerifactuAck:
 class VerifactuTransport(Protocol):
     """Envía el XML ya firmado y devuelve el cuerpo XML crudo del acuse."""
 
-    async def send(
-        self, *, signed_xml: str, pfx: bytes, password: str, environment: str
-    ) -> str: ...
+    async def send(self, *, signed_xml: str, pfx: bytes, password: str, environment: str) -> str: ...
 
 
 def _client_ssl_context(pfx_bytes: bytes, password: str):
@@ -168,9 +169,7 @@ def _client_ssl_context(pfx_bytes: bytes, password: str):
         pkcs12,
     )
 
-    key, cert, chain = pkcs12.load_key_and_certificates(
-        pfx_bytes, password.encode("utf-8") if password else None
-    )
+    key, cert, chain = pkcs12.load_key_and_certificates(pfx_bytes, password.encode("utf-8") if password else None)
     if key is None or cert is None:
         raise VerifactuSubmitError("El certificado no contiene clave privada o cert para mTLS.")
 
@@ -197,14 +196,10 @@ class HttpxVerifactuTransport:
     """POST SOAP con mTLS al WS VeriFactu. Endpoint/sobre/perfil XAdES POR CONFIRMAR (sección
     5 de `tasks/verifactu_envio_spec.md`) — no verificable sin certificado + preproducción."""
 
-    async def send(
-        self, *, signed_xml: str, pfx: bytes, password: str, environment: str
-    ) -> str:
+    async def send(self, *, signed_xml: str, pfx: bytes, password: str, environment: str) -> str:
         endpoint = VERIFACTU_ENDPOINTS.get(environment)
         if not endpoint:
-            raise VerifactuSubmitError(
-                f"Endpoint VeriFactu de '{environment}' no configurado (POR CONFIRMAR)."
-            )
+            raise VerifactuSubmitError(f"Endpoint VeriFactu de '{environment}' no configurado (POR CONFIRMAR).")
         import httpx
 
         ctx = _client_ssl_context(pfx, password)
@@ -215,9 +210,7 @@ class HttpxVerifactuTransport:
         except httpx.HTTPError as e:
             raise VerifactuSubmitError(f"Error HTTP al enviar a la SEDE VeriFactu: {e}") from e
         if r.status_code >= 400:
-            raise VerifactuSubmitError(
-                f"SEDE VeriFactu devolvió HTTP {r.status_code}: {r.text[:500]}"
-            )
+            raise VerifactuSubmitError(f"SEDE VeriFactu devolvió HTTP {r.status_code}: {r.text[:500]}")
         return r.text
 
 
@@ -225,17 +218,13 @@ class HttpxVerifactuTransport:
 
 
 class VerifactuSubmitter(Protocol):
-    async def submit(
-        self, db: AsyncSession, *, record, confirmed: bool = False
-    ) -> VerifactuAck: ...
+    async def submit(self, db: AsyncSession, *, record, confirmed: bool = False) -> VerifactuAck: ...
 
 
 class NoRemissionSubmitter:
     """Modo `no_remission` (default): no-op total — idéntico al comportamiento actual."""
 
-    async def submit(
-        self, db: AsyncSession, *, record, confirmed: bool = False
-    ) -> VerifactuAck:
+    async def submit(self, db: AsyncSession, *, record, confirmed: bool = False) -> VerifactuAck:
         return VerifactuAck(remitted=False, detail="no remitido (modo no_remission)")
 
 
@@ -251,9 +240,7 @@ class PreproduccionSubmitter:
         self._transport = transport or HttpxVerifactuTransport()
         self._environment = environment
 
-    async def submit(
-        self, db: AsyncSession, *, record, confirmed: bool = False
-    ) -> VerifactuAck:
+    async def submit(self, db: AsyncSession, *, record, confirmed: bool = False) -> VerifactuAck:
         # 1) Producir el XML oficial y validarlo contra el XSD (gate de calidad).
         xml = await _rf.generate_alta_xml(db, record=record)
         errors = _rf.validate_verifactu_xml(xml)
@@ -342,9 +329,7 @@ async def submit_invoice_to_verifactu(
     from app.services.aeat.certificate_storage import CertificateError
 
     inv = (
-        await db.execute(
-            select(Invoice).where(Invoice.id == invoice_id, Invoice.tenant_id == tenant_id)
-        )
+        await db.execute(select(Invoice).where(Invoice.id == invoice_id, Invoice.tenant_id == tenant_id))
     ).scalar_one_or_none()
     if inv is None:
         raise ValueError("Factura no encontrada")

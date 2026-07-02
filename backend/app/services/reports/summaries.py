@@ -118,9 +118,7 @@ async def generate_resumen_ejecutivo(
 
         from langchain_core.messages import HumanMessage
 
-        response = await asyncio.wait_for(
-            llm.ainvoke([HumanMessage(content=prompt)]), timeout=_RESUMEN_LLM_TIMEOUT_S
-        )
+        response = await asyncio.wait_for(llm.ainvoke([HumanMessage(content=prompt)]), timeout=_RESUMEN_LLM_TIMEOUT_S)
         ai_resumen = response.content.strip()
 
         if len(ai_resumen) > 50:
@@ -133,18 +131,10 @@ async def generate_resumen_ejecutivo(
     return deterministic
 
 
-async def generate_resumen_fiscal(
-    period: str, label: str, iva: FiscalIVA, irpf: FiscalIRPF, is_: FiscalIS
-) -> str:
+async def generate_resumen_fiscal(period: str, label: str, iva: FiscalIVA, irpf: FiscalIRPF, is_: FiscalIS) -> str:
     """Resumen ejecutivo fiscal con IA, fallback determinista."""
     resultado_iva = iva.resultado_iva
-    estado_iva = (
-        "a ingresar"
-        if resultado_iva > 0
-        else "a compensar/devolver"
-        if resultado_iva < 0
-        else "neutro"
-    )
+    estado_iva = "a ingresar" if resultado_iva > 0 else "a compensar/devolver" if resultado_iva < 0 else "neutro"
 
     deterministic = (
         f"Periodo {label}: IVA repercutido {iva.total_repercutido:,.2f} € vs soportado {iva.total_soportado:,.2f} €, "
@@ -175,9 +165,7 @@ async def generate_resumen_fiscal(
 
         from langchain_core.messages import HumanMessage
 
-        response = await asyncio.wait_for(
-            llm.ainvoke([HumanMessage(content=prompt)]), timeout=_RESUMEN_LLM_TIMEOUT_S
-        )
+        response = await asyncio.wait_for(llm.ainvoke([HumanMessage(content=prompt)]), timeout=_RESUMEN_LLM_TIMEOUT_S)
         ai_resumen = response.content.strip()
         if len(ai_resumen) > 50:
             return ai_resumen

@@ -171,12 +171,8 @@ def generate_payroll_pdf(payroll_data: dict, theme_config: dict | None = None) -
     # =====================================================================
     hdr = [
         Paragraph("<b>CONCEPTO</b>", S["small_bold"]),
-        Paragraph(
-            "<b>DEVENGOS</b>", ParagraphStyle("dh", parent=S["small_bold"], alignment=TA_RIGHT)
-        ),
-        Paragraph(
-            "<b>DEDUCCIONES</b>", ParagraphStyle("ddh", parent=S["small_bold"], alignment=TA_RIGHT)
-        ),
+        Paragraph("<b>DEVENGOS</b>", ParagraphStyle("dh", parent=S["small_bold"], alignment=TA_RIGHT)),
+        Paragraph("<b>DEDUCCIONES</b>", ParagraphStyle("ddh", parent=S["small_bold"], alignment=TA_RIGHT)),
     ]
     rows = [hdr]
 
@@ -191,9 +187,7 @@ def generate_payroll_pdf(payroll_data: dict, theme_config: dict | None = None) -
     for concepto, importe in (devengos or {}).items():
         if concepto != "salario_base" and float(importe or 0) != 0:
             label = concepto.replace("_", " ").capitalize()
-            rows.append(
-                [Paragraph(label, S["small"]), Paragraph(_eur(float(importe)), right_sty), ""]
-            )
+            rows.append([Paragraph(label, S["small"]), Paragraph(_eur(float(importe)), right_sty), ""])
 
     # Percepciones no salariales (placeholder)
     rows.append([Paragraph("<i>2. Percepciones no salariales</i>", S["small"]), "", ""])
@@ -324,9 +318,7 @@ def generate_payroll_pdf(payroll_data: dict, theme_config: dict | None = None) -
         ]
     )
     bc_rows.append(["AT y EP", _eur(base_cc), "variable", _eur(emp_at), "", ""])
-    bc_rows.append(
-        ["Desempleo", _eur(base_cc), "5,50", _eur(emp_des), f"{pct_des:.2f}", _eur(ss_des)]
-    )
+    bc_rows.append(["Desempleo", _eur(base_cc), "5,50", _eur(emp_des), f"{pct_des:.2f}", _eur(ss_des)])
     bc_rows.append(
         [
             "Formaci\u00f3n profesional",
@@ -362,9 +354,7 @@ def generate_payroll_pdf(payroll_data: dict, theme_config: dict | None = None) -
     # =====================================================================
     irpf_row = [
         [
-            Paragraph(
-                f"<b>Base sujeta a retenci\u00f3n del IRPF:</b> {_eur(base_irpf)}", S["small_bold"]
-            ),
+            Paragraph(f"<b>Base sujeta a retenci\u00f3n del IRPF:</b> {_eur(base_irpf)}", S["small_bold"]),
         ]
     ]
     irpf_tbl = Table(irpf_row, colWidths=[180 * mm])

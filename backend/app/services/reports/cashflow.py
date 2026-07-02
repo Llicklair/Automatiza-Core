@@ -32,7 +32,9 @@ async def build_cashflow_data(
     # Facturas emitidas pendientes (cobros previstos) — eager-load client
     # para evitar N+1 en el bucle "recv_detail" más abajo.
     issued_pending_q = await db.execute(
-        select(Invoice).options(jl(Invoice.client)).where(
+        select(Invoice)
+        .options(jl(Invoice.client))
+        .where(
             and_(
                 Invoice.tenant_id == tenant_id,
                 Invoice.invoice_type == "issued",
@@ -116,9 +118,7 @@ async def build_cashflow_data(
         {
             "client_name": inv.client.name if inv.client else "—",
             "invoice_number": inv.invoice_number or str(inv.id)[:8],
-            "due_date": (inv.due_date or inv.date).isoformat()
-            if (inv.due_date or inv.date)
-            else "",
+            "due_date": (inv.due_date or inv.date).isoformat() if (inv.due_date or inv.date) else "",
             "amount": float(inv.amount_total or 0),
         }
         for inv in sorted(issued_pending, key=lambda x: float(x.amount_total or 0), reverse=True)[:10]

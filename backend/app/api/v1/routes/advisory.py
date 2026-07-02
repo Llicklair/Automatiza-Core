@@ -42,9 +42,7 @@ async def get_boe_news(
 @limiter.limit("30/minute")
 async def get_fiscal_calendar(
     request: Request,
-    days_ahead: int = Query(
-        90, ge=1, le=365, description="Días hacia adelante a buscar vencimientos"
-    ),
+    days_ahead: int = Query(90, ge=1, le=365, description="Días hacia adelante a buscar vencimientos"),
     current_user=Depends(get_current_user),
 ):
     """

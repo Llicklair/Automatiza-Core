@@ -23,7 +23,10 @@ from app.core.config import settings
 _log = logging.getLogger(__name__)
 
 SUPPORTED_MIME = {
-    "image/png", "image/jpeg", "image/webp", "image/gif",
+    "image/png",
+    "image/jpeg",
+    "image/webp",
+    "image/gif",
     "application/pdf",
 }
 
@@ -180,13 +183,15 @@ def _build_invoice(payload: dict) -> InvoiceExtracted:
     lines: list[InvoiceLineExtracted] = []
     for raw in raw_lines:
         try:
-            lines.append(InvoiceLineExtracted(
-                description=str(raw.get("description") or "")[:500] or "Concepto",
-                quantity=float(raw.get("quantity") or 1),
-                unit_price=float(raw.get("unit_price") or 0),
-                tax_percentage=float(raw.get("tax_percentage") if raw.get("tax_percentage") is not None else 21),
-                total=float(raw.get("total") or 0),
-            ))
+            lines.append(
+                InvoiceLineExtracted(
+                    description=str(raw.get("description") or "")[:500] or "Concepto",
+                    quantity=float(raw.get("quantity") or 1),
+                    unit_price=float(raw.get("unit_price") or 0),
+                    tax_percentage=float(raw.get("tax_percentage") if raw.get("tax_percentage") is not None else 21),
+                    total=float(raw.get("total") or 0),
+                )
+            )
         except (TypeError, ValueError):
             continue
 
@@ -240,9 +245,7 @@ async def _resolve_vision_credentials(tenant_id, db) -> tuple[str, str, str | No
         from app.db.models.models import TenantLlmConfig
         from app.services.encryption import decrypt_credentials
 
-        res = await db.execute(
-            select(TenantLlmConfig).where(TenantLlmConfig.tenant_id == tenant_id)
-        )
+        res = await db.execute(select(TenantLlmConfig).where(TenantLlmConfig.tenant_id == tenant_id))
         cfg = res.scalar_one_or_none()
         if cfg and cfg.encrypted_keys:
             keys = decrypt_credentials(cfg.encrypted_keys)
@@ -334,6 +337,7 @@ def _extract_text_from_pdf(image_bytes: bytes) -> str:
 
 def _regex_candidates(text: str) -> dict[str, list[str]]:
     """Pistas para el LLM: NIF/CIF, IBAN, fechas e importes detectados por regex."""
+
     def uniq(seq):
         return list(dict.fromkeys(seq))
 
@@ -405,9 +409,7 @@ async def extract_invoice_data(
             template guardado.
     """
     if mime_type not in SUPPORTED_MIME:
-        raise InvoiceExtractionError(
-            f"Formato no soportado: {mime_type}. Usa PNG, JPG, WEBP o PDF."
-        )
+        raise InvoiceExtractionError(f"Formato no soportado: {mime_type}. Usa PNG, JPG, WEBP o PDF.")
 
     if not image_bytes or len(image_bytes) < 500:
         raise InvoiceExtractionError("Fichero vacío o demasiado pequeño.")
@@ -441,9 +443,7 @@ async def extract_invoice_data(
     elif mime_type == "application/pdf" and tenant_id is not None and db is not None:
         doc_text = _extract_text_from_pdf(image_bytes)
         if len(doc_text) >= 80:
-            raw_text = await _extract_via_text(
-                doc_text, _regex_candidates(doc_text), tenant_id, db, few_shot_hint
-            )
+            raw_text = await _extract_via_text(doc_text, _regex_candidates(doc_text), tenant_id, db, few_shot_hint)
         else:
             raise InvoiceExtractionError(
                 "No se pudo extraer texto del PDF (ni con OCR). Si es un escaneo de "

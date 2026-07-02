@@ -132,9 +132,7 @@ async def record_task_cost_trace(
     if tokens_in + tokens_out <= 0:
         return None
     try:
-        cost_eur = (Decimal(str(cost_usd)) * USD_TO_EUR).quantize(
-            Decimal("0.0001"), rounding=ROUND_HALF_UP
-        )
+        cost_eur = (Decimal(str(cost_usd)) * USD_TO_EUR).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
         return await record_agent_execution(
             db,
             tenant_id=tenant_id,
@@ -148,7 +146,5 @@ async def record_task_cost_trace(
             status="ok",
         )
     except Exception as e:  # noqa: BLE001 — observabilidad nunca rompe el flujo
-        logger.warning(
-            "No se pudo persistir traza de coste de task %s: %s", task_id, e
-        )
+        logger.warning("No se pudo persistir traza de coste de task %s: %s", task_id, e)
         return None

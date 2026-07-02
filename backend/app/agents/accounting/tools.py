@@ -1,4 +1,5 @@
 """Herramientas de contabilidad para el agente de asientos y libro diario."""
+
 import logging
 from datetime import date
 from decimal import Decimal
@@ -83,10 +84,7 @@ async def create_journal_entry(
                     lines=norm_lines,
                 )
             except PeriodClosedError as e:
-                return (
-                    f"Error: el periodo contable está cerrado ({e}). "
-                    "No se puede crear un asiento en esa fecha."
-                )
+                return f"Error: el periodo contable está cerrado ({e}). " "No se puede crear un asiento en esa fecha."
             return (
                 f"Asiento creado correctamente. ID: {entry.id}. Descripción: {description}. "
                 f"Fecha: {entry_date}. Importe: {total_debit:.2f}€."
@@ -141,8 +139,7 @@ async def list_journal_entries(
                 return "No se encontraron asientos con los filtros indicados."
 
             lines_out = [
-                f"- [{e.date.strftime('%d/%m/%Y') if e.date else '?'}] {e.description} | ID: {e.id}"
-                for e in entries
+                f"- [{e.date.strftime('%d/%m/%Y') if e.date else '?'}] {e.description} | ID: {e.id}" for e in entries
             ]
             return f"Asientos encontrados ({len(entries)}):\n" + "\n".join(lines_out)
     except Exception as e:

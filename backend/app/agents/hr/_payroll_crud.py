@@ -241,17 +241,13 @@ async def _approve_payroll_async(
 
                 payroll.status = "approved"
                 await db.commit()
-                return (
-                    f"Nómina {payroll_id[:8]}... aprobada. Neto: {float(payroll.net_salary):.2f}€."
-                )
+                return f"Nómina {payroll_id[:8]}... aprobada. Neto: {float(payroll.net_salary):.2f}€."
     except Exception as e:
         return f"Error aprobando nómina: {e}"
 
 
 @tool
-async def list_payrolls(
-    tenant_id: str, month: int = 0, year: int = 0, status_filter: str = "all"
-) -> str:
+async def list_payrolls(tenant_id: str, month: int = 0, year: int = 0, status_filter: str = "all") -> str:
     """
     Lista las nóminas del tenant, opcionalmente filtradas por mes/año y estado.
     Útil para consultar nóminas generadas, ver estados, o preparar aprobaciones.
@@ -304,8 +300,6 @@ async def _list_payrolls_async(tenant_id: str, month: int, year: int, status_fil
                     f"ID: {payroll.id}"
                 )
 
-            return (
-                f"Nóminas ({len(rows)}):\n" + "\n".join(lines) + f"\n\nTotal neto: {total_net:.2f}€"
-            )
+            return f"Nóminas ({len(rows)}):\n" + "\n".join(lines) + f"\n\nTotal neto: {total_net:.2f}€"
     except Exception as e:
         return f"Error listando nóminas: {e}"

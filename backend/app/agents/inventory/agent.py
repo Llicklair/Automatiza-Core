@@ -42,9 +42,7 @@ async def inventory_agent_node(state: AgentState):
         description="Procesando solicitud de stock...",
         status="completed",
         action_taken=(
-            "Invocando herramientas de inventario"
-            if response.tool_calls
-            else "Asistencia de stock completada."
+            "Invocando herramientas de inventario" if response.tool_calls else "Asistencia de stock completada."
         ),
     )
 
@@ -62,11 +60,7 @@ def inventory_finalize_node(state: AgentState):
         step_id="inventory_final",
         description="Agente de Stock ha finalizado.",
         status="completed",
-        action_taken=(
-            last_msg.content
-            if isinstance(last_msg.content, str)
-            else "Operación de inventario completada."
-        ),
+        action_taken=(last_msg.content if isinstance(last_msg.content, str) else "Operación de inventario completada."),
     )
     return {"status": "done", "agent_results": [final_result.model_dump()]}
 
@@ -77,9 +71,7 @@ workflow.add_node("tools", ToolNode(tools))
 workflow.add_node("finalize", inventory_finalize_node)
 
 workflow.set_entry_point("inventory_agent")
-workflow.add_conditional_edges(
-    "inventory_agent", tools_condition, {"tools": "tools", "__end__": "finalize"}
-)
+workflow.add_conditional_edges("inventory_agent", tools_condition, {"tools": "tools", "__end__": "finalize"})
 workflow.add_edge("tools", "inventory_agent")
 workflow.add_edge("finalize", END)
 

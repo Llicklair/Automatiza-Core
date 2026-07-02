@@ -23,10 +23,7 @@ def upgrade() -> None:
         )
         """
     )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_telemetry_opt_out_tenant "
-        "ON telemetry_opt_out(tenant_id)"
-    )
+    op.execute("CREATE INDEX IF NOT EXISTS ix_telemetry_opt_out_tenant " "ON telemetry_opt_out(tenant_id)")
 
 
 def downgrade() -> None:

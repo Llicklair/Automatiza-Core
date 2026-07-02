@@ -1,4 +1,4 @@
-﻿"""
+"""
 Business logic for document template management.
 Services raise ValueError / LookupError â€” routes translate to HTTP responses.
 """
@@ -86,9 +86,7 @@ async def _clear_default(db: AsyncSession, tenant_id, template_type: str):
 # â”€â”€ CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
-async def list_templates(
-    db: AsyncSession, tenant_id, template_type: str | None = None
-) -> list[DocumentTemplate]:
+async def list_templates(db: AsyncSession, tenant_id, template_type: str | None = None) -> list[DocumentTemplate]:
     q = select(DocumentTemplate).where(DocumentTemplate.tenant_id == tenant_id)
     if template_type:
         q = q.where(DocumentTemplate.template_type == template_type)
@@ -107,9 +105,7 @@ async def create_template(db: AsyncSession, tenant_id, data: dict) -> DocumentTe
     return tpl
 
 
-async def update_template(
-    db: AsyncSession, template_id: UUID, tenant_id, data: dict
-) -> DocumentTemplate:
+async def update_template(db: AsyncSession, template_id: UUID, tenant_id, data: dict) -> DocumentTemplate:
     tpl = await _get_or_raise(db, template_id, tenant_id)
 
     if data.get("is_default"):
@@ -139,9 +135,7 @@ async def set_default(db: AsyncSession, template_id: UUID, tenant_id) -> Documen
     return tpl
 
 
-async def seed_defaults(
-    db: AsyncSession, tenant_id, template_type: str = "invoice"
-) -> list[DocumentTemplate]:
+async def seed_defaults(db: AsyncSession, tenant_id, template_type: str = "invoice") -> list[DocumentTemplate]:
     existing = await db.execute(
         select(DocumentTemplate).where(
             DocumentTemplate.tenant_id == tenant_id,

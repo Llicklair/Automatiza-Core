@@ -5,6 +5,7 @@ Only active when REDIS_URL is configured. When Redis is absent the module
 exports ``celery_app = None`` and the system falls back to in-process
 asyncio task execution (existing behaviour, zero regression).
 """
+
 from __future__ import annotations
 
 import logging

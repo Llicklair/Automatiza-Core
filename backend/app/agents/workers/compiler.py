@@ -48,15 +48,12 @@ async def compile_dynamic_agent(employee_id: str, db: AsyncSession):
     if not employee:
         raise ValueError(f"AIEmployee '{employee_id}' no encontrado")
 
-    skills_result = await db.execute(
-        select(AgentSkill).where(AgentSkill.employee_id == employee_id)
-    )
+    skills_result = await db.execute(select(AgentSkill).where(AgentSkill.employee_id == employee_id))
     skills = skills_result.scalars().all()
 
     if not skills:
         logger.warning(
-            "Empleado '%s' no tiene skills configuradas — "
-            "usará herramientas del dominio '%s' por defecto",
+            "Empleado '%s' no tiene skills configuradas — " "usará herramientas del dominio '%s' por defecto",
             employee.name,
             employee.domain,
         )
@@ -75,7 +72,8 @@ async def compile_dynamic_agent(employee_id: str, db: AsyncSession):
     if skipped:
         logger.warning(
             "Empleado '%s' tiene skills obsoletas omitidas (revisa agent_skills): %s",
-            employee.name, skipped,
+            employee.name,
+            skipped,
         )
 
     llm = get_llm()
@@ -85,7 +83,6 @@ async def compile_dynamic_agent(employee_id: str, db: AsyncSession):
     employee_name = employee.name
 
     def _enriched_system_prompt(state: AgentState) -> str:
-
         tenant_id = state.get("tenant_id", "")
         user_id = state.get("user_id", "")
         today = local_today().isoformat()
@@ -134,11 +131,7 @@ async def compile_dynamic_agent(employee_id: str, db: AsyncSession):
     def finalize_node(state: AgentState) -> dict[str, Any]:
         """Nodo final: extrae la respuesta y marca como completado."""
         last_msg = state["messages"][-1] if state.get("messages") else None
-        content = (
-            last_msg.content
-            if last_msg and isinstance(last_msg.content, str)
-            else "Operación completada."
-        )
+        content = last_msg.content if last_msg and isinstance(last_msg.content, str) else "Operación completada."
         return {
             "status": "done",
             "agent_results": [
@@ -157,9 +150,7 @@ async def compile_dynamic_agent(employee_id: str, db: AsyncSession):
     if allowed_tools:
         graph.add_node("tools", ToolNode(allowed_tools))
         graph.set_entry_point("agent")
-        graph.add_conditional_edges(
-            "agent", tools_condition, {"tools": "tools", "__end__": "finalize"}
-        )
+        graph.add_conditional_edges("agent", tools_condition, {"tools": "tools", "__end__": "finalize"})
         graph.add_edge("tools", "agent")
     else:
         graph.set_entry_point("agent")

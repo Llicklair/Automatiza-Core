@@ -58,9 +58,7 @@ async def propose_schedule(
     emp_ids = [UUID(str(s["employee_id"])) for s in schedules]
     async with AsyncSessionLocal() as db:
         res = await db.execute(
-            select(Employee.id, Employee.name).where(
-                Employee.tenant_id == UUID(tenant_id), Employee.id.in_(emp_ids)
-            )
+            select(Employee.id, Employee.name).where(Employee.tenant_id == UUID(tenant_id), Employee.id.in_(emp_ids))
         )
         found = {row.id: row.name for row in res.all()}
         missing = [str(e) for e in emp_ids if e not in found]

@@ -101,9 +101,7 @@ async def _modify_excel_async(
         wb.close()
 
         async with AsyncSessionLocal() as db:
-            result = await db.execute(
-                select(TenantDocument).where(TenantDocument.id == uuid.UUID(document_id))
-            )
+            result = await db.execute(select(TenantDocument).where(TenantDocument.id == uuid.UUID(document_id)))
             doc_upd = result.scalar_one_or_none()
             if doc_upd:
                 doc_upd.file_size = os.path.getsize(doc.file_path)
@@ -118,9 +116,7 @@ async def _modify_excel_async(
 
 
 @tool
-async def read_excel(
-    tenant_id: str, document_id: str, sheet_name: str = "", max_rows: int = 30
-) -> str:
+async def read_excel(tenant_id: str, document_id: str, sheet_name: str = "", max_rows: int = 30) -> str:
     """
     Lee el contenido de un archivo Excel y lo devuelve en formato texto tabular.
     Útil para que el LLM vea los datos antes de decidir qué modificar.
@@ -134,9 +130,7 @@ async def read_excel(
     return await _read_excel_async(tenant_id, document_id, sheet_name, max_rows)
 
 
-async def _read_excel_async(
-    tenant_id: str, document_id: str, sheet_name: str, max_rows: int
-) -> str:
+async def _read_excel_async(tenant_id: str, document_id: str, sheet_name: str, max_rows: int) -> str:
     try:
         doc, err = await _load_excel_doc(tenant_id, document_id)
         if err:

@@ -53,7 +53,6 @@ _TRANSLATIONS: dict[Locale, dict[str, str]] = {
         "invoice.terms": "Condiciones",
         "invoice.verifactu_hash": "Huella Verifactu",
         "invoice.verifactu_verify": "Verifica esta factura en",
-
         # Nómina
         "payroll.title": "Nómina",
         "payroll.period": "Período de liquidación",
@@ -71,13 +70,11 @@ _TRANSLATIONS: dict[Locale, dict[str, str]] = {
         "payroll.net_salary": "Líquido a percibir",
         "payroll.signature_employee": "Firma del trabajador",
         "payroll.signature_company": "Firma de la empresa",
-
         # Recibo / generales
         "receipt.title": "Recibo",
         "receipt.received_from": "Recibido de",
         "receipt.amount_in_words": "Importe en letras",
         "receipt.place_date": "En, a",
-
         # Footer común
         "footer.page": "Página",
         "footer.of": "de",

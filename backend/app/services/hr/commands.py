@@ -74,10 +74,7 @@ async def create_employee(data: dict, tenant_id, db: AsyncSession) -> Employee:
         )
         existing = result.scalar_one_or_none()
         if existing:
-            raise ValueError(
-                f"Ya existe un empleado con NIF {normalized_nif}: "
-                f"{existing.name} (ID: {existing.id})"
-            )
+            raise ValueError(f"Ya existe un empleado con NIF {normalized_nif}: " f"{existing.name} (ID: {existing.id})")
 
     emp = Employee(tenant_id=tenant_id, **data)
     db.add(emp)
@@ -109,9 +106,7 @@ async def create_employee(data: dict, tenant_id, db: AsyncSession) -> Employee:
     return emp
 
 
-async def update_employee(
-    employee_id: UUID, payload, tenant_id, db: AsyncSession
-) -> Employee | None:
+async def update_employee(employee_id: UUID, payload, tenant_id, db: AsyncSession) -> Employee | None:
     emp = await get_employee(employee_id, tenant_id, db)
     if not emp:
         return None
@@ -136,8 +131,7 @@ async def delete_employee(employee_id: UUID, tenant_id, db: AsyncSession) -> boo
     except IntegrityError:
         await db.rollback()
         raise ConflictError(
-            "No se puede eliminar el empleado porque tiene registros asociados "
-            "(nóminas, fichajes, etc.)"
+            "No se puede eliminar el empleado porque tiene registros asociados " "(nóminas, fichajes, etc.)"
         ) from None
     return True
 
@@ -464,9 +458,7 @@ async def upload_cv(
     return candidate
 
 
-async def update_candidate_status(
-    db: AsyncSession, tenant_id: UUID, candidate_id: UUID, new_status: str
-) -> Candidate:
+async def update_candidate_status(db: AsyncSession, tenant_id: UUID, candidate_id: UUID, new_status: str) -> Candidate:
     if new_status not in VALID_CANDIDATE_STATUSES:
         raise ValueError(f"Estado invalido. Opciones: {', '.join(VALID_CANDIDATE_STATUSES)}")
 
@@ -522,9 +514,7 @@ async def analyze_cv_standalone(file_name: str, file_obj) -> dict:
 # ── Schedule commands ─────────────────────────────────────────────────────────
 
 
-async def upsert_schedule(
-    db: AsyncSession, tenant_id, employee_id: UUID, schedules: list[dict]
-) -> list[WorkSchedule]:
+async def upsert_schedule(db: AsyncSession, tenant_id, employee_id: UUID, schedules: list[dict]) -> list[WorkSchedule]:
     """Replace all schedule rows for an employee (upsert by day_of_week)."""
     from sqlalchemy.dialects.postgresql import insert as pg_insert
 
@@ -561,9 +551,7 @@ async def upsert_schedule(
 # ── Attendance commands ───────────────────────────────────────────────────────
 
 
-async def clock_in(
-    db: AsyncSession, tenant_id, employee_id: UUID, notes: str | None = None
-) -> Attendance:
+async def clock_in(db: AsyncSession, tenant_id, employee_id: UUID, notes: str | None = None) -> Attendance:
     """Create an attendance clock-in. Raises ValueError if already open."""
 
     existing = await db.execute(
@@ -644,6 +632,7 @@ async def _ws_notify(tenant_id, message: str, notif_type: str = "info") -> None:
     try:
         from app.api.ws.notifications import manager
         from app.core.background import spawn
+
         spawn(
             manager.broadcast_to_tenant(
                 str(tenant_id),
@@ -655,8 +644,13 @@ async def _ws_notify(tenant_id, message: str, notif_type: str = "info") -> None:
 
 
 async def create_leave_request(
-    db: AsyncSession, tenant_id, employee_id: UUID,
-    leave_type: str, start_date, end_date, notes: str | None = None,
+    db: AsyncSession,
+    tenant_id,
+    employee_id: UUID,
+    leave_type: str,
+    start_date,
+    end_date,
+    notes: str | None = None,
 ) -> LeaveRequest:
     req = LeaveRequest(
         tenant_id=tenant_id,
@@ -733,8 +727,14 @@ async def _get_leave_request(db: AsyncSession, tenant_id, request_id: UUID) -> L
 
 
 async def create_expense(
-    db: AsyncSession, tenant_id, employee_id: UUID,
-    amount: float, category: str, description: str, date, notes: str | None = None,
+    db: AsyncSession,
+    tenant_id,
+    employee_id: UUID,
+    amount: float,
+    category: str,
+    description: str,
+    date,
+    notes: str | None = None,
 ) -> Expense:
     exp = Expense(
         tenant_id=tenant_id,
@@ -823,9 +823,7 @@ async def delete_expense(db: AsyncSession, tenant_id, expense_id: UUID) -> None:
 
 
 async def _get_expense(db: AsyncSession, tenant_id, expense_id: UUID) -> Expense:
-    result = await db.execute(
-        select(Expense).where(Expense.id == expense_id, Expense.tenant_id == tenant_id)
-    )
+    result = await db.execute(select(Expense).where(Expense.id == expense_id, Expense.tenant_id == tenant_id))
     exp = result.scalar_one_or_none()
     if not exp:
         raise ValueError("Gasto no encontrado")

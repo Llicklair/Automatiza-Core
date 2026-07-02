@@ -1,4 +1,5 @@
 """Backward-compatibility shim — implementation in queries.py / commands.py."""
+
 from app.services.sales.commands import (
     create_albaran,
     delete_albaran,

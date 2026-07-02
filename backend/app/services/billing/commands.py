@@ -60,7 +60,7 @@ async def create_invoice(
     # Tipo de la factura que se crea. La unicidad del número solo aplica a las
     # que emitimos nosotros (issued/rectificativa); las recibidas llevan el
     # número del proveedor y quedan fuera de la guarda y del índice parcial.
-    new_type = (payload_dict.get("invoice_type") or "issued")
+    new_type = payload_dict.get("invoice_type") or "issued"
     is_emitted = new_type in ("issued", "rectificativa")
 
     # 1) Validar líneas y calcular totales (Decimal) ANTES de consumir un número
@@ -131,6 +131,7 @@ async def create_invoice(
     # Verifactu: encadena la huella ANTES del commit → factura y huella atómicas.
     # En modo "no_remission" no hace nada.
     from app.services.billing.verifactu_chain import maybe_append_verifactu_record
+
     await maybe_append_verifactu_record(db, invoice=new_invoice)
 
     try:
@@ -140,9 +141,7 @@ async def create_invoice(
         # cubre la carrera concurrente que la guarda de aplicación no ve.
         await db.rollback()
         if "uq_invoices_tenant_number_emitted" in str(e.orig):
-            raise ValueError(
-                f"Ya existe una factura con el número {invoice_number}."
-            ) from e
+            raise ValueError(f"Ya existe una factura con el número {invoice_number}.") from e
         raise
 
     result = await db.execute(
@@ -244,14 +243,13 @@ async def create_rectificativa(
     # Verifactu: la rectificativa es un hecho con efectos fiscales → encadena su
     # propia huella ANTES del commit (atómico con la factura).
     from app.services.billing.verifactu_chain import maybe_append_verifactu_record
+
     await maybe_append_verifactu_record(db, invoice=rect)
 
     await db.commit()
 
     result = await db.execute(
-        select(Invoice)
-        .options(joinedload(Invoice.client), joinedload(Invoice.lines))
-        .where(Invoice.id == rect.id)
+        select(Invoice).options(joinedload(Invoice.client), joinedload(Invoice.lines)).where(Invoice.id == rect.id)
     )
     return result.unique().scalar_one()
 
@@ -288,6 +286,7 @@ async def update_status(
     if new_status == "paid" and prev_status != "paid":
         try:
             from app.services.event_bus import emit_event
+
             await emit_event(
                 db=db,
                 tenant_id=tenant_id,
@@ -303,9 +302,7 @@ async def update_status(
             logger.warning("No se pudo emitir invoice_paid: %s", e)
 
     result = await db.execute(
-        select(Invoice)
-        .options(joinedload(Invoice.client), joinedload(Invoice.lines))
-        .where(Invoice.id == invoice_id)
+        select(Invoice).options(joinedload(Invoice.client), joinedload(Invoice.lines)).where(Invoice.id == invoice_id)
     )
     return result.unique().scalar_one()
 
@@ -329,23 +326,15 @@ async def delete_invoice(invoice_id: UUID, tenant_id, db: AsyncSession) -> bool:
     if not invoice:
         return False
 
-    vf = await db.execute(
-        select(VerifactuRecord.id).where(VerifactuRecord.invoice_id == invoice_id).limit(1)
-    )
+    vf = await db.execute(select(VerifactuRecord.id).where(VerifactuRecord.invoice_id == invoice_id).limit(1))
     if vf.scalar_one_or_none() is not None:
-        raise ValueError(
-            "No se puede borrar: la factura tiene un registro Verifactu (cadena inmutable)."
-        )
+        raise ValueError("No se puede borrar: la factura tiene un registro Verifactu (cadena inmutable).")
 
     # N7: una factura EMITIDA ya numerada (pending/sent/paid) no se borra: rompería
     # la numeración correlativa (RD 1619/2012 Art. 6.1) y el contador no retrocede.
     # Los borradores sí (nunca se emitieron); las recibidas y las demo también.
     # Para anular una factura emitida, se emite una factura rectificativa.
-    if (
-        invoice.invoice_type == "issued"
-        and not invoice.is_demo
-        and (invoice.status or "draft") != "draft"
-    ):
+    if invoice.invoice_type == "issued" and not invoice.is_demo and (invoice.status or "draft") != "draft":
         raise ValueError(
             f"No se puede borrar una factura emitida (estado '{invoice.status}'): rompería "
             "la numeración correlativa. Para anularla, emite una factura rectificativa."
@@ -362,9 +351,7 @@ async def delete_invoice(invoice_id: UUID, tenant_id, db: AsyncSession) -> bool:
         _d = entry.date.date() if hasattr(entry.date, "date") and callable(entry.date.date) else entry.date
         locked, label = await is_date_locked(db, tenant_id, _d)
         if locked:
-            raise ValueError(
-                f"No se puede borrar: el asiento contable está en un periodo cerrado ({label or '?'})."
-            )
+            raise ValueError(f"No se puede borrar: el asiento contable está en un periodo cerrado ({label or '?'}).")
     for entry in entries:
         await db.delete(entry)
 
@@ -451,16 +438,17 @@ async def create_journal_entry(
     total_credit = sum((Decimal(str(line["credit"])) for line in lines), Decimal("0"))
 
     if abs(total_debit - total_credit) > Decimal("0.01"):
-        raise ValueError(
-            f"El asiento está descuadrado: Debe ({total_debit}) != Haber ({total_credit})"
-        )
+        raise ValueError(f"El asiento está descuadrado: Debe ({total_debit}) != Haber ({total_credit})")
 
     # Bloquear escritura si el periodo está cerrado
     from app.services.accounting import PeriodClosedError, is_date_locked
+
     _date_for_check = date.date() if hasattr(date, "date") and callable(date.date) else date
     locked, label = await is_date_locked(db, tenant_id, _date_for_check)
     if locked:
-        raise PeriodClosedError(label or "?", target_date=_date_for_check if hasattr(_date_for_check, "isoformat") else None)
+        raise PeriodClosedError(
+            label or "?", target_date=_date_for_check if hasattr(_date_for_check, "isoformat") else None
+        )
 
     new_entry = JournalEntry(
         tenant_id=tenant_id,
@@ -487,22 +475,14 @@ async def create_journal_entry(
     await db.commit()
     await db.refresh(new_entry)
 
-    stmt = (
-        select(JournalEntry)
-        .where(JournalEntry.id == new_entry.id)
-        .options(selectinload(JournalEntry.lines))
-    )
+    stmt = select(JournalEntry).where(JournalEntry.id == new_entry.id).options(selectinload(JournalEntry.lines))
     res = await db.execute(stmt)
     return res.scalar_one()
 
 
-async def delete_journal_entry(
-    db: AsyncSession, tenant_id: UUID, entry_id: UUID
-) -> None:
+async def delete_journal_entry(db: AsyncSession, tenant_id: UUID, entry_id: UUID) -> None:
     result = await db.execute(
-        select(JournalEntry).where(
-            JournalEntry.id == entry_id, JournalEntry.tenant_id == tenant_id
-        )
+        select(JournalEntry).where(JournalEntry.id == entry_id, JournalEntry.tenant_id == tenant_id)
     )
     entry = result.scalar_one_or_none()
     if not entry:
@@ -510,6 +490,7 @@ async def delete_journal_entry(
 
     # Bloquear borrado si el periodo está cerrado
     from app.services.accounting import PeriodClosedError, is_date_locked
+
     _date_for_check = entry.date.date() if hasattr(entry.date, "date") and callable(entry.date.date) else entry.date
     locked, label = await is_date_locked(db, tenant_id, _date_for_check)
     if locked:
@@ -519,9 +500,7 @@ async def delete_journal_entry(
     await db.commit()
 
 
-async def create_fixed_asset(
-    db: AsyncSession, tenant_id: UUID, data: dict
-) -> FixedAsset:
+async def create_fixed_asset(db: AsyncSession, tenant_id: UUID, data: dict) -> FixedAsset:
     asset = FixedAsset(tenant_id=tenant_id, **data)
     db.add(asset)
     await db.commit()
@@ -529,14 +508,8 @@ async def create_fixed_asset(
     return asset
 
 
-async def update_fixed_asset(
-    db: AsyncSession, tenant_id: UUID, asset_id: UUID, data: dict
-) -> FixedAsset:
-    result = await db.execute(
-        select(FixedAsset).where(
-            FixedAsset.id == asset_id, FixedAsset.tenant_id == tenant_id
-        )
-    )
+async def update_fixed_asset(db: AsyncSession, tenant_id: UUID, asset_id: UUID, data: dict) -> FixedAsset:
+    result = await db.execute(select(FixedAsset).where(FixedAsset.id == asset_id, FixedAsset.tenant_id == tenant_id))
     asset = result.scalar_one_or_none()
     if not asset:
         raise LookupError("Activo no encontrado")
@@ -547,14 +520,8 @@ async def update_fixed_asset(
     return asset
 
 
-async def delete_fixed_asset(
-    db: AsyncSession, tenant_id: UUID, asset_id: UUID
-) -> None:
-    result = await db.execute(
-        select(FixedAsset).where(
-            FixedAsset.id == asset_id, FixedAsset.tenant_id == tenant_id
-        )
-    )
+async def delete_fixed_asset(db: AsyncSession, tenant_id: UUID, asset_id: UUID) -> None:
+    result = await db.execute(select(FixedAsset).where(FixedAsset.id == asset_id, FixedAsset.tenant_id == tenant_id))
     asset = result.scalar_one_or_none()
     if not asset:
         raise LookupError("Activo no encontrado")
@@ -565,9 +532,7 @@ async def delete_fixed_asset(
 # â”€â”€ Recurring commands â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
-async def create_recurring(
-    payload, tenant_id: UUID, db: AsyncSession
-) -> RecurringInvoice:
+async def create_recurring(payload, tenant_id: UUID, db: AsyncSession) -> RecurringInvoice:
     rec = RecurringInvoice(
         tenant_id=tenant_id,
         client_id=payload.client_id,
@@ -581,9 +546,7 @@ async def create_recurring(
     db.add(rec)
     await db.commit()
     result = await db.execute(
-        select(RecurringInvoice)
-        .where(RecurringInvoice.id == rec.id)
-        .options(joinedload(RecurringInvoice.client))
+        select(RecurringInvoice).where(RecurringInvoice.id == rec.id).options(joinedload(RecurringInvoice.client))
     )
     return result.unique().scalar_one()
 
@@ -613,16 +576,12 @@ async def update_recurring(
     await db.commit()
 
     result = await db.execute(
-        select(RecurringInvoice)
-        .where(RecurringInvoice.id == rec_id)
-        .options(joinedload(RecurringInvoice.client))
+        select(RecurringInvoice).where(RecurringInvoice.id == rec_id).options(joinedload(RecurringInvoice.client))
     )
     return result.unique().scalar_one()
 
 
-async def delete_recurring(
-    rec_id: UUID, tenant_id: UUID, db: AsyncSession
-) -> bool:
+async def delete_recurring(rec_id: UUID, tenant_id: UUID, db: AsyncSession) -> bool:
     """Returns False if not found."""
     result = await db.execute(
         select(RecurringInvoice).where(
@@ -638,9 +597,7 @@ async def delete_recurring(
     return True
 
 
-async def run_recurring(
-    rec_id: UUID, tenant_id: UUID, db: AsyncSession
-) -> Invoice | None:
+async def run_recurring(rec_id: UUID, tenant_id: UUID, db: AsyncSession) -> Invoice | None:
     """Genera una factura desde una plantilla recurrente. None si no existe."""
     import datetime as dt_module
 
@@ -694,6 +651,7 @@ async def run_recurring(
     # Sin esto, una recurrente en modo Verifactu quedaba fuera de la cadena
     # append-only (hueco). No-op si el tenant está en modo no_remission.
     from app.services.billing.verifactu_chain import maybe_append_verifactu_record
+
     await maybe_append_verifactu_record(db, invoice=invoice)
 
     # Próxima ejecución respetando meses/años reales (fin de mes, bisiestos) en
@@ -722,8 +680,6 @@ async def run_recurring(
     await db.commit()
 
     res = await db.execute(
-        select(Invoice)
-        .where(Invoice.id == invoice.id)
-        .options(joinedload(Invoice.client), joinedload(Invoice.lines))
+        select(Invoice).where(Invoice.id == invoice.id).options(joinedload(Invoice.client), joinedload(Invoice.lines))
     )
     return res.unique().scalar_one()

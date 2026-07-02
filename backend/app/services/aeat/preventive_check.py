@@ -103,8 +103,7 @@ def _check_received_without_supplier_nif(invoices: list[Invoice]) -> list[Findin
     bad = [
         inv
         for inv in invoices
-        if inv.invoice_type == "received"
-        and (inv.client is None or not (inv.client.nif or "").strip())
+        if inv.invoice_type == "received" and (inv.client is None or not (inv.client.nif or "").strip())
     ]
     if not bad:
         return []
@@ -139,8 +138,7 @@ def _check_invoices_without_lines(invoices: list[Invoice]) -> list[Finding]:
                 f"cuota IVA no se computan en el cálculo del 303."
             ),
             suggested_action=(
-                "Abre cada factura y añade al menos una línea con base e IVA "
-                "para que entre en la liquidación."
+                "Abre cada factura y añade al menos una línea con base e IVA " "para que entre en la liquidación."
             ),
             source_invoice_ids=[str(i.id) for i in bad],
         )
@@ -161,13 +159,9 @@ def _check_amount_mismatch(invoices: list[Invoice]) -> list[Finding]:
         Finding(
             code="amount_mismatch",
             severity="medium",
-            message=(
-                f"{len(bad)} factura(s) con totales descuadrados "
-                f"(base + IVA ≠ total)."
-            ),
+            message=(f"{len(bad)} factura(s) con totales descuadrados " f"(base + IVA ≠ total)."),
             suggested_action=(
-                "Recalcula la factura desde sus líneas o ajusta los totales "
-                "para que sean consistentes."
+                "Recalcula la factura desde sus líneas o ajusta los totales " "para que sean consistentes."
             ),
             source_invoice_ids=[str(i.id) for i in bad],
         )
@@ -175,11 +169,7 @@ def _check_amount_mismatch(invoices: list[Invoice]) -> list[Finding]:
 
 
 def _check_draft_in_period(invoices: list[Invoice]) -> list[Finding]:
-    bad = [
-        inv
-        for inv in invoices
-        if (inv.status or "").lower() == "draft" and inv.invoice_type == "issued"
-    ]
+    bad = [inv for inv in invoices if (inv.status or "").lower() == "draft" and inv.invoice_type == "issued"]
     if not bad:
         return []
     return [
@@ -223,16 +213,12 @@ def _check_imbalance_no_purchases(invoices: list[Invoice]) -> list[Finding]:
     return []
 
 
-async def _check_verifactu_missing(
-    db: AsyncSession, tenant_id: UUID, invoices: list[Invoice]
-) -> list[Finding]:
+async def _check_verifactu_missing(db: AsyncSession, tenant_id: UUID, invoices: list[Invoice]) -> list[Finding]:
     """Si el tenant está en modo `voluntary`, cada factura emitida del
     periodo debería tener un registro Verifactu. Si falta → riesgo de
     sanción del RD 1007/2023.
     """
-    cfg_q = await db.execute(
-        sa.select(VerifactuConfig).where(VerifactuConfig.tenant_id == tenant_id)
-    )
+    cfg_q = await db.execute(sa.select(VerifactuConfig).where(VerifactuConfig.tenant_id == tenant_id))
     cfg = cfg_q.scalar_one_or_none()
     if cfg is None or (cfg.mode or "").lower() != "voluntary":
         return []
@@ -241,11 +227,7 @@ async def _check_verifactu_missing(
     if not issued_ids:
         return []
 
-    have_q = await db.execute(
-        sa.select(VerifactuRecord.invoice_id).where(
-            VerifactuRecord.invoice_id.in_(issued_ids)
-        )
-    )
+    have_q = await db.execute(sa.select(VerifactuRecord.invoice_id).where(VerifactuRecord.invoice_id.in_(issued_ids)))
     have = {row[0] for row in have_q.all()}
     missing = [iid for iid in issued_ids if iid not in have]
     if not missing:
@@ -260,8 +242,7 @@ async def _check_verifactu_missing(
                 f"RD 1007/2023."
             ),
             suggested_action=(
-                "Ejecuta el backfill Verifactu desde Ajustes → Verifactu "
-                "antes de cerrar el trimestre."
+                "Ejecuta el backfill Verifactu desde Ajustes → Verifactu " "antes de cerrar el trimestre."
             ),
             source_invoice_ids=[str(i) for i in missing],
         )
@@ -311,8 +292,7 @@ async def _check_unlinked_received_documents(
                 f"El IVA deducible no entra en el 303 mientras no se registren."
             ),
             suggested_action=(
-                "Ve a /escaner o /documentos, abre los PDFs marcados y "
-                "confirma la conversión a factura recibida."
+                "Ve a /escaner o /documentos, abre los PDFs marcados y " "confirma la conversión a factura recibida."
             ),
         )
     ]

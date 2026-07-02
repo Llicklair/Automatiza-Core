@@ -177,9 +177,7 @@ async def reopen_period(
         raise ValueError("Se requiere un motivo para reabrir un periodo cerrado.")
 
     res = await db.execute(
-        select(AccountingPeriod)
-        .where(AccountingPeriod.id == period_id)
-        .where(AccountingPeriod.tenant_id == tenant_id)
+        select(AccountingPeriod).where(AccountingPeriod.id == period_id).where(AccountingPeriod.tenant_id == tenant_id)
     )
     period = res.scalar_one_or_none()
     if period is None:
@@ -189,9 +187,7 @@ async def reopen_period(
     # periodo abierto, ya-reabierto o nunca cerrado, sobre-escribiendo
     # reopened_at/motivo y dejando el estado contable incoherente.
     if period.status != "closed":
-        raise ValueError(
-            f"Solo se puede reabrir un periodo cerrado (estado actual: '{period.status}')."
-        )
+        raise ValueError(f"Solo se puede reabrir un periodo cerrado (estado actual: '{period.status}').")
 
     period.status = "reopened"
     period.reopened_at = datetime.now(UTC)

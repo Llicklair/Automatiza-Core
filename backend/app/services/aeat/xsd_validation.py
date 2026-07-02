@@ -39,9 +39,7 @@ def validate_xml_pre_signature(xml_str: str, model_code: str) -> list[str]:
 
     try:
         schema = etree.XMLSchema(etree.parse(str(xsd_path)))
-        doc = etree.fromstring(
-            xml_str.encode("utf-8") if isinstance(xml_str, str) else xml_str
-        )
+        doc = etree.fromstring(xml_str.encode("utf-8") if isinstance(xml_str, str) else xml_str)
     except (etree.XMLSchemaParseError, etree.XMLSyntaxError) as e:
         return [f"Error preparando validación XSD: {e}"]
 

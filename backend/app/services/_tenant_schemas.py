@@ -2,6 +2,7 @@
 
 Routes' schemas/tenant.py re-exports from here so route handlers see no change.
 """
+
 from pydantic import BaseModel
 
 

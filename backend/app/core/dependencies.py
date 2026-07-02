@@ -24,10 +24,12 @@ _EMPLOYEE_ALLOWED_PREFIXES = (
     "/api/v1/portal/",
     "/api/v1/auth/",
 )
-_EMPLOYEE_ALLOWED_EXACT = frozenset({
-    "/api/v1/users/me",
-    "/api/v1/tenant/me",
-})
+_EMPLOYEE_ALLOWED_EXACT = frozenset(
+    {
+        "/api/v1/users/me",
+        "/api/v1/tenant/me",
+    }
+)
 
 
 def _employee_can_access(path: str) -> bool:
@@ -68,9 +70,7 @@ async def get_current_user(
     # bajo fail-closed, sin bypass esta SELECT devolvería 0 filas y rompería el
     # login de todos. `users` lleva tenant_id, así que está sujeta a la policy.
     with rls_bypass():
-        result = await db.execute(
-            select(User).where(User.id == user_uuid).options(joinedload(User.tenant))
-        )
+        result = await db.execute(select(User).where(User.id == user_uuid).options(joinedload(User.tenant)))
         user = result.scalar_one_or_none()
     if user is None or not user.is_active:
         raise credentials_exception

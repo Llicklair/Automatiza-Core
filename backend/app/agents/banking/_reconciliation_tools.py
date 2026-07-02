@@ -16,9 +16,7 @@ logger = logging.getLogger(__name__)
     domain="banking_write",
     summary_fn=lambda kw: "Conciliar automáticamente los movimientos bancarios con sus facturas",
 )
-async def reconcile_transactions(
-    tenant_id: str, tolerance_days: int = 3, tolerance_amount: float = 0.01
-) -> str:
+async def reconcile_transactions(tenant_id: str, tolerance_days: int = 3, tolerance_amount: float = 0.01) -> str:
     """
     Concilia automáticamente los movimientos bancarios YA IMPORTADOS con las
     facturas, usando el motor ÚNICO del servicio (importe + fecha + cliente + nº

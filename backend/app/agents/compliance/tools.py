@@ -29,9 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 @tool
-async def check_fiscal_deadlines(
-    days_ahead: int = 90, tenant_id: str | None = None
-) -> str:
+async def check_fiscal_deadlines(days_ahead: int = 90, tenant_id: str | None = None) -> str:
     """
     Consulta los vencimientos fiscales próximos del calendario AEAT.
     Devuelve alertas claras sobre modelos tributarios pendientes.
@@ -78,10 +76,7 @@ Devuelve JSON: {"alertas": ["...", "..."]}"""
         alertas = data.get("alertas", [])
     except Exception as e:
         logger.warning("Error generando alertas fiscales con LLM, usando fallback: %s", e)
-        alertas = [
-            f"⚠️ {v['nombre']}: vence el {v['fecha_limite']} ({v['dias_restantes']} días)"
-            for v in vencimientos
-        ]
+        alertas = [f"⚠️ {v['nombre']}: vence el {v['fecha_limite']} ({v['dias_restantes']} días)" for v in vencimientos]
 
     result = f"Vencimientos fiscales próximos ({len(vencimientos)}):\n\n"
     for alerta in alertas:
@@ -122,9 +117,7 @@ Analiza las novedades del BOE e identifica las que afectan a PYMEs.
 Explica el impacto en lenguaje sencillo. Indica qué acción tomar.
 Devuelve JSON: {"resumen": "...", "novedades_relevantes": [...], "acciones_recomendadas": [...]}"""
                 ),
-                HumanMessage(
-                    content=f"Novedades BOE:\n{json.dumps(novedades_relevantes, ensure_ascii=False)}"
-                ),
+                HumanMessage(content=f"Novedades BOE:\n{json.dumps(novedades_relevantes, ensure_ascii=False)}"),
             ]
         )
         data = json.loads(response.content)
@@ -168,9 +161,7 @@ async def _search_tenant_docs(tenant_id: str, question: str) -> str:
             return ""
         query_vector = await embedder.aembed_query(question)
         async with AsyncSessionLocal() as db:
-            tenant_result = await db.execute(
-                sa.select(Tenant.jurisdiction).where(Tenant.id == uuid.UUID(tenant_id))
-            )
+            tenant_result = await db.execute(sa.select(Tenant.jurisdiction).where(Tenant.id == uuid.UUID(tenant_id)))
             jurisdiction = tenant_result.scalar() or "ES_TAX"
             try:
                 scored = await cosine_topk(
@@ -185,9 +176,7 @@ async def _search_tenant_docs(tenant_id: str, question: str) -> str:
                     return ""
                 raise
             fragments = [m for m, _dist in scored]
-        return "".join(
-            f"\n--- Fragmento {i} ---\n{m.text_content}\n" for i, m in enumerate(fragments, 1)
-        )
+        return "".join(f"\n--- Fragmento {i} ---\n{m.text_content}\n" for i, m in enumerate(fragments, 1))
     except Exception as e:
         logger.warning("Error buscando embeddings en compliance: %s", e)
         return ""
@@ -259,10 +248,7 @@ async def check_quarter_preventive(tenant_id: str, quarter: int, year: int) -> s
         findings = await check_quarter(db, tid, quarter, int(year))
 
     if not findings:
-        return (
-            f"Sin riesgos detectados para {quarter}T {year}. El trimestre "
-            f"parece listo para presentar el 303."
-        )
+        return f"Sin riesgos detectados para {quarter}T {year}. El trimestre " f"parece listo para presentar el 303."
 
     lines = [f"Hallazgos preventivos {quarter}T {year} ({len(findings)}):", ""]
     for f in findings:

@@ -35,9 +35,7 @@ def upgrade() -> None:
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
         sa.UniqueConstraint("scheduled_post_id", "metric_date", name="uq_post_metric_day"),
     )
-    op.create_index(
-        "ix_scheduled_post_metrics_tenant_id", "scheduled_post_metrics", ["tenant_id"]
-    )
+    op.create_index("ix_scheduled_post_metrics_tenant_id", "scheduled_post_metrics", ["tenant_id"])
     op.create_index(
         "ix_scheduled_post_metrics_scheduled_post_id",
         "scheduled_post_metrics",

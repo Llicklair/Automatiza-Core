@@ -49,9 +49,12 @@ async def build_diagnostic_bundle(db: AsyncSession) -> bytes:
             "python_version": sys.version,
             "platform": platform.platform(),
             "os_family": (
-                "windows" if os.name == "nt"
-                else "macos" if sys.platform == "darwin"
-                else "linux" if sys.platform.startswith("linux")
+                "windows"
+                if os.name == "nt"
+                else "macos"
+                if sys.platform == "darwin"
+                else "linux"
+                if sys.platform.startswith("linux")
                 else "other"
             ),
         }

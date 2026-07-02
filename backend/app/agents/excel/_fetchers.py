@@ -27,9 +27,7 @@ async def _fetch_invoices(tenant_id: str) -> pd.DataFrame:
         )
         rows = result.all()
     if not rows:
-        return pd.DataFrame(
-            columns=["Número", "Cliente", "Fecha", "Base (€)", "IVA (€)", "Total (€)", "Estado"]
-        )
+        return pd.DataFrame(columns=["Número", "Cliente", "Fecha", "Base (€)", "IVA (€)", "Total (€)", "Estado"])
     return pd.DataFrame(
         [
             {
@@ -49,10 +47,7 @@ async def _fetch_invoices(tenant_id: str) -> pd.DataFrame:
 async def _fetch_clients(tenant_id: str) -> pd.DataFrame:
     async with AsyncSessionLocal() as db:
         result = await db.execute(
-            select(Client)
-            .where(Client.tenant_id == uuid.UUID(tenant_id))
-            .order_by(Client.name)
-            .limit(500)
+            select(Client).where(Client.tenant_id == uuid.UUID(tenant_id)).order_by(Client.name).limit(500)
         )
         clients = result.scalars().all()
     if not clients:
@@ -73,9 +68,7 @@ async def _fetch_clients(tenant_id: str) -> pd.DataFrame:
 async def _fetch_employees(tenant_id: str) -> pd.DataFrame:
     async with AsyncSessionLocal() as db:
         result = await db.execute(
-            select(Employee)
-            .where(Employee.tenant_id == uuid.UUID(tenant_id))
-            .order_by(Employee.name)
+            select(Employee).where(Employee.tenant_id == uuid.UUID(tenant_id)).order_by(Employee.name)
         )
         employees = result.scalars().all()
     if not employees:
@@ -154,10 +147,7 @@ async def _fetch_payrolls(tenant_id: str) -> pd.DataFrame:
 async def _fetch_products(tenant_id: str) -> pd.DataFrame:
     async with AsyncSessionLocal() as db:
         result = await db.execute(
-            select(Product)
-            .where(Product.tenant_id == uuid.UUID(tenant_id))
-            .order_by(Product.name)
-            .limit(500)
+            select(Product).where(Product.tenant_id == uuid.UUID(tenant_id)).order_by(Product.name).limit(500)
         )
         products = result.scalars().all()
     if not products:

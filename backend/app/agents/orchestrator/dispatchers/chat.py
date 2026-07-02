@@ -45,9 +45,7 @@ REGLAS:
 
 async def _dispatch_chat(state: OrchestratorState, subtask: dict) -> AgentResult:
     """Responde directamente al usuario usando el LLM con contexto del tenant."""
-    intent = subtask.get("params", {}).get(
-        "intent", state.get("current_intent", state["user_intent"])
-    )
+    intent = subtask.get("params", {}).get("intent", state.get("current_intent", state["user_intent"]))
     tenant_id = state["tenant_id"]
 
     try:
@@ -79,9 +77,7 @@ async def _dispatch_chat(state: OrchestratorState, subtask: dict) -> AgentResult
             llm = await get_llm_for_tenant(tenant_id, db, temperature=0)
         response = await llm.ainvoke(messages)
 
-        response_text = (
-            response.content.strip() if response.content else "No he podido generar una respuesta."
-        )
+        response_text = response.content.strip() if response.content else "No he podido generar una respuesta."
 
         return {
             "subtask_id": subtask["id"],
@@ -223,9 +219,7 @@ async def _load_workflow_context(tenant_id: str) -> str:
             lines = ["AUTOMATIZACIONES CONFIGURADAS:"]
             for wf in workflows:
                 status = "activa" if wf.is_active else "pausada"
-                lines.append(
-                    f"- '{wf.name}' ({status}) — trigger: {wf.trigger_type}, modo: {wf.execution_mode}"
-                )
+                lines.append(f"- '{wf.name}' ({status}) — trigger: {wf.trigger_type}, modo: {wf.execution_mode}")
 
             # Últimas 10 ejecuciones
             wf_ids = [wf.id for wf in workflows]
@@ -305,10 +299,7 @@ async def _load_hr_context(tenant_id: str) -> str:
             er = emp_stats.one()
 
             employees = await db.execute(
-                select(Employee)
-                .where(Employee.tenant_id == UUID(tenant_id))
-                .order_by(Employee.name)
-                .limit(20)
+                select(Employee).where(Employee.tenant_id == UUID(tenant_id)).order_by(Employee.name).limit(20)
             )
             emp_list = employees.scalars().all()
 
@@ -321,10 +312,7 @@ async def _load_hr_context(tenant_id: str) -> str:
             pr = pay_stats.one()
 
             recent_payrolls = await db.execute(
-                select(Payroll)
-                .where(Payroll.tenant_id == UUID(tenant_id))
-                .order_by(desc(Payroll.issue_date))
-                .limit(10)
+                select(Payroll).where(Payroll.tenant_id == UUID(tenant_id)).order_by(desc(Payroll.issue_date)).limit(10)
             )
             pay_list = recent_payrolls.scalars().all()
 
@@ -341,12 +329,8 @@ async def _load_hr_context(tenant_id: str) -> str:
                 for p in pay_list:
                     fecha = p.issue_date.strftime("%d/%m/%Y") if p.issue_date else "?"
                     # Buscar nombre empleado
-                    emp_name = next(
-                        (e.name for e in emp_list if e.id == p.employee_id), str(p.employee_id)
-                    )
-                    lines.append(
-                        f"    · {emp_name} | neto: {float(p.net_salary or 0):.2f} € | {p.status} | {fecha}"
-                    )
+                    emp_name = next((e.name for e in emp_list if e.id == p.employee_id), str(p.employee_id))
+                    lines.append(f"    · {emp_name} | neto: {float(p.net_salary or 0):.2f} € | {p.status} | {fecha}")
             return "\n".join(lines)
     except Exception as e:
         logger.debug("Error cargando contexto de RRHH: %s", e)
@@ -358,10 +342,7 @@ async def _load_crm_context(tenant_id: str) -> str:
     try:
         async with AsyncSessionLocal() as db:
             clients = await db.execute(
-                select(Client)
-                .where(Client.tenant_id == UUID(tenant_id))
-                .order_by(Client.name)
-                .limit(20)
+                select(Client).where(Client.tenant_id == UUID(tenant_id)).order_by(Client.name).limit(20)
             )
             client_list = clients.scalars().all()
 
@@ -376,15 +357,11 @@ async def _load_crm_context(tenant_id: str) -> str:
             lines = [f"CRM (clientes: {len(client_list)} | oportunidades: {len(opp_list)}):"]
             lines.append("  Clientes:")
             for c in client_list:
-                lines.append(
-                    f"    · {c.name} | {c.nif or '-'} | {c.email or '-'} | {c.client_type}"
-                )
+                lines.append(f"    · {c.name} | {c.nif or '-'} | {c.email or '-'} | {c.client_type}")
             if opp_list:
                 lines.append("  Oportunidades:")
                 for o in opp_list:
-                    client_name = next(
-                        (c.name for c in client_list if c.id == o.client_id), str(o.client_id)
-                    )
+                    client_name = next((c.name for c in client_list if c.id == o.client_id), str(o.client_id))
                     lines.append(
                         f"    · {o.title} | {client_name} | {float(o.expected_value or 0):.0f} € | etapa: {o.stage}"
                     )
@@ -423,9 +400,7 @@ async def _load_banking_context(tenant_id: str) -> str:
             for t in tx_list:
                 fecha = t.date.strftime("%d/%m/%Y") if t.date else "?"
                 signo = "+" if (t.amount or 0) >= 0 else ""
-                lines.append(
-                    f"  · {fecha} | {t.description or '-'} | {signo}{float(t.amount or 0):.2f} € | {t.status}"
-                )
+                lines.append(f"  · {fecha} | {t.description or '-'} | {signo}{float(t.amount or 0):.2f} € | {t.status}")
             return "\n".join(lines)
     except Exception as e:
         logger.debug("Error cargando contexto de banca: %s", e)

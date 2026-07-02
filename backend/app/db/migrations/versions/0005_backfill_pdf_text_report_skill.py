@@ -35,8 +35,4 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.get_bind().execute(
-        sa.text(
-            "DELETE FROM agent_skills WHERE tool_module = 'reports.create_pdf_text_report'"
-        )
-    )
+    op.get_bind().execute(sa.text("DELETE FROM agent_skills WHERE tool_module = 'reports.create_pdf_text_report'"))
