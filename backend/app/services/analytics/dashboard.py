@@ -31,6 +31,7 @@ from app.db.models.models import (
     Task,
 )
 from app.db.models.tasks import AgentExecutionTrace
+from app.services.billing.constants import EMITTED_INVOICE_TYPES
 from app.services.cache import cached_json
 
 # TTL del dashboard: 5 min. Valor de compromiso entre frescura percibida
@@ -40,11 +41,8 @@ from app.services.cache import cached_json
 _DASHBOARD_TTL_SECONDS = 300
 
 DEMO_TX_PREFIX = "[DEMO]"
-# Facturas EMITIDAS por nosotros = issued + rectificativas/abono (mismo conjunto
-# canónico que services/billing/commands.py y el índice único parcial). Las
-# rectificativas llevan amount_total negativo, así que func.sum() las neutraliza
-# correctamente en ingresos/IVA/top-clientes; excluirlas sobreestimaba las cifras (B8).
-_EMITTED = ("issued", "rectificativa")
+# Conjunto canónico de facturas emitidas — fuente única en billing/constants.py.
+_EMITTED = EMITTED_INVOICE_TYPES
 _MONTHS_ES = [
     "Ene",
     "Feb",
