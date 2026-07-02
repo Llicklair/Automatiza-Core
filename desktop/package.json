@@ -50,7 +50,7 @@
     "publish": {
       "provider": "github",
       "owner": "Llicklair",
-      "repo": "Automatiza-Core"
+      "repo": "automatizacore-releases"
     },
     "files": [
       "main.js",

@@ -43,7 +43,12 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: electron-build
-          path: desktop/dist/*.exe
+          # latest.yml y .blockmap son OBLIGATORIOS para electron-updater:
+          # sin ellos los clientes nunca detectan la actualización.
+          path: |
+            desktop/dist/*.exe
+            desktop/dist/*.blockmap
+            desktop/dist/latest.yml
           retention-days: 30
 
   release:
@@ -65,7 +70,13 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v3
         with:
+          # Los clientes actualizan desde el repo PÚBLICO de releases (el código
+          # sigue privado). electron-updater lee latest.yml de aquí.
+          repository: Llicklair/automatizacore-releases
           generate_release_notes: true
           files: dist/*
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GITHUB_TOKEN no puede escribir en otro repo: RELEASES_TOKEN es un
+          # secret del repo fuente con permiso de contents:write sobre
+          # automatizacore-releases (recomendado: PAT fine-grained).
+          GITHUB_TOKEN: ${{ secrets.RELEASES_TOKEN }}
