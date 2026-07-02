@@ -42,10 +42,10 @@ export default function PayrollsPage() {
                 icon={WalletCards}
                 actions={
                     <div className="flex flex-wrap gap-2">
-                        <Button variant="outline" onClick={openAutoModal}>
+                        <Button variant="outline" onClick={openAutoModal} title={t("nominas.autoCalculateHint")}>
                             <Calculator className="w-4 h-4 mr-2 text-emerald-400" /> {t("nominas.autoCalculate")}
                         </Button>
-                        <Button onClick={handleGeneratePayrolls} disabled={generatingPayrolls}>
+                        <Button onClick={handleGeneratePayrolls} disabled={generatingPayrolls} title={t("nominas.generateWithAiHint")}>
                             {generatingPayrolls
                                 ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("nominas.generating")}</>
                                 : <><Sparkles className="w-4 h-4 mr-2" /> {t("nominas.generateWithAi")}</>

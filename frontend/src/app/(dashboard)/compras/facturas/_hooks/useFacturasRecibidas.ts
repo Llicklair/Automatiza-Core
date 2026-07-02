@@ -120,7 +120,22 @@ export function useFacturasRecibidas() {
                 tax_percentage: ln.tax_percentage ?? 21,
             }));
 
-            if (supplier && lines.length > 0) {
+            // El alta automática exige confirmación explícita: son datos fiscales
+            // extraídos por OCR/IA y el usuario debe validar lo interpretado.
+            const autoCreate =
+                supplier && lines.length > 0 &&
+                (await showConfirm({
+                    message: t("toasts.scanConfirm", {
+                        name: draft.emisor?.name ?? "",
+                        amount: draft.amount_total.toFixed(2),
+                        n: lines.length,
+                        conf: Math.round((draft.confidence ?? 0.5) * 100),
+                    }),
+                    confirmLabel: tc("confirm"),
+                    confirmVariant: "primary",
+                }));
+
+            if (autoCreate && supplier) {
                 const inv = await api.erp.invoices.create(supplier.id, {
                     invoice_number: draft.invoice_number || null,
                     date: new Date(draft.issue_date).toISOString(),
@@ -149,7 +164,7 @@ export function useFacturasRecibidas() {
         } catch (err: any) {
             toast.error(err?.message || t("toasts.scanError"));
         }
-    }, [clients, toast, t]);
+    }, [clients, toast, t, tc]);
 
     const handleStatusChange = useCallback(async (invId: string, nextStatus: string) => {
         try {

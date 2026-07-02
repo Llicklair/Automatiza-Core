@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import {
     ArrowLeft, User, Mail, MapPin, Hash, FileText, CheckCircle2,
-    Clock, XCircle, Loader2, Plus, ExternalLink
+    Clock, XCircle, Loader2, Plus, ExternalLink, Activity
 } from "lucide-react";
 import Link from "next/link";
 import { useClienteDetalle } from "./_hooks/useClienteDetalle";
@@ -91,12 +91,20 @@ export default function ClientDetailPage() {
                                 )}
                             </div>
                         </div>
-                        <Link
-                            href={`/ventas/facturas/nueva?client=${client.id}`}
-                            className="flex items-center gap-2 bg-primary hover:bg-primary text-foreground text-sm px-4 py-2 rounded-xl transition-colors"
-                        >
-                            <Plus className="w-4 h-4" /> {t("newInvoice")}
-                        </Link>
+                        <div className="flex items-center gap-2">
+                            <Link
+                                href={`/crm/actividades?client=${client.id}`}
+                                className="flex items-center gap-2 border border-border hover:bg-muted/60 text-foreground text-sm px-4 py-2 rounded-xl transition-colors"
+                            >
+                                <Activity className="w-4 h-4" /> {t("crmActivities")}
+                            </Link>
+                            <Link
+                                href={`/ventas/facturas/nueva?client=${client.id}`}
+                                className="flex items-center gap-2 bg-primary hover:bg-primary text-foreground text-sm px-4 py-2 rounded-xl transition-colors"
+                            >
+                                <Plus className="w-4 h-4" /> {t("newInvoice")}
+                            </Link>
+                        </div>
                     </div>
                 </div>
             </div>

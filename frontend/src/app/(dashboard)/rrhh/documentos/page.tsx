@@ -15,7 +15,8 @@ export default function HRDocumentosPage() {
     const {
         docs, loading, generating, error, toast,
         form, setForm,
-        nlText, setNlText, nlGenerating,
+        nlText, setNlText,
+        employeeFilter, setEmployeeFilter,
         handleNLGenerate, handleGenerate, handleApprove, handleDelete,
     } = useHRDocumentos();
 
@@ -39,9 +40,9 @@ export default function HRDocumentosPage() {
                     placeholder={t("documentos.nlPlaceholder")}
                     className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
                 />
-                <Button size="sm" onClick={handleNLGenerate} disabled={!nlText.trim() || nlGenerating}>
-                    {nlGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Send className="w-3.5 h-3.5 mr-1.5" />}
-                    {nlGenerating ? t("documentos.generating") : t("documentos.generate")}
+                <Button size="sm" onClick={handleNLGenerate} disabled={!nlText.trim()}>
+                    <Send className="w-3.5 h-3.5 mr-1.5" />
+                    {t("documentos.nlPrepare")}
                 </Button>
             </div>
 
@@ -91,7 +92,15 @@ export default function HRDocumentosPage() {
                 </div>
 
                 <div className="lg:col-span-3 space-y-3">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("documentos.listTitle", { n: docs.length })}</p>
+                    <div className="flex items-center justify-between gap-3">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("documentos.listTitle", { n: docs.length })}</p>
+                        <Input
+                            value={employeeFilter}
+                            onChange={e => setEmployeeFilter(e.target.value)}
+                            placeholder={t("documentos.filterByEmployee")}
+                            className="w-56 h-8 text-xs"
+                        />
+                    </div>
                     {loading ? (
                         <div className="flex justify-center py-16"><div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" /></div>
                     ) : docs.length === 0 ? (
