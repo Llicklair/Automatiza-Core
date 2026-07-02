@@ -59,8 +59,6 @@ export function useAutomatizaciones() {
         setShowModal: crud.setShowModal,
         editingWorkflow: crud.editingWorkflow,
         runningId: execution.runningId,
-        toast: crud.toast,
-        setToast: crud.setToast,
         expandedId: execution.expandedId,
         executions: execution.executions,
         loadingExec: execution.loadingExec,

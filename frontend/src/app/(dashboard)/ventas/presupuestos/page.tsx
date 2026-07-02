@@ -3,7 +3,6 @@
 import { usePresupuestos } from "./_hooks/usePresupuestos";
 import QuotesTable from "./_components/QuotesTable";
 import QuoteModal from "./_components/QuoteModal";
-import QuoteToast from "./_components/QuoteToast";
 import { FileText, Plus, Search, Clock } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -18,7 +17,6 @@ export default function QuotesPage() {
         selectedClient, setSelectedClient,
         validUntil, setValidUntil,
         lines, isSubmitting, convertingId,
-        toast, setToast,
         handleCreate, handleConvert, handleDelete, handleStatusChange,
         updateLine, addLine,
         t, tc,
@@ -86,8 +84,6 @@ export default function QuotesPage() {
                     tc={tc}
                 />
             )}
-
-            {toast && <QuoteToast toast={toast} onClose={() => setToast(null)} />}
         </PageContainer>
     );
 }

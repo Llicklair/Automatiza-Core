@@ -13,7 +13,7 @@ import { PageContainer } from "@/components/shared/PageContainer";
 export default function HRDocumentosPage() {
     const t = useTranslations("rrhh");
     const {
-        docs, loading, generating, error, toast,
+        docs, loading, generating, error,
         form, setForm,
         nlText, setNlText,
         employeeFilter, setEmployeeFilter,
@@ -22,9 +22,6 @@ export default function HRDocumentosPage() {
 
     return (
         <PageContainer>
-            {toast && (
-                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card border border-border text-foreground text-sm px-5 py-2.5 rounded-full shadow-lg">{toast}</div>
-            )}
             <PageHeader
                 title={t("documentos.title")}
                 description={t("documentos.description")}

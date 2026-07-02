@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Send, Loader2, CheckCircle2, AlertCircle, X } from "lucide-react";
+import { Send, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -17,10 +17,9 @@ const fmt = (v: number) =>
 
 export default function RemesasPage() {
     const t = useTranslations("tesoreria");
-    const tc = useTranslations("common");
     const {
         loading, items, activeType, setActiveType, showModal, setShowModal,
-        toast, setToast, agent, filtered, selected, totalSelected,
+        agent, filtered, selected, totalSelected,
         toggle, selectAll, deselectAll, clearSelection, handleGenerar,
     } = useRemesas();
 
@@ -90,15 +89,6 @@ export default function RemesasPage() {
                     selectedCount={selected.length} totalSelected={totalSelected}
                     onClose={() => setShowModal(false)}
                     onCloseAndReset={() => { setShowModal(false); agent.reset(); clearSelection(); }} />
-            )}
-
-            {toast && (
-                <div className={cn("fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl text-sm font-medium",
-                    toast.type === "ok" ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400" : "bg-red-500/10 border border-red-500/20 text-red-400")}>
-                    {toast.type === "ok" ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
-                    {toast.msg}
-                    <Button variant="ghost" size="icon" className="h-6 w-6 opacity-60 hover:opacity-100" onClick={() => setToast(null)} aria-label={tc("close")}><X className="w-4 h-4" aria-hidden="true" /></Button>
-                </div>
             )}
         </PageContainer>
     );

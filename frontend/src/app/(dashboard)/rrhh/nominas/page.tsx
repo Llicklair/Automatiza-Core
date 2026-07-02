@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import {
     WalletCards, CheckCircle2, Bot, Loader2, Sparkles,
-    AlertCircle, X, Calculator, Wallet, ShieldCheck, Receipt,
+    Calculator, Wallet, ShieldCheck, Receipt,
 } from "lucide-react";
 import { KpiCard } from "@/components/shared/KpiCard";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -17,7 +17,7 @@ import { PageContainer } from "@/components/shared/PageContainer";
 export default function PayrollsPage() {
     const {
         filtered, isLoading, drafts, kpis, uniqueEmployees, fmt,
-        generatingPayrolls, approvingId, downloadingId, toast, setToast,
+        generatingPayrolls, approvingId, downloadingId,
         search, setSearch, filterMonth, setFilterMonth, filterEmpId, setFilterEmpId,
         autoOpen, setAutoOpen, autoEmployees, autoEmpLoading,
         autoEmpId, setAutoEmpId, autoPreview, autoPreviewLoading, autoSubmitting,
@@ -99,24 +99,6 @@ export default function PayrollsPage() {
                     onClose={() => setAutoOpen(false)}
                     onSubmit={() => void handleAutoCreate()}
                 />
-            )}
-
-            {/* Inline toast (gestionado por usePayrolls) */}
-            {toast && (
-                <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl text-sm font-medium max-w-sm border
-                    ${toast.type === "ok"
-                        ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
-                        : "bg-red-500/10 border-red-500/20 text-red-400"
-                    }`}>
-                    {toast.type === "ok"
-                        ? <CheckCircle2 className="w-5 h-5 shrink-0" />
-                        : <AlertCircle className="w-5 h-5 shrink-0" />
-                    }
-                    <span className="flex-1">{toast.msg}</span>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 opacity-60 hover:opacity-100" onClick={() => setToast(null)} aria-label={t("nominas.closeNotificationAria")}>
-                        <X className="w-4 h-4" aria-hidden="true" />
-                    </Button>
-                </div>
             )}
         </PageContainer>
     );

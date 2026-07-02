@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
+import { useToastStore } from "@/stores/toast";
 import type { InvoiceDraft } from "@/lib/api/erp";
 
 type Row = { draft: InvoiceDraft; filename: string };
@@ -18,6 +19,7 @@ type Row = { draft: InvoiceDraft; filename: string };
  */
 export function FacturasImportPanel({ initialFiles }: { initialFiles?: File[] } = {}) {
     const t = useTranslations("escaner");
+    const toast = useToastStore();
     const [rows, setRows] = useState<Row[]>([]);
     const [scanning, setScanning] = useState(false);
     const [importing, setImporting] = useState(false);
@@ -85,9 +87,15 @@ export function FacturasImportPanel({ initialFiles }: { initialFiles?: File[] } 
             if (unmatched) msg += ` · ${t("facturas.summaryUnmatched", { count: unmatched })}`;
             if (failed) msg += ` · ${t("facturas.summaryFailed", { count: failed })}`;
             setSummary(msg);
+            // Toast GLOBAL además del resumen local: el aviso llega aunque el
+            // usuario haya navegado a otra página durante la importación.
+            if (failed === 0) toast.success(msg);
+            else toast.warning(msg);
             if (failed === 0) setRows([]);
         } catch (err: unknown) {
-            setSummary(err instanceof Error ? err.message : t("facturas.importError"));
+            const msg = err instanceof Error ? err.message : t("facturas.importError");
+            setSummary(msg);
+            toast.error(msg);
         } finally {
             setImporting(false);
         }

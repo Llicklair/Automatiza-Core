@@ -6,6 +6,7 @@ import { api, type Invoice, type Payroll, type Task } from "@/lib/api";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { logError } from "@/lib/logger";
+import { useToastStore } from "@/stores/toast";
 
 const fmt = (v: number) =>
     new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(v);
@@ -40,6 +41,9 @@ function useAgentTask() {
 
     const launch = useCallback(async (intent: string) => {
         stop(); setError(null); setStatus("creating");
+        // Pre-traducidos aquí: dentro del interval `t` queda sombreado por la Task.
+        const doneMsg = t("remesaModal.successTitle");
+        const failMsg = t("remesaModal.unknownError");
         try {
             const task = await api.tasks.create("banking", intent);
             setStatus("polling");
@@ -50,12 +54,17 @@ function useAgentTask() {
                         stop();
                         setStatus(t.status === "done" ? "done" : "failed");
                         if (t.error_message) setError(t.error_message);
+                        // Toast global: el aviso llega aunque el usuario haya navegado.
+                        if (t.status === "done") useToastStore.getState().success(doneMsg);
+                        else useToastStore.getState().error(t.error_message || failMsg);
                     }
                 } catch { /* keep polling */ }
             }, 2000);
         } catch (e) {
             setStatus("failed");
-            setError(e instanceof Error ? e.message : t("remesas.errorCreatingTask"));
+            const msg = e instanceof Error ? e.message : t("remesas.errorCreatingTask");
+            setError(msg);
+            useToastStore.getState().error(msg);
         }
     }, [stop, t]);
 
@@ -69,13 +78,7 @@ export function useRemesas() {
     const [items, setItems] = useState<RemesaItem[]>([]);
     const [activeType, setActiveType] = useState<RemesaType>("pagos");
     const [showModal, setShowModal] = useState(false);
-    const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
     const agent = useAgentTask();
-
-    const showToast = (msg: string, type: "ok" | "err") => {
-        setToast({ msg, type });
-        setTimeout(() => setToast(null), 5000);
-    };
 
     const loadData = useCallback(async () => {
         setLoading(true);
@@ -161,7 +164,7 @@ export function useRemesas() {
 
     return {
         loading, items, activeType, setActiveType, showModal, setShowModal,
-        toast, setToast, agent, filtered, selected, totalSelected,
+        agent, filtered, selected, totalSelected,
         toggle, selectAll, deselectAll, clearSelection, handleGenerar,
     };
 }

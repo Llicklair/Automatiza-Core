@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import {
     Zap, Plus, RotateCw, Loader2,
-    BrainCircuit, Sparkles, Send, CheckCircle2, AlertCircle, X,
+    BrainCircuit, Sparkles, Send,
     Bot,
 } from "lucide-react";
 import InfoBanner from "@/components/InfoBanner";
@@ -18,7 +18,7 @@ export default function WorkflowsPage() {
     const TEMPLATES = buildTemplates(t);
     const {
         workflows, isLoading, isSubmitting, showModal, setShowModal,
-        editingWorkflow, runningId, toast, setToast,
+        editingWorkflow, runningId,
         expandedId, executions, loadingExec, refreshingExec,
         name, setName, description, setDescription,
         triggerType, setTriggerType, actionType, setActionType,
@@ -195,15 +195,6 @@ export default function WorkflowsPage() {
                             />
                         ))}
                     </div>
-                </div>
-            )}
-
-            {/* Toast */}
-            {toast && (
-                <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl text-sm font-medium ${toast.type === "ok" ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400" : "bg-red-500/10 border border-red-500/20 text-red-400"}`}>
-                    {toast.type === "ok" ? <CheckCircle2 className="w-5 h-5 flex-shrink-0" /> : <AlertCircle className="w-5 h-5 flex-shrink-0" />}
-                    <span className="max-w-xs">{toast.msg}</span>
-                    <button onClick={() => setToast(null)} className="ml-2 opacity-60 hover:opacity-100"><X className="w-4 h-4" /></button>
                 </div>
             )}
 
