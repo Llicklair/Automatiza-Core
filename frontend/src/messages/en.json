@@ -143,6 +143,15 @@
       "title": "AI Activity",
       "viewAll": "View all"
     },
+    "alertsWidget": {
+      "title": "Active alerts",
+      "overdueInvoice": "Overdue invoice",
+      "dueSoonInvoice": "Invoice due soon",
+      "lowStock": "Low stock",
+      "pendingPayroll": "Pending payroll",
+      "generic": "Alert",
+      "more": "and {n} more…"
+    },
     "aiChat": {
       "clear": "Clear",
       "noResponse": "No response received.",
@@ -5526,7 +5535,8 @@
       "event": "Meeting / event",
       "reservation": "Reservation",
       "invoiceDue": "Invoice due date",
-      "payroll": "Payroll"
+      "payroll": "Payroll",
+      "leave": "Time off / vacation"
     },
     "weekdays": {
       "mon": "M",

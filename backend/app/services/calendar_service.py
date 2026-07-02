@@ -12,7 +12,7 @@ from sqlalchemy.orm import selectinload
 
 from app.db.models.billing import Invoice
 from app.db.models.calendar import Event, Reservation
-from app.db.models.hr import Payroll
+from app.db.models.hr import LeaveRequest, Payroll
 
 
 async def get_unified_calendar(
@@ -117,6 +117,32 @@ async def get_unified_calendar(
                 "color": "green",
                 "href": "/rrhh/nominas",
                 "subtitle": p.status,
+            }
+        )
+
+    # ── Vacaciones / ausencias aprobadas ─────────────────────────────────────
+    leave_labels = {"vacaciones": "Vacaciones", "baja_medica": "Baja médica", "excedencia": "Excedencia"}
+    leave_rows = await db.execute(
+        select(LeaveRequest)
+        .options(selectinload(LeaveRequest.employee))
+        .where(
+            LeaveRequest.tenant_id == tenant_id,
+            LeaveRequest.status == "approved",
+            LeaveRequest.start_date <= end,
+            LeaveRequest.end_date >= start,
+        )
+    )
+    for lv in leave_rows.scalars():
+        items.append(
+            {
+                "id": str(lv.id),
+                "source": "leave",
+                "title": f"{leave_labels.get(lv.leave_type, lv.leave_type)} · {lv.employee.name if lv.employee else '—'}",
+                "start": lv.start_date.isoformat(),
+                "end": lv.end_date.isoformat(),
+                "color": "teal",
+                "href": "/rrhh/jornada",
+                "subtitle": lv.leave_type,
             }
         )
 

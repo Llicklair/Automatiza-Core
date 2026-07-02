@@ -111,3 +111,9 @@ data-gym-cache/
 
 # Binario de cloudflared descargado para pruebas de acceso remoto (no versionar)
 tools/cloudflared.exe
+
+# Diagrama/mapa interno del proyecto: herramienta de DESARROLLO local, no se
+# distribuye. Revela toda la arquitectura (agentes, tools, rutas de codigo,
+# autonomia) y facilitaria replicar el proyecto. Vive en el arbol solo como
+# referencia; nunca se commitea.
+docs/diagrama-proyecto/

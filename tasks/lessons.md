@@ -4,6 +4,29 @@ Registro de patrones detectados durante el trabajo para no repetir errores.
 
 ---
 
+## 2026-07-02 — Workflow: `Promise.all(thunks)` no invoca los thunks (fan-out fantasma)
+
+**Contexto:** Verificando el diagrama del proyecto, 13 verificadores de dominio
+devolvieron `null` y el journal solo registró 2 agentes "started". Causa: en el script
+del Workflow definí `const thunks = xs.map(x => () => agent(...))` (thunks, estilo
+`parallel()`) pero los pasé a `Promise.all(thunks)`. `Promise.all` recibe FUNCIONES, no
+promesas; las trata como valores ya resueltos (las funciones mismas, sin ejecutarlas) y al
+serializar el resultado se vuelven `null`. Ningún `agent()` corrió.
+
+**Patrón antipatrón:** mezclar el patrón de thunks de `parallel(thunks)`/`pipeline` (que SÍ
+los invoca) con `Promise.all` (que NO). Síntoma: array `[null, null, …]`, `agent_count`
+bajo, sin transcripts de esos agentes, y otro agente "capaz" (el sintetizador) compensa
+leyendo el código él mismo → datos plausibles pero con huecos (se perdió el agente `excel`).
+
+**Regla de prevención:**
+1. Fan-out con `Promise.all` → invocar directamente: `Promise.all(xs.map(x => agent(...)))`
+   (promesas), o si se usan thunks, `Promise.all(thunks.map(t => t()))`.
+2. Thunks `() => agent()` SOLO para `parallel(thunks)`/`pipeline`, que los ejecutan.
+3. Validar el fan-out: comprobar el `agent_count` esperado y que no haya `null` en los
+   resultados ANTES de sintetizar; un sintetizador que "rellena" enmascara el fallo.
+
+---
+
 ## 2026-06-23 — "Prompt caching = margen" es falso por dos vías (verificar antes de barrer)
 
 **Contexto:** El consejo (item 7) marcó "14 SystemMessage sin cachear sangrando margen

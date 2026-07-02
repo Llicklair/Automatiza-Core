@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { api } from "@/lib/api";
+import { waitForTask, TaskTimeoutError } from "@/lib/api/tasks";
 
 export type Tab = "calendario" | "boe" | "consulta";
 
@@ -19,7 +20,6 @@ export interface Vencimiento {
 // umbral lo más probable es un cuelgue (LLM caído, scraper bloqueado, etc.).
 const TASK_POLL_TIMEOUT_MS = 90_000;
 const TASK_POLL_INTERVAL_MS = 2_000;
-const TERMINAL_STATUSES = new Set(["done", "failed", "awaiting_approval"]);
 
 type Translator = (key: string, values?: Record<string, string | number>) => string;
 
@@ -30,19 +30,30 @@ export async function executeTaskAndWait(
     onProgress?: (msg: string) => void,
 ) {
     const task = await api.tasks.create(domain, intent);
-    let currentTask = task;
     const start = Date.now();
 
-    while (!TERMINAL_STATUSES.has(currentTask.status)) {
-        if (Date.now() - start > TASK_POLL_TIMEOUT_MS) {
-            throw new Error(t("hook.timeout", { seconds: TASK_POLL_TIMEOUT_MS / 1000 }));
-        }
-        await new Promise(r => setTimeout(r, TASK_POLL_INTERVAL_MS));
-        currentTask = await api.tasks.get(task.id);
-        if (onProgress) {
+    // El polling vive en waitForTask; este interval solo mantiene la
+    // granularidad del callback de progreso (segundos transcurridos).
+    const progressTimer = onProgress
+        ? setInterval(() => {
             const elapsed = Math.round((Date.now() - start) / 1000);
             onProgress(t("hook.progress", { elapsed }));
+        }, TASK_POLL_INTERVAL_MS)
+        : null;
+
+    let currentTask;
+    try {
+        currentTask = await waitForTask(task.id, {
+            timeoutMs: TASK_POLL_TIMEOUT_MS,
+            intervalMs: TASK_POLL_INTERVAL_MS,
+        });
+    } catch (err) {
+        if (err instanceof TaskTimeoutError) {
+            throw new Error(t("hook.timeout", { seconds: TASK_POLL_TIMEOUT_MS / 1000 }));
         }
+        throw err;
+    } finally {
+        if (progressTimer) clearInterval(progressTimer);
     }
 
     if (currentTask.status === "failed") {

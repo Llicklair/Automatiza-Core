@@ -13,6 +13,7 @@ import { AiInsightsSection } from "./_components/AiInsightsSection";
 import { CashflowChart } from "./_components/CashflowChart";
 import { RecentInvoicesSection } from "./_components/RecentInvoicesSection";
 import { AiActivitySection } from "./_components/AiActivitySection";
+import { AlertsWidget } from "./_components/AlertsWidget";
 import { ApprovalsSection } from "./_components/ApprovalsSection";
 import { RrhhWidget } from "./_components/RrhhWidget";
 import { LiveTeamSection } from "./_components/LiveTeamSection";
@@ -83,6 +84,7 @@ export default function DashboardPage() {
 
                 {/* Columna Derecha Estrecha */}
                 <div className="space-y-6">
+                    <AlertsWidget />
                     <TimeSavedCard />
                     <RrhhWidget loading={loading} employees={employees} working={workingNow} />
                     <UsageWidget />

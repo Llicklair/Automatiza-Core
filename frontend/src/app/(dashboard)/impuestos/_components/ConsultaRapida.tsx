@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
+import { waitForTask, TaskTimeoutError } from "@/lib/api/tasks";
 import { AlertTriangle, MessageSquare, Loader2, Send } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,14 +31,7 @@ export function ConsultaRapida() {
         setQuestion(text);
         try {
             const task = await api.tasks.create("compliance", text);
-            let current = task;
-            let tries = 0;
-
-            while ((current.status === "pending" || current.status === "executing") && tries < 30) {
-                await new Promise(r => setTimeout(r, 2000));
-                current = await api.tasks.get(task.id);
-                tries++;
-            }
+            const current = await waitForTask(task.id, { timeoutMs: 60_000, intervalMs: 2_000 });
 
             if (current.status === "done") {
                 const results: any[] = current.agent_results || [];
@@ -47,7 +41,7 @@ export function ConsultaRapida() {
                 setError(current.error_message || t("consulta.noAnswer"));
             }
         } catch (err: any) {
-            setError(err.message);
+            setError(err instanceof TaskTimeoutError ? t("consulta.noAnswer") : err.message);
         } finally {
             setLoading(false);
         }
