@@ -7,7 +7,9 @@ import type { TelegramStatus } from "@/lib/api/messaging";
 import { useToastStore } from "@/stores/toast";
 import { showConfirm } from "@/stores/confirm";
 
-export function useConfiguracionIntegraciones() {
+export function useTelegramIntegration() {
+    // Claves i18n heredadas de la antigua página Configuración → Mensajería
+    // (fusionada en /integraciones el 2026-07-02).
     const t = useTranslations("configuracion");
     const show = useToastStore((s) => s.show);
 

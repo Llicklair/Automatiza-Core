@@ -2307,6 +2307,7 @@
       "cleanup": "Limpiar",
       "newTask": "Nueva tarea",
       "infoTitle": "¿Qué es una tarea?",
+      "infoBody": "Una instrucción puntual que un agente ejecuta UNA vez y cuyo resultado queda en el historial, p. ej. <example>«Genera las nóminas de este mes»</example> o <example>«Resume las facturas pendientes de cobro»</example>. El chat de arriba es para preguntar; una tarea es para delegar trabajo.",
       "infoLink": "¿Buscas reglas automáticas? Ir a Automatizaciones →",
       "inProgress": "En proceso ({n})",
       "colInstruction": "Instrucción",
@@ -3764,7 +3765,9 @@
       "loadingShort": "Cargando...",
       "noMovements": "Sin movimientos registrados.",
       "noReference": "Sin referencia",
-      "unitsShort": "{value} uds."
+      "unitsShort": "{value} uds.",
+      "boxesShort": "{value} cajas",
+      "writeOff": "Dar de baja stock"
     },
     "movementModal": {
       "title": "Registrar movimiento",

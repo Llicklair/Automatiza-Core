@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { CheckCircle2, XCircle, Loader2, Plug, Building2, Mail, Cloud, HardDrive, Server } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, Plug, Building2, Mail, Cloud, HardDrive, Server, Send } from "lucide-react";
 import InfoBanner from "@/components/InfoBanner";
 import { useIntegraciones } from "./_hooks/useIntegraciones";
+import { useTelegramIntegration } from "./_hooks/useTelegramIntegration";
 
 const SMTP_PRESETS: Record<string, { imap_host: string; imap_port: number; smtp_host: string; smtp_port: number; helpKey: string }> = {
     gmail: { imap_host: "imap.gmail.com", imap_port: 993, smtp_host: "smtp.gmail.com", smtp_port: 587, helpKey: "email.help.gmail" },
@@ -153,6 +154,56 @@ function EmailSmtpForm({
                 {busy ? <><Loader2 className="w-4 h-4 animate-spin" /> {t("email.verifying")}</> : <><Plug className="w-4 h-4" /> {t("email.connect")}</>}
             </button>
         </form>
+    );
+}
+
+function TelegramSection() {
+    // Antes vivía en Configuración → Mensajería; fusionada aquí para que haya
+    // un único hub de integraciones. Las claves i18n conservan su namespace.
+    const t = useTranslations("configuracion");
+    const { tgStatus, tgLoading, linkUrl, handleTelegramConnect, handleTelegramDisconnect } =
+        useTelegramIntegration();
+    return (
+        <IntegrationCard
+            icon={<Send className="w-5 h-5 text-blue-400" />}
+            iconBg="bg-blue-500/10 border border-blue-500/20"
+            title="Telegram" subtitle={t("integraciones.telegramDescription")}
+            loading={tgLoading} connected={Boolean(tgStatus?.connected)}
+        >
+            {tgStatus?.connected ? (
+                <div className="space-y-3">
+                    <div className="flex gap-6 text-sm text-foreground">
+                        <span>{t("integraciones.chatIdLabel")} <code className="text-muted-foreground">{tgStatus.chat_id}</code></span>
+                        {tgStatus.username && (
+                            <span>{t("integraciones.usernameLabel")} <code className="text-muted-foreground">@{tgStatus.username}</code></span>
+                        )}
+                    </div>
+                    <button onClick={handleTelegramDisconnect} disabled={tgLoading}
+                        className="px-4 py-2 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 text-sm transition disabled:opacity-50">
+                        {tgLoading ? t("integraciones.disconnecting") : t("integraciones.disconnectTelegram")}
+                    </button>
+                </div>
+            ) : (
+                <div className="space-y-3">
+                    {linkUrl ? (
+                        <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                            <p className="text-sm text-blue-300 mb-2">{t("integraciones.openLinkPrompt")}</p>
+                            <a href={linkUrl} target="_blank" rel="noopener noreferrer"
+                                className="text-blue-400 underline hover:text-blue-300 break-all text-sm">
+                                {linkUrl}
+                            </a>
+                            <p className="text-xs text-muted-foreground mt-2">{t("integraciones.waitingLink")}</p>
+                        </div>
+                    ) : (
+                        <button onClick={handleTelegramConnect} disabled={tgLoading}
+                            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-foreground text-sm font-medium transition">
+                            {tgLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> {t("integraciones.generatingLink")}</> : <><Send className="w-4 h-4" /> {t("integraciones.linkTelegram")}</>}
+                        </button>
+                    )}
+                    <p className="text-xs text-muted-foreground">{t("integraciones.botRequired")}</p>
+                </div>
+            )}
+        </IntegrationCard>
     );
 }
 
@@ -380,6 +431,9 @@ export default function IntegracionesPage() {
                     </div>
                 )}
             </IntegrationCard>
+
+            {/* Telegram (fusionado desde Configuración → Mensajería) */}
+            <TelegramSection />
         </div>
     );
 }
