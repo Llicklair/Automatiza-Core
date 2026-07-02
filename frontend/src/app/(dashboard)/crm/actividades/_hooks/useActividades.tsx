@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api, Activity, Client } from "@/lib/api";
 import { useToastStore } from "@/stores/toast";
@@ -20,6 +20,22 @@ export function useActividades() {
     const [type, setType] = useState("note");
     const [description, setDescription] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [search, setSearch] = useState("");
+
+    const filteredActivities = useMemo(() => {
+        const term = search.trim().toLowerCase();
+        return activities.filter(a => {
+            if (selectedClient && a.client_id !== selectedClient) return false;
+            if (!term) return true;
+            const clientName = a.client_id
+                ? (clients.find(c => c.id === a.client_id)?.name ?? "")
+                : "";
+            return (
+                (a.description ?? "").toLowerCase().includes(term) ||
+                clientName.toLowerCase().includes(term)
+            );
+        });
+    }, [activities, clients, search, selectedClient]);
 
     const loadData = async () => {
         setIsLoading(true);
@@ -91,7 +107,8 @@ export function useActividades() {
     };
 
     return {
-        activities, clients, isLoading,
+        activities: filteredActivities, clients, isLoading,
+        search, setSearch,
         showModal, setShowModal,
         selectedClient, setSelectedClient,
         type, setType,
