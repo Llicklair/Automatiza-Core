@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { PlanGuard } from "@/components/layout/PlanGuard";
 import { Header } from "@/components/layout/Header";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -159,7 +160,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <Header />
                 <main id="main-content" className="flex-1 overflow-y-auto relative" style={{ zIndex: 1 }}>
                     <ErrorBoundary section={t("layout.sectionApp")}>
-                        {children}
+                        <PlanGuard>{children}</PlanGuard>
                     </ErrorBoundary>
                 </main>
             </div>

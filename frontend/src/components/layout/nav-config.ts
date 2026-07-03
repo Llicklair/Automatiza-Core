@@ -133,7 +133,7 @@ export const NAV_SECTIONS: NavSection[] = [
     {
         title: "Verifactu",
         items: [
-            { label: "Configuración fiscal (AEAT)", icon: BadgeCheck, href: "/configuracion/verifactu", adminOnly: true, requiredPlan: "pro" },
+            { label: "Configuración fiscal (AEAT)", icon: BadgeCheck, href: "/configuracion/verifactu", adminOnly: true },
         ],
     },
     {
@@ -179,6 +179,33 @@ export const NAV_SECTIONS: NavSection[] = [
         ],
     },
 ];
+
+/**
+ * Plan mínimo requerido para una ruta, según NAV_SECTIONS (con herencia: un
+ * grupo con requiredPlan lo propaga a sus subItems). Devuelve el del match de
+ * href MÁS específico. Alimenta el guard de página (PlanGuard) para que una URL
+ * tecleada directamente no salte el candado — el backend ya lo bloquea, esto es
+ * la capa de UX.
+ */
+export function requiredPlanForPath(pathname: string): "pro" | "gestoria" | undefined {
+    let bestLen = -1;
+    let bestPlan: "pro" | "gestoria" | undefined;
+    const consider = (href: string | undefined, plan?: "pro" | "gestoria") => {
+        if (!href) return;
+        const match = pathname === href || (href !== "/" && pathname.startsWith(href + "/"));
+        if (match && href.length > bestLen) {
+            bestLen = href.length;
+            bestPlan = plan;
+        }
+    };
+    for (const section of NAV_SECTIONS) {
+        for (const item of section.items) {
+            consider(item.href, item.requiredPlan);
+            for (const sub of item.subItems ?? []) consider(sub.href, sub.requiredPlan ?? item.requiredPlan);
+        }
+    }
+    return bestPlan;
+}
 
 // Route label mapping for breadcrumbs - flattened from NAV_SECTIONS
 export const ROUTE_LABELS: Record<string, string> = {};

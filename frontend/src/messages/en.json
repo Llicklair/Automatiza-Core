@@ -1,4 +1,9 @@
 {
+  "planGuard": {
+    "title": "{plan} plan feature",
+    "body": "This section is available on the {plan} plan. Upgrade your plan to unlock it.",
+    "cta": "View my plan"
+  },
   "common": {
     "loading": "Loading...",
     "save": "Save",

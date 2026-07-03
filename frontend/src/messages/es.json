@@ -1,4 +1,9 @@
 {
+  "planGuard": {
+    "title": "Función del plan {plan}",
+    "body": "Esta sección está disponible en el plan {plan}. Mejora tu plan para desbloquearla.",
+    "cta": "Ver mi plan"
+  },
   "common": {
     "loading": "Cargando...",
     "save": "Guardar",

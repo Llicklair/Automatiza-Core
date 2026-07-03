@@ -120,8 +120,10 @@ limiter.enabled = False
 # El middleware de licencia es fail-closed (bloquea con 402 si license_valid no
 # está fijado). En tests el lifespan no valida licencia, así que lo marcamos
 # válido para no bloquear las rutas protegidas.
+# plan="gestoria" (tier máximo) para que require_plan deje pasar TODAS las rutas
+# gateadas (pro/gestoría) — los tests ejercitan features de todos los planes.
 app.state.license_valid = True
-app.state.license_plan = "test"
+app.state.license_plan = "gestoria"
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
