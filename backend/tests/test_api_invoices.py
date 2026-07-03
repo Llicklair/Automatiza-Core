@@ -137,3 +137,65 @@ class TestInvoices:
         resp = await auth_client.get("/api/v1/invoices")
         assert resp.status_code == 200
         assert len(resp.json()) >= 1
+
+
+class TestFacturaeProformaGuard:
+    """Opción A: el ERP no puede emitir una FacturaE oficial/firmada de una
+    proforma. GET /invoices/{id}/facturae debe bloquearse ANTES de generar o
+    firmar nada."""
+
+    async def _create_client(self, auth_client: AsyncClient) -> str:
+        resp = await auth_client.post("/api/v1/clients", json={"name": "Cliente Proforma"})
+        assert resp.status_code == 201
+        return resp.json()["id"]
+
+    @pytest.mark.asyncio
+    async def test_facturae_proforma_blocked_and_never_signed(
+        self, auth_client: AsyncClient, monkeypatch
+    ):
+        client_id = await self._create_client(auth_client)
+        # El ERP degrada cualquier emisión propia ("issued") a PROFORMA sin número.
+        create_resp = await auth_client.post(
+            f"/api/v1/clients/{client_id}/invoices",
+            json={
+                "date": datetime.now().isoformat(),
+                "invoice_type": "issued",
+                "lines": [
+                    {
+                        "description": "Servicio",
+                        "quantity": 1.0,
+                        "unit_price": 100.0,
+                        "tax_percentage": 21.0,
+                    }
+                ],
+            },
+        )
+        assert create_resp.status_code == 201
+        invoice = create_resp.json()
+        assert invoice["invoice_type"] == "proforma"
+        assert not invoice.get("invoice_number")
+        invoice_id = invoice["id"]
+
+        # Trampas: si el guard fallase y se llegara a generar/firmar, saltan.
+        import app.api.v1.routes.invoices as inv_routes
+        import app.services.billing.xades_signer as xs
+
+        def _boom_generate(*a, **k):
+            raise AssertionError("generate_facturae_xml NO debe llamarse para una proforma")
+
+        def _boom_sign(*a, **k):
+            raise AssertionError("sign_xml NO debe llamarse para una proforma")
+
+        monkeypatch.setattr(inv_routes, "generate_facturae_xml", _boom_generate)
+        monkeypatch.setattr(xs, "sign_xml", _boom_sign)
+
+        resp = await auth_client.get(f"/api/v1/invoices/{invoice_id}/facturae")
+        assert resp.status_code == 409
+        assert "application/xml" not in resp.headers.get("content-type", "")
+        assert "<Facturae" not in resp.text
+        assert "proforma" in resp.json()["detail"].lower()
+
+    @pytest.mark.asyncio
+    async def test_facturae_not_found(self, auth_client: AsyncClient):
+        resp = await auth_client.get(f"/api/v1/invoices/{uuid4()}/facturae")
+        assert resp.status_code == 404

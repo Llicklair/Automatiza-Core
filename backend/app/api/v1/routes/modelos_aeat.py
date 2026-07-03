@@ -125,7 +125,7 @@ async def get_preventive_check(
     """Asistente fiscal preventivo — detecta riesgos del trimestre antes
     de cerrar el 303. Cruza facturas emitidas y recibidas con el simulador
     y devuelve hallazgos accionables (NIF de proveedor faltante, facturas
-    descuadradas, drafts olvidados, Verifactu sin registro, etc.).
+    descuadradas, drafts olvidados, etc.).
     """
     from app.services.aeat.preventive_check import check_quarter
 

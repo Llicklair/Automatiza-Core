@@ -21,7 +21,7 @@ from collections.abc import Awaitable, Callable
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.tenant_context import get_current_task
@@ -221,19 +221,20 @@ async def _exec_create_invoice(params: dict, db: AsyncSession, tenant_id: str) -
 
     tax_amount = round(amount_base * (vat_rate / Decimal("100")), 2)
     total_amount = amount_base + tax_amount
-    count_res = await db.execute(select(func.count(Invoice.id)).where(Invoice.tenant_id == tid))
-    invoice_number = f"FAC-{inv_date.year}-{(count_res.scalar() or 0) + 1:04d}"
-
+    # El ERP ya NO emite facturas fiscales (Opción A): la acción de aprobación
+    # crea una PROFORMA sin número correlativo — un borrador sin valor fiscal,
+    # misma degradación que services/billing/commands.create_invoice. No se
+    # fabrica ningún número ad-hoc "FAC-...".
     invoice = Invoice(
         tenant_id=tid,
         client_id=client.id,
-        invoice_number=invoice_number,
+        invoice_number=None,
         date=inv_date,
         amount_base=amount_base,
         tax_amount=tax_amount,
         amount_total=total_amount,
         status="draft",
-        invoice_type="issued",
+        invoice_type="proforma",
     )
     db.add(invoice)
     await db.flush()
@@ -248,7 +249,7 @@ async def _exec_create_invoice(params: dict, db: AsyncSession, tenant_id: str) -
         )
     )
     await db.flush()
-    return True, f"Factura {invoice_number} creada tras aprobación. Total: {total_amount:.2f}€."
+    return True, f"Proforma creada tras aprobación. Total: {total_amount:.2f}€."
 
 
 @register_action("inventory_batch_adjust")

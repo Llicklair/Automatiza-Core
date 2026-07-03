@@ -228,7 +228,7 @@ async def check_quarter_preventive(tenant_id: str, quarter: int, year: int) -> s
 
     Cruza facturas emitidas y recibidas del trimestre con el simulador y
     devuelve hallazgos accionables (NIF de proveedor faltante, facturas
-    descuadradas, drafts olvidados, Verifactu sin registro, etc.).
+    descuadradas, drafts olvidados, etc.).
 
     Args:
         tenant_id: UUID del tenant.

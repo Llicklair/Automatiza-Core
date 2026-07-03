@@ -9,8 +9,6 @@ detecta riesgos típicos que se le pasan a una pyme sin asesor:
   - Facturas emitidas en `status='draft'` con fecha dentro del periodo →
     se olvidaron de cerrarlas y NO entrarán en el 303.
   - IVA repercutido > 0 pero IVA deducible == 0 (0 gastos del trimestre).
-  - Facturas emitidas en periodo sin registro Verifactu cuando el tenant
-    está en modo `voluntary` → incumplimiento del RD 1007/2023.
   - Documentos clasificados como `factura_recibida` (OCR) sin Invoice
     asociada → datos extraídos pero no registrados.
 
@@ -31,7 +29,7 @@ import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from app.db.models.billing import Invoice, VerifactuConfig, VerifactuRecord
+from app.db.models.billing import Invoice
 
 _QUARTER_MONTHS = {1: (1, 3), 2: (4, 6), 3: (7, 9), 4: (10, 12)}
 _BALANCE_TOLERANCE_CENTS = Decimal("0.02")
@@ -89,7 +87,6 @@ async def check_quarter(
     findings.extend(_check_amount_mismatch(invoices))
     findings.extend(_check_draft_in_period(invoices))
     findings.extend(_check_imbalance_no_purchases(invoices))
-    findings.extend(await _check_verifactu_missing(db, tenant_id, invoices))
     findings.extend(await _check_unlinked_received_documents(db, tenant_id, start, end))
 
     findings.sort(key=lambda f: (_SEVERITY_RANK.get(f.severity, 9), f.code))
@@ -211,42 +208,6 @@ def _check_imbalance_no_purchases(invoices: list[Invoice]) -> list[Finding]:
             )
         ]
     return []
-
-
-async def _check_verifactu_missing(db: AsyncSession, tenant_id: UUID, invoices: list[Invoice]) -> list[Finding]:
-    """Si el tenant está en modo `voluntary`, cada factura emitida del
-    periodo debería tener un registro Verifactu. Si falta → riesgo de
-    sanción del RD 1007/2023.
-    """
-    cfg_q = await db.execute(sa.select(VerifactuConfig).where(VerifactuConfig.tenant_id == tenant_id))
-    cfg = cfg_q.scalar_one_or_none()
-    if cfg is None or (cfg.mode or "").lower() != "voluntary":
-        return []
-
-    issued_ids = [i.id for i in invoices if i.invoice_type == "issued"]
-    if not issued_ids:
-        return []
-
-    have_q = await db.execute(sa.select(VerifactuRecord.invoice_id).where(VerifactuRecord.invoice_id.in_(issued_ids)))
-    have = {row[0] for row in have_q.all()}
-    missing = [iid for iid in issued_ids if iid not in have]
-    if not missing:
-        return []
-    return [
-        Finding(
-            code="verifactu_records_missing",
-            severity="high",
-            message=(
-                f"{len(missing)} factura(s) emitida(s) en modo Verifactu "
-                f"voluntary sin registro en la cadena. Incumplimiento del "
-                f"RD 1007/2023."
-            ),
-            suggested_action=(
-                "Ejecuta el backfill Verifactu desde Ajustes → Verifactu " "antes de cerrar el trimestre."
-            ),
-            source_invoice_ids=[str(i) for i in missing],
-        )
-    ]
 
 
 async def _check_unlinked_received_documents(

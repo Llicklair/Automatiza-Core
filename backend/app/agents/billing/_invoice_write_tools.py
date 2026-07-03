@@ -117,24 +117,6 @@ async def _update_invoice_async(
 
             wants_fiscal_change = new_base is not None or new_vat is not None
 
-            # ── Barrera fiscal (VeriFactu) ───────────────────────────────────
-            # Si la factura ya tiene registro VeriFactu, su huella encadena
-            # base/IVA/total (RD 1007/2023): mutarlos rompería la cadena
-            # append-only. El agente NO toca importes en ese caso; hay que emitir
-            # una rectificativa. Mismo invariante que delete_invoice en commands.
-            if wants_fiscal_change:
-                from app.db.models.billing import VerifactuRecord
-
-                vf = await db.execute(
-                    select(VerifactuRecord.id).where(VerifactuRecord.invoice_id == invoice.id).limit(1)
-                )
-                if vf.scalar_one_or_none() is not None:
-                    return (
-                        "Error: la factura ya tiene registro VeriFactu (cadena inmutable). "
-                        "No se pueden cambiar base ni IVA desde el asistente; "
-                        "emite una factura rectificativa para corregir los importes."
-                    )
-
             changes = []
             if notes:
                 invoice.notes = notes
@@ -297,8 +279,6 @@ async def update_invoice(
     """
     Modifica los datos de una factura en estado DRAFT (borrador).
     Solo facturas en borrador pueden editarse. Recalcula IVA y total con Decimal.
-    Si la factura ya tiene registro VeriFactu, NO se pueden cambiar base ni IVA
-    (la cadena es inmutable): hay que emitir una factura rectificativa.
 
     Args:
         tenant_id: ID del tenant

@@ -29,7 +29,6 @@ from app.db.models.models import (
     TenantDocument,
 )
 from app.services.billing.constants import EMITTED_INVOICE_TYPES
-from app.services.billing.numbering import next_invoice_number
 from app.services.billing.queries import (
     UPLOAD_DIR,
     _build_invoice_data,
@@ -57,45 +56,28 @@ async def create_invoice(
         payload_dict.pop(k, None)
 
     manual_number = payload_dict.pop("invoice_number", None)
-    serie = (payload_dict.pop("serie", "F") or "F").upper()[:10]
-    # Tipo de la factura que se crea. La unicidad del número solo aplica a las
-    # que emitimos nosotros (issued/rectificativa); las recibidas llevan el
-    # número del proveedor y quedan fuera de la guarda y del índice parcial.
-    new_type = payload_dict.get("invoice_type") or "issued"
-    is_emitted = new_type in EMITTED_INVOICE_TYPES
+    payload_dict.pop("serie", None)  # una proforma no consume serie fiscal
+    # El ERP ya NO emite facturas fiscales: cualquier emisión propia (lo que
+    # antes era "issued"/"rectificativa" con número correlativo) se degrada a
+    # PROFORMA sin número — un borrador sin valor fiscal. Las facturas recibidas
+    # (externas, con número del proveedor) conservan su tipo y su número.
+    new_type = payload_dict.get("invoice_type") or "proforma"
+    if new_type in EMITTED_INVOICE_TYPES:
+        new_type = "proforma"
+    payload_dict["invoice_type"] = new_type
 
-    # 1) Validar líneas y calcular totales (Decimal) ANTES de consumir un número
-    #    de serie. Si algo falla aquí (IVA inválido, total negativo), no se ha
-    #    tocado el contador → sin huecos ni facturas huérfanas (RD 1619/2012).
+    # 1) Validar líneas y calcular totales (Decimal). Ya no hay contador fiscal
+    #    que consumir: si algo falla (IVA inválido, total negativo) simplemente
+    #    no se crea la proforma.
     totals = compute_invoice_totals(lines_data)
 
-    # 2) Número correlativo dentro de la MISMA transacción (advisory lock +
-    #    FOR UPDATE en next_invoice_number; evita la carrera de la 1ª factura).
-    if manual_number:
-        # La numeración automática ya está protegida por el advisory lock de
-        # next_invoice_number; el vector de duplicados que queda es el número
-        # manual. Rechazamos uno ya emitido para este tenant (sin esto se han
-        # llegado a ver dos facturas con el mismo número). Solo para facturas
-        # emitidas: una recibida puede repetir el número del proveedor.
-        if is_emitted:
-            dup = await db.execute(
-                select(Invoice.id)
-                .where(
-                    Invoice.tenant_id == tenant_id,
-                    Invoice.invoice_number == manual_number,
-                    Invoice.invoice_type.in_(EMITTED_INVOICE_TYPES),
-                )
-                .limit(1)
-            )
-            if dup.scalar_one_or_none() is not None:
-                raise ValueError(f"Ya existe una factura con el número {manual_number}.")
-        invoice_number = manual_number
-    else:
-        invoice_number = await next_invoice_number(db, tenant_id, series=serie)
+    # 2) Número: una proforma NUNCA lleva número fiscal correlativo (queda NULL).
+    #    Solo las recibidas/importadas conservan el número externo que traen.
+    invoice_number = None if new_type == "proforma" else manual_number
 
     # 3) Cabecera con los totales ya calculados. El id (UUID) está disponible al
     #    instanciar, por lo que las líneas lo referencian sin commit previo y
-    #    todo (contador + cabecera + líneas + huella Verifactu) es un único commit.
+    #    todo (cabecera + líneas) es un único commit atómico.
     new_invoice = Invoice(
         tenant_id=tenant_id,
         client_id=client_id,
@@ -129,12 +111,6 @@ async def create_invoice(
     if lines_data and totals["amount_total"] == 0:
         logger.warning("Factura creada con importe 0 para cliente %s", client_id)
 
-    # Verifactu: encadena la huella ANTES del commit → factura y huella atómicas.
-    # En modo "no_remission" no hace nada.
-    from app.services.billing.verifactu_chain import maybe_append_verifactu_record
-
-    await maybe_append_verifactu_record(db, invoice=new_invoice)
-
     try:
         await db.commit()
     except IntegrityError as e:
@@ -160,26 +136,25 @@ async def create_rectificativa(
     db: AsyncSession,
     serie: str = "R",
 ):
-    """Crea una factura rectificativa por anulación (RD 1619/2012 Art. 15).
+    """Crea una PROFORMA de abono/rectificación (sin valor fiscal).
 
-    Emite una NUEVA factura que minora íntegramente a la original: mismas líneas
-    con importes negados (sustitución total → deja la operación a cero). Queda
-    vinculada a la original (`rectifies_invoice_id`) con su motivo, lleva su
-    propia numeración correlativa (serie "R" por defecto) y su propio eslabón en
-    la cadena Verifactu. Todo en un único commit atómico: si algo falla, el
-    rollback deshace también el contador (sin huecos ni huérfanas).
+    Genera una nueva proforma que minora íntegramente a la original: mismas
+    líneas con importes negados (sustitución total → deja la operación a cero).
+    Queda vinculada a la original (`rectifies_invoice_id`) con su motivo. NO
+    lleva número correlativo ni eslabón fiscal — es un borrador sin valor
+    fiscal. Todo en un único commit atómico.
 
-    Lanza ValueError si la original no existe, si ya es una rectificativa, si ya
-    tiene una rectificativa emitida, o si falta el motivo.
+    Lanza ValueError si la original no existe, si ya es una rectificación, si ya
+    tiene una rectificación asociada, o si falta el motivo.
     """
     if not reason or not reason.strip():
-        raise ValueError("La factura rectificativa requiere un motivo.")
+        raise ValueError("La rectificación requiere un motivo.")
 
     original = await _load_invoice(original_invoice_id, tenant_id, db)
     if original is None:
         raise ValueError("Factura original no encontrada")
-    if (original.invoice_type or "").lower() == "rectificativa":
-        raise ValueError("No se puede rectificar una factura rectificativa.")
+    if original.rectifies_invoice_id is not None:
+        raise ValueError("No se puede rectificar una proforma de rectificación.")
 
     # Idempotencia: una factura solo se anula una vez. Evita dobles abonos.
     dup = await db.execute(
@@ -207,19 +182,16 @@ async def create_rectificativa(
     ]
     totals = compute_invoice_totals(neg_lines, allow_negative=True)
 
-    serie = (serie or "R").upper()[:10]
-    invoice_number = await next_invoice_number(db, tenant_id, series=serie)
-
     rect = Invoice(
         tenant_id=tenant_id,
         client_id=original.client_id,
-        invoice_number=invoice_number,
+        invoice_number=None,
         date=datetime.now(UTC),
         status="pending",
-        invoice_type="rectificativa",
+        invoice_type="proforma",
         rectifies_invoice_id=original.id,
         rectification_reason=reason.strip(),
-        notes=f"Factura rectificativa de {original.invoice_number}. Motivo: {reason.strip()}",
+        notes=f"Proforma de rectificación de {original.invoice_number or original.id}. Motivo: {reason.strip()}",
         amount_base=totals["amount_base"],
         tax_amount=totals["tax_amount"],
         amount_total=totals["amount_total"],
@@ -246,12 +218,6 @@ async def create_rectificativa(
                 total=ld["_line_total"],
             )
         )
-
-    # Verifactu: la rectificativa es un hecho con efectos fiscales → encadena su
-    # propia huella ANTES del commit (atómico con la factura).
-    from app.services.billing.verifactu_chain import maybe_append_verifactu_record
-
-    await maybe_append_verifactu_record(db, invoice=rect)
 
     await db.commit()
 
@@ -322,20 +288,13 @@ async def delete_invoice(invoice_id: UUID, tenant_id, db: AsyncSession) -> bool:
     primero los asientos vinculados (sus líneas caen por cascade ORM).
 
     Salvaguardas:
-      - Si la factura tiene registro Verifactu, NO se borra (la cadena es
-        inmutable/append-only) — se lanza ValueError con un mensaje claro.
-      - Si algún asiento está en un periodo contable cerrado, tampoco — ValueError.
+      - Si algún asiento está en un periodo contable cerrado, no se borra — ValueError.
     """
-    from app.db.models.billing import VerifactuRecord
     from app.services.accounting import is_date_locked
 
     invoice = await _load_invoice(invoice_id, tenant_id, db, with_joins=False)
     if not invoice:
         return False
-
-    vf = await db.execute(select(VerifactuRecord.id).where(VerifactuRecord.invoice_id == invoice_id).limit(1))
-    if vf.scalar_one_or_none() is not None:
-        raise ValueError("No se puede borrar: la factura tiene un registro Verifactu (cadena inmutable).")
 
     # N7: una factura EMITIDA ya numerada (pending/sent/paid) no se borra: rompería
     # la numeración correlativa (RD 1619/2012 Art. 6.1) y el contador no retrocede.
@@ -618,7 +577,6 @@ async def run_recurring(rec_id: UUID, tenant_id: UUID, db: AsyncSession) -> Invo
         return None
 
     now = dt_module.datetime.now(dt_module.UTC)
-    invoice_number = await next_invoice_number(db, tenant_id, series="REC")
 
     # Totales con Decimal (mismo cálculo canónico que create_invoice): respeta
     # descuentos y valida el IVA, evitando el arrastre de redondeo del float.
@@ -627,10 +585,10 @@ async def run_recurring(rec_id: UUID, tenant_id: UUID, db: AsyncSession) -> Invo
     invoice = Invoice(
         tenant_id=tenant_id,
         client_id=rec.client_id,
-        invoice_number=invoice_number,
+        invoice_number=None,
         date=now,
         status="draft",
-        invoice_type="issued",
+        invoice_type="proforma",
         notes=rec.notes,
         terms=rec.terms,
         amount_base=totals["amount_base"],
@@ -653,13 +611,6 @@ async def run_recurring(rec_id: UUID, tenant_id: UUID, db: AsyncSession) -> Invo
                 total=ld["_line_total"],
             )
         )
-
-    # Verifactu: encadena la huella ANTES del commit (igual que create_invoice).
-    # Sin esto, una recurrente en modo Verifactu quedaba fuera de la cadena
-    # append-only (hueco). No-op si el tenant está en modo no_remission.
-    from app.services.billing.verifactu_chain import maybe_append_verifactu_record
-
-    await maybe_append_verifactu_record(db, invoice=invoice)
 
     # Próxima ejecución respetando meses/años reales (fin de mes, bisiestos) en
     # vez de sumar días fijos (30/90/365) que acumulan deriva. Aritmética de

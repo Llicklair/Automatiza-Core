@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.backup import BackupRecord
 
-BackupKind = Literal["full", "verifactu"]
+BackupKind = Literal["full"]
 
 BACKUP_STALE_THRESHOLD_DAYS = 7
 
@@ -45,8 +45,8 @@ async def record_backup(
 ) -> BackupRecord:
     """Persiste un registro de backup recién realizado.
 
-    `encryption_key_label` distingue qué clave se usó (`user_master`,
-    `verifactu_segregated`, etc.) — útil para reset/auditoría posterior.
+    `encryption_key_label` distingue qué clave se usó (`user_master`, etc.)
+    — útil para reset/auditoría posterior.
     """
     record = BackupRecord(
         tenant_id=tenant_id,
@@ -90,7 +90,6 @@ async def backup_status_for_banner(
         {
           "has_any_backup": bool,
           "last_full_backup_at": ISO | null,
-          "last_verifactu_backup_at": ISO | null,
           "stale": bool,           # True si último full > threshold_days
           "show_banner": bool,     # True si stale o no hay backup
           "days_since_last": int | null
@@ -98,7 +97,6 @@ async def backup_status_for_banner(
     """
     now_ts = now or datetime.now(UTC)
     last_full = await get_last_backup(db, tenant_id=tenant_id, kind="full")
-    last_vf = await get_last_backup(db, tenant_id=tenant_id, kind="verifactu")
 
     last_full_at = last_full.created_at if last_full else None
     days_since = None
@@ -110,13 +108,12 @@ async def backup_status_for_banner(
         days_since = (now_ts - last_full_at).days
         stale = days_since > threshold_days
 
-    has_any = last_full is not None or last_vf is not None
+    has_any = last_full is not None
     show_banner = not has_any or stale
 
     return {
         "has_any_backup": has_any,
         "last_full_backup_at": last_full.created_at.isoformat() if last_full else None,
-        "last_verifactu_backup_at": last_vf.created_at.isoformat() if last_vf else None,
         "stale": stale,
         "show_banner": show_banner,
         "days_since_last": days_since,

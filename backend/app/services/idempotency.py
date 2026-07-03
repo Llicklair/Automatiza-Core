@@ -18,7 +18,7 @@ Uso:
 
 Antes vivía en un dict en memoria: un reinicio de la app dentro de la ventana
 del cron podía re-ejecutar jobs no idempotentes (p.ej. emitir dos veces una
-factura recurrente → incidente Verifactu). Ahora las claves sobreviven
+factura recurrente). Ahora las claves sobreviven
 reinicios. Si la DB no está disponible se degrada al dict en memoria (mejor
 una clave volátil que tumbar el scheduler).
 """

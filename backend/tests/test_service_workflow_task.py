@@ -193,3 +193,33 @@ class TestListAndGet:
 
         with pytest.raises(LookupError):
             await task_service.get_task(db, task_id=gone.id, tenant_id=_tenant.id)
+
+
+@pytest.mark.asyncio
+async def test_exec_create_invoice_produces_proforma(db, _tenant):
+    """Opción A (candado): la acción de aprobación 'create_invoice' NO emite
+    factura fiscal — crea una PROFORMA sin número ad-hoc 'FAC-...'
+    (invoice_number=NULL, invoice_type='proforma'). Regresión de
+    services/workflow/approval_actions._exec_create_invoice."""
+    from sqlalchemy import select
+
+    from app.db.models.models import Invoice
+    from app.services.workflow.approval_actions import _exec_create_invoice
+
+    ok, msg = await _exec_create_invoice(
+        {
+            "amount_base": "100",
+            "vat_rate": "21",
+            "concept": "Servicio por aprobación",
+            "client_name": "Cliente Aprobación",
+        },
+        db,
+        str(_tenant.id),
+    )
+    assert ok is True
+    assert "Proforma" in msg
+
+    res = await db.execute(select(Invoice).where(Invoice.tenant_id == _tenant.id))
+    inv = res.scalars().one()
+    assert inv.invoice_number is None
+    assert inv.invoice_type == "proforma"

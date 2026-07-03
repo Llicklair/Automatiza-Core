@@ -132,3 +132,37 @@ class TestQuotes:
         r2 = await auth_client.post(f"/api/v1/quotes/{qid}/convert-to-invoice")
         assert r2.status_code == 400
         assert "convertido" in r2.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_convert_to_invoice_produces_proforma(db, seed_tenant_and_user):
+    """Opción A (candado): convertir un presupuesto NO emite factura fiscal —
+    produce una PROFORMA sin número correlativo (invoice_number=NULL,
+    invoice_type='proforma'). Regresión de services/sales/commands.convert_to_invoice."""
+    from uuid import UUID
+
+    from app.db.models.models import Client, Invoice
+    from app.services.sales.commands import convert_to_invoice, create_quote
+
+    tenant, user, _ = seed_tenant_and_user
+    cli = Client(tenant_id=tenant.id, name="Cliente Convert", nif="B22222222")
+    db.add(cli)
+    await db.flush()
+
+    quote = await create_quote(
+        db,
+        tenant.id,
+        {
+            "client_id": cli.id,
+            "lines": [
+                {"description": "Servicio", "quantity": 1, "unit_price": 100.0, "tax_percentage": 21}
+            ],
+        },
+    )
+
+    result = await convert_to_invoice(db, quote.id, tenant.id, user.id)
+
+    inv = await db.get(Invoice, UUID(result["invoice_id"]))
+    assert inv is not None
+    assert inv.invoice_number is None
+    assert inv.invoice_type == "proforma"

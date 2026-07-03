@@ -331,3 +331,45 @@ async def test_execute_orchestrator_skips_cancelled_task(db, tenant_with_employe
     async with AsyncSessionLocal() as fresh_db:
         t = (await fresh_db.execute(select(Task).where(Task.id == task.id))).scalar_one()
         assert t.status == "cancelled"  # untouched
+
+
+# ── Opción A: la reanudación desde aprobación crea PROFORMA, no factura fiscal ─
+
+@pytest.mark.asyncio
+async def test_create_invoice_from_approval_produces_proforma(db: AsyncSession):
+    """Opción A (candado): reanudar una task desde una aprobación NO emite
+    factura fiscal — crea una PROFORMA sin número ad-hoc 'FAC-...'
+    (invoice_number=NULL, invoice_type='proforma'). Regresión de
+    workers/_orchestrator_context._create_invoice_from_approval."""
+    from app.db.models.models import Client, Invoice
+    from app.workers._orchestrator_context import _create_invoice_from_approval
+
+    tenant = Tenant(id=uuid.uuid4(), name="T Proforma", nif="B44444444", plan="starter")
+    db.add(tenant)
+    await db.flush()
+    client = Client(id=uuid.uuid4(), tenant_id=tenant.id, nif="B55555555", name="Cliente Prof")
+    user = User(
+        id=uuid.uuid4(), tenant_id=tenant.id, email="prof@t.com",
+        hashed_password="x", full_name="Prof", role="admin",
+    )
+    task = Task(
+        id=uuid.uuid4(), tenant_id=tenant.id, created_by=user.id,
+        domain="billing", user_intent="Crear factura", status="executing",
+        current_step=0, agent_results=[],
+    )
+    db.add_all([client, user, task])
+    await db.commit()
+
+    payload = {
+        "contact_id_local": str(client.id),
+        "amount_base": "100.00",
+        "vat_rate": "21",
+        "concept": "Servicio mensual",
+        "invoice_date": "2026-06-01",
+    }
+    assert await _create_invoice_from_approval(task, payload, db) is True
+
+    res = await db.execute(select(Invoice).where(Invoice.tenant_id == tenant.id))
+    inv = res.scalars().one()
+    assert inv.invoice_number is None
+    assert inv.invoice_type == "proforma"

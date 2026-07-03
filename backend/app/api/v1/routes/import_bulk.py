@@ -124,7 +124,7 @@ async def import_invoices(
     current_user=Depends(get_current_user),
 ):
     """Migra facturas históricas (emitidas y recibidas) desde otro programa:
-    preserva número e importes, no encadena Verifactu ni genera asientos.
+    preserva número e importes y no genera asientos.
     Idempotente. El cliente/proveedor debe existir previamente."""
     rows = body.get("rows", [])
     result = await import_invoices_rows(rows, current_user.tenant_id, db)

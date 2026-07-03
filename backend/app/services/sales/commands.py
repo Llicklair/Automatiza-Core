@@ -34,7 +34,6 @@ from app.db.models.models import (
     StockMovement,
 )
 from app.services._tenant_guard import assert_fk_in_tenant
-from app.services.billing.numbering import next_invoice_number
 from app.services.sales.queries import _get_quote_or_raise, _quote_query_with_rels
 
 logger = logging.getLogger(__name__)
@@ -329,12 +328,12 @@ async def convert_to_invoice(
     if claim.first() is None:
         raise ValueError("Este presupuesto ya fue convertido en factura")
 
-    # Numeración por el numerador correlativo PROTEGIDO (advisory lock + FOR
-    # UPDATE), la misma serie que las facturas directas. Antes usaba COUNT(*) sin
-    # lock y una serie 'FAC-' paralela → colisión bajo concurrencia + dos series
-    # correlativas distintas (ilegal, RD 1619/2012).
+    # El ERP ya NO emite facturas fiscales (Opción A): convertir un presupuesto
+    # genera una PROFORMA sin número correlativo — un borrador sin valor fiscal,
+    # misma degradación que services/billing/commands.create_invoice. No se
+    # consume ningún contador correlativo.
     now = datetime.now(UTC)
-    invoice_number = await next_invoice_number(db, tenant_id)
+    invoice_number = None
 
     new_invoice = Invoice(
         tenant_id=tenant_id,
@@ -346,7 +345,7 @@ async def convert_to_invoice(
         amount_total=float(quote.amount_total or 0),
         notes=quote.notes,
         status="draft",
-        invoice_type="issued",
+        invoice_type="proforma",
     )
     db.add(new_invoice)
     await db.flush()
@@ -398,7 +397,7 @@ async def convert_to_invoice(
         "invoice_id": str(new_invoice.id),
         "invoice_number": invoice_number,
         "amount_total": float(new_invoice.amount_total),
-        "message": f"Presupuesto convertido en factura {invoice_number} correctamente.",
+        "message": "Presupuesto convertido en proforma correctamente.",
     }
 
 

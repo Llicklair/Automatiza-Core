@@ -1,9 +1,9 @@
-"""Tests de facturas rectificativas por anulación (RD 1619/2012 Art. 15).
+"""Tests de proformas de rectificación por anulación.
 
-`create_rectificativa` emite una nueva factura que minora íntegramente a la
-original con importes negados, vinculada a ella y con su motivo, numeración
-correlativa propia (serie R) y encadenado Verifactu. Es un hecho con efectos
-fiscales, por lo que se valida el camino del dinero de extremo a extremo.
+`create_rectificativa` genera una PROFORMA (sin valor fiscal) que minora
+íntegramente a la original con importes negados, vinculada a ella y con su
+motivo. NO lleva número correlativo ni eslabón fiscal. Se valida el camino del
+dinero (importes negados) de extremo a extremo.
 """
 
 from datetime import UTC, datetime
@@ -100,18 +100,18 @@ class TestCreateRectificativa:
 
         rect = await create_rectificativa(orig.id, "Cliente desiste", tenant.id, db)
 
-        assert rect.invoice_type == "rectificativa"
+        assert rect.invoice_type == "proforma"
         assert rect.rectifies_invoice_id == orig.id
         assert rect.rectification_reason == "Cliente desiste"
 
     @pytest.mark.asyncio
-    async def test_numeracion_serie_r(self, db: AsyncSession):
+    async def test_proforma_sin_numero_fiscal(self, db: AsyncSession):
+        """La proforma de rectificación no lleva número correlativo (queda NULL)."""
         tenant, client = await _seed(db)
         orig = await _original(db, tenant, client)
 
         rect = await create_rectificativa(orig.id, "motivo", tenant.id, db)
-        assert rect.invoice_number.startswith("R")
-        assert rect.invoice_number != orig.invoice_number
+        assert rect.invoice_number is None
 
     @pytest.mark.asyncio
     async def test_lineas_espejo_negadas(self, db: AsyncSession):
@@ -153,5 +153,5 @@ class TestCreateRectificativa:
         tenant, client = await _seed(db)
         orig = await _original(db, tenant, client)
         rect = await create_rectificativa(orig.id, "motivo", tenant.id, db)
-        with pytest.raises(ValueError, match="rectificativa"):
+        with pytest.raises(ValueError, match="rectificar"):
             await create_rectificativa(rect.id, "motivo", tenant.id, db)

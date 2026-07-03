@@ -14,7 +14,6 @@ from app.core.datetime_utils import local_today
 from app.core.tenant_context import rls_bypass, set_current_tenant
 from app.db.base import AsyncSessionLocal
 from app.db.models.models import Invoice, InvoiceLine, RecurringInvoice
-from app.services.billing.numbering import next_invoice_number
 from app.services.idempotency import IdempotencyGuard
 from app.services.workflow import execute_deterministic_steps
 from app.services.workflow.conditions import evaluate_conditions
@@ -365,19 +364,17 @@ async def _process_recurring_invoices():
                     amount_base = sum(b for b, _ in line_totals)
                     tax_amount = sum(t for _, t in line_totals)
 
-                    # Número correlativo por serie (RD 1619/2012 Art. 6.1), igual que
-                    # commands.run_recurring: advisory lock + FOR UPDATE dentro de la
-                    # misma transacción; cada iteración incrementa el contador "REC".
-                    # Si el savepoint revierte, el contador también → sin gap.
-                    invoice_number = await next_invoice_number(db, rec.tenant_id, series="REC")
-
+                    # El ERP ya NO emite facturas fiscales (Opción A): el cron de
+                    # recurrentes genera PROFORMAS sin número correlativo — mismo
+                    # contrato que services/billing/commands.run_recurring. No se
+                    # consume ningún contador correlativo.
                     invoice = Invoice(
                         tenant_id=rec.tenant_id,
                         client_id=rec.client_id,
-                        invoice_number=invoice_number,
+                        invoice_number=None,
                         date=now,
                         status="draft",
-                        invoice_type="issued",
+                        invoice_type="proforma",
                         notes=rec.notes,
                         terms=rec.terms,
                         amount_base=round(amount_base, 2),

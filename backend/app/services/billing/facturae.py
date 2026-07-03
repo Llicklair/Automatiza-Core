@@ -15,6 +15,28 @@ from app.db.models.auth import Tenant
 from app.db.models.models import Invoice
 
 
+class ProformaNotFiscalError(ValueError):
+    """Se intentó producir una FacturaE oficial de una proforma no fiscal.
+
+    Opción A: el ERP no emite facturas fiscales. Convertir una proforma en una
+    FacturaE (XML legal + firma XAdES) la volvería indistinguible de una factura
+    real ante FACe/terceros, por eso se bloquea.
+    """
+
+
+def is_non_fiscal_proforma(invoice_type: str | None, invoice_number: str | None) -> bool:
+    """True si NO es una factura fiscal genuinamente emitida.
+
+    Una proforma no fiscal es cualquier factura con ``invoice_type == "proforma"``
+    o sin número fiscal real (None/vacío o que empieza por ``PROFORMA``). Estas
+    nunca pueden convertirse en una FacturaE oficial/firmada.
+    """
+    if (invoice_type or "").strip().lower() == "proforma":
+        return True
+    num = (invoice_number or "").strip()
+    return not num or num.upper().startswith("PROFORMA")
+
+
 def _sub(parent: ET.Element, tag: str, text: str | None = None) -> ET.Element:
     el = ET.SubElement(parent, tag)
     if text is not None:
@@ -70,6 +92,14 @@ async def generate_facturae_xml(invoice_id: UUID, tenant_id: UUID, db: AsyncSess
     invoice = result.scalar_one_or_none()
     if not invoice:
         raise ValueError("Factura no encontrada")
+
+    # GUARD defensa-en-profundidad (Opción A): jamás generar FacturaE de una
+    # proforma no fiscal, aunque un caller directo intente saltarse la ruta.
+    if is_non_fiscal_proforma(invoice.invoice_type, invoice.invoice_number):
+        raise ProformaNotFiscalError(
+            "No se puede generar FacturaE de una proforma: la factura debe "
+            "emitirse en el sistema de facturación certificado externo."
+        )
 
     tenant_res = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
     tenant = tenant_res.scalar_one_or_none()
@@ -211,20 +241,3 @@ async def generate_facturae_xml(invoice_id: UUID, tenant_id: UUID, db: AsyncSess
     xml_bytes = b'<?xml version="1.0" encoding="UTF-8"?>\n' + xml_str.encode("utf-8")
     filename = f"facturae_{inv_num.replace('/', '-').replace(' ', '_')}.xsig"
     return xml_bytes, filename
-
-
-async def mark_verifactu_sent(invoice_id: UUID, tenant_id: UUID, db: AsyncSession) -> dict:
-    """Simula el envío a AEAT Verifactu (requiere certificado real en producción)."""
-    result = await db.execute(select(Invoice).where(Invoice.id == invoice_id, Invoice.tenant_id == tenant_id))
-    invoice = result.scalar_one_or_none()
-    if not invoice:
-        raise ValueError("Factura no encontrada")
-
-    invoice.verifactu_status = "sent"
-    invoice.verifactu_sent_at = datetime.now(tz=UTC)
-    await db.commit()
-    return {
-        "message": "Marcada como enviada a Verifactu (modo simulación)",
-        "invoice_id": str(invoice_id),
-        "status": "sent",
-    }

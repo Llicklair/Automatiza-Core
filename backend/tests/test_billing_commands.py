@@ -9,7 +9,6 @@ NO duplica lo ya cubierto por:
 Aquí se cubre:
   - Garantía "sin huecos": un create_invoice que falla en validación NO consume
     número de serie (RD 1619/2012).
-  - delete_invoice bloqueado si la factura tiene registro Verifactu (cadena inmutable).
   - delete_invoice borra en cascada los asientos contables vinculados.
   - create_journal_entry rechaza asientos descuadrados.
   - run_recurring genera una factura desde la plantilla y avanza next_run_date.
@@ -22,7 +21,6 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import select
 
-from app.db.models.billing import VerifactuRecord
 from app.db.models.crm import Client
 from app.db.models.models import Invoice, JournalEntry, RecurringInvoice
 from app.services.billing.commands import (
@@ -76,8 +74,9 @@ async def _seed_invoice(db, tenant_id, client_id, *, status="pending", number="F
 
 @pytest.mark.asyncio
 async def test_total_negativo_rechazado_y_no_consume_numero(db, seed_tenant_and_user):
-    """Si la validación falla (total negativo), el contador de serie no se toca:
-    la siguiente factura válida recibe el número 0001 (sin huecos)."""
+    """Un total negativo se rechaza con ValueError. Tras el rechazo, un
+    create_invoice válido produce una PROFORMA sin número fiscal: el ERP ya no
+    emite facturas fiscales (invoice_number=NULL, invoice_type='proforma')."""
     tenant, user, _ = seed_tenant_and_user
     cli = await _seed_client(db, tenant.id)
     await db.commit()
@@ -101,7 +100,8 @@ async def test_total_negativo_rechazado_y_no_consume_numero(db, seed_tenant_and_
         user_id=user.id,
         db=db,
     )
-    assert inv.invoice_number == f"F{YEAR}-0001"
+    assert inv.invoice_number is None
+    assert inv.invoice_type == "proforma"
     assert float(inv.amount_base) == 100.0
     assert float(inv.tax_amount) == 21.0
     assert float(inv.amount_total) == 121.0
@@ -121,38 +121,6 @@ async def test_update_status_paid_a_draft_deberia_rechazarse(db, seed_tenant_and
 
 
 # ─── delete_invoice: salvaguardas ─────────────────────────────────────────────
-
-
-@pytest.mark.asyncio
-async def test_delete_bloqueado_si_hay_registro_verifactu(db, seed_tenant_and_user):
-    """La cadena Verifactu es append-only: una factura encadenada no se borra."""
-    tenant, _u, _t = seed_tenant_and_user
-    cli = await _seed_client(db, tenant.id)
-    inv = await _seed_invoice(db, tenant.id, cli.id)
-    inv_id = inv.id  # capturar antes: el rollback posterior expira el objeto
-
-    db.add(
-        VerifactuRecord(
-            tenant_id=tenant.id,
-            invoice_id=inv.id,
-            huella="a" * 64,
-            huella_anterior=None,
-            payload_canonico="{}",
-            nif_emisor="B12345678",
-            serie_factura="F",
-            numero_factura=inv.invoice_number,
-            fecha_emision=datetime(YEAR, 5, 10, tzinfo=UTC),
-            importe_total=Decimal("121"),
-        )
-    )
-    await db.commit()
-
-    with pytest.raises(ValueError, match="Verifactu"):
-        await delete_invoice(inv_id, tenant.id, db)
-    await db.rollback()
-
-    still = await db.execute(select(Invoice.id).where(Invoice.id == inv_id))
-    assert still.scalar_one_or_none() is not None, "La factura no debe haberse borrado"
 
 
 @pytest.mark.asyncio
@@ -249,12 +217,11 @@ async def test_journal_entry_tolera_un_centimo_pero_no_dos(db, seed_tenant_and_u
 
 @pytest.mark.asyncio
 async def test_run_recurring_genera_factura(db, seed_tenant_and_user):
-    """La plantilla recurrente genera factura draft con totales correctos y
+    """La plantilla recurrente genera una PROFORMA draft con totales correctos y
     avanza next_run_date según el intervalo.
 
-    Numeración: run_recurring usa next_invoice_number(series="REC"), igual que
-    create_invoice/create_rectificativa — número correlativo por serie y año
-    (RD 1619/2012), no un timestamp.
+    El ERP ya no emite facturas fiscales: run_recurring produce una proforma sin
+    número (invoice_number=NULL, invoice_type='proforma').
     """
     tenant, _u, _t = seed_tenant_and_user
     cli = await _seed_client(db, tenant.id)
@@ -275,10 +242,10 @@ async def test_run_recurring_genera_factura(db, seed_tenant_and_user):
 
     assert inv is not None
     assert inv.status == "draft"
-    assert inv.invoice_type == "issued"
+    assert inv.invoice_type == "proforma"
     assert inv.client_id == cli.id
-    # Numeración correlativa por serie/año: REC{year}-{NNNN} (no timestamp).
-    assert inv.invoice_number == f"REC{datetime.now(UTC).year}-0001"
+    # Una proforma no lleva número fiscal correlativo.
+    assert inv.invoice_number is None
     assert float(inv.amount_base) == 100.0
     assert float(inv.tax_amount) == 21.0
     assert float(inv.amount_total) == 121.0
@@ -293,3 +260,46 @@ async def test_run_recurring_genera_factura(db, seed_tenant_and_user):
 async def test_run_recurring_inexistente_devuelve_none(db, seed_tenant_and_user):
     tenant, _u, _t = seed_tenant_and_user
     assert await run_recurring(uuid4(), tenant.id, db) is None
+
+
+# ─── _process_recurring_invoices (cron diario) ───────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_process_recurring_invoices_cron_produces_proforma(db, seed_tenant_and_user):
+    """Opción A (candado): el cron diario de recurrentes NO emite facturas
+    fiscales — genera PROFORMAS sin número correlativo (invoice_number=NULL,
+    invoice_type='proforma'). Regresión de workers.tasks_scheduler._process_recurring_invoices."""
+    from datetime import date
+
+    from app.db.base import AsyncSessionLocal
+    from app.workers.tasks_scheduler import _process_recurring_invoices
+
+    tenant, _u, _t = seed_tenant_and_user
+    cli = await _seed_client(db, tenant.id, name="Cliente Cron S.L.")
+    rec = RecurringInvoice(
+        tenant_id=tenant.id,
+        client_id=cli.id,
+        name="Cuota mensual",
+        interval_type="monthly",
+        is_active=True,
+        next_run_date=date(2000, 1, 1),  # vencida → el cron la procesa
+        lines_json=[
+            {"description": "Cuota", "quantity": 1, "unit_price": 50.0, "tax_percentage": 21}
+        ],
+    )
+    db.add(rec)
+    await db.commit()
+
+    result = await _process_recurring_invoices()
+    assert result == {"generated": 1}
+
+    # El cron abre su propia sesión (AsyncSessionLocal). Se relee en una sesión
+    # fresca para evitar chocar con la sesión del fixture en la conexión SQLite
+    # compartida (StaticPool).
+    async with AsyncSessionLocal() as fresh:
+        res = await fresh.execute(select(Invoice).where(Invoice.tenant_id == tenant.id))
+        invoices = res.scalars().all()
+    assert len(invoices) == 1
+    assert invoices[0].invoice_number is None
+    assert invoices[0].invoice_type == "proforma"

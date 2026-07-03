@@ -297,8 +297,7 @@ async def import_invoices_rows(
 
     Migración fiel:
       - PRESERVA el número y los importes de origen (no recalcula, no re-numera).
-      - NO encadena Verifactu (son facturas previas al sistema; encadenarlas
-        falsearía la cadena) ni genera asientos (el libro diario se migra aparte).
+      - NO genera asientos contables (el libro diario se migra aparte).
       - El cliente/proveedor debe existir (impórtalos antes).
       - Idempotente: para emitidas por (tipo, número); para recibidas por
         (tipo, número, proveedor) —el número de la recibida lo pone el proveedor.

@@ -13,8 +13,6 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
-from app.core.config import settings
-from app.db.models.billing import VerifactuRecord
 from app.db.models.models import (
     FixedAsset,
     Invoice,
@@ -123,37 +121,21 @@ async def _load_tenant(tenant_id, db: AsyncSession) -> tuple[str, str]:
     return company_name, company_nif
 
 
-async def _load_verifactu(invoice_id: UUID, db: AsyncSession) -> dict | None:
-    """Carga el registro Verifactu de una factura y devuelve `{huella, verify_url}`
-    listo para meter en el PDF (renderiza el QR FAC.QR). Devuelve None si la
-    factura aún no tiene registro encadenado — el PDF saldrá sin QR (válido,
-    el QR solo aplica cuando hay Verifactu activo).
-
-    `verify_url` se construye sobre `FRONTEND_URL` (primer host si la variable
-    contiene varios separados por comas). En producción esta URL debe ser
-    pública y proxiar `/api/v1/verify/*` al backend.
-    """
-    result = await db.execute(select(VerifactuRecord).where(VerifactuRecord.invoice_id == invoice_id))
-    record = result.scalar_one_or_none()
-    if record is None:
-        return None
-    base = (settings.FRONTEND_URL or "").split(",")[0].strip().rstrip("/")
-    if not base:
-        return None
-    return {
-        "huella": record.huella,
-        "verify_url": f"{base}/api/v1/verify/{record.huella}",
-    }
-
-
 def _build_invoice_data(
     invoice,
     company_name: str,
     company_nif: str,
-    verifactu: dict | None = None,
 ) -> dict:
+    # Una factura creada por el ERP es una PROFORMA sin valor fiscal: no lleva
+    # número correlativo (queda NULL) ni serie fiscal. Se marca como tal para
+    # que el PDF muestre "PROFORMA / BORRADOR" + el sello "SIN VALOR FISCAL" y
+    # NUNCA una numeración de factura fiscal.
+    is_proforma = (invoice.invoice_type == "proforma") or not invoice.invoice_number
     return {
-        "number": invoice.invoice_number or f"F-{str(invoice.id)[:8].upper()}",
+        "number": (invoice.invoice_number if not is_proforma else f"PROFORMA-{str(invoice.id)[:8].upper()}"),
+        "number_label": "Nº" if not is_proforma else "Ref.",
+        "doc_title": "FACTURA" if not is_proforma else "PROFORMA / BORRADOR",
+        "is_proforma": is_proforma,
         "date": invoice.date.isoformat() if invoice.date else "",
         "amount_base": float(invoice.amount_base or 0),
         "tax_amount": float(invoice.tax_amount or 0),
@@ -182,7 +164,6 @@ def _build_invoice_data(
         ],
         "notes": invoice.notes or "",
         "payment_terms": invoice.terms or "",
-        "verifactu": verifactu,
     }
 
 
@@ -212,11 +193,7 @@ async def get_invoice(invoice_id: UUID, tenant_id, db: AsyncSession):
 
 
 async def build_invoice_pdf(invoice_id: UUID, tenant_id, db: AsyncSession) -> tuple[bytes, str]:
-    """Genera PDF al vuelo. Lanza ValueError si no existe.
-
-    Incluye QR Verifactu si la factura tiene VerifactuRecord encadenado
-    (RD 1007/2023 Art. 8 — FAC.QR).
-    """
+    """Genera el PDF (proforma sin valor fiscal) al vuelo. ValueError si no existe."""
     from app.services.pdf import generate_invoice_pdf
     from app.services.template_service import get_default_theme
 
@@ -226,10 +203,9 @@ async def build_invoice_pdf(invoice_id: UUID, tenant_id, db: AsyncSession) -> tu
 
     company_name, company_nif = await _load_tenant(tenant_id, db)
     theme_config = await get_default_theme(tenant_id, "invoice", db)
-    verifactu = await _load_verifactu(invoice_id, db)
-    invoice_data = _build_invoice_data(invoice, company_name, company_nif, verifactu)
+    invoice_data = _build_invoice_data(invoice, company_name, company_nif)
     pdf_bytes = generate_invoice_pdf(invoice_data, theme_config)
-    file_name = f"Factura_{invoice_data['number']}.pdf"
+    file_name = f"Proforma_{invoice_data['number']}.pdf"
     return pdf_bytes, file_name
 
 
@@ -265,6 +241,9 @@ async def build_rectificative_pdf(
 
     data = {
         "number": f"FR-{(invoice.invoice_number or str(invoice.id)[:8]).upper()}",
+        "number_label": "Ref.",
+        "doc_title": "PROFORMA / BORRADOR (Rectificación)",
+        "is_proforma": True,
         "date": datetime.now(UTC).isoformat(),
         "original_invoice": {
             "number": invoice.invoice_number or str(invoice.id)[:8],
@@ -308,12 +287,11 @@ async def build_retention_pdf(
 
     company_name, company_nif = await _load_tenant(tenant_id, db)
     theme_config = await get_default_theme(tenant_id, "invoice", db)
-    verifactu = await _load_verifactu(invoice_id, db)
 
     base = float(invoice.amount_base or 0)
     retention_amount = round(base * retention_pct / 100, 2)
 
-    data = _build_invoice_data(invoice, company_name, company_nif, verifactu)
+    data = _build_invoice_data(invoice, company_name, company_nif)
     data["retention_percentage"] = retention_pct
     data["retention_amount"] = retention_amount
 

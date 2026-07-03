@@ -8,11 +8,10 @@ from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_user, require_role
+from app.core.dependencies import require_role
 from app.db.base import get_db
 from app.db.models.auth import User
 from app.services import backup as backup_service
-from app.services.billing.backfill_verifactu import backfill_tenant_verifactu_chain
 from app.services.system.diagnostic_bundle import build_diagnostic_bundle
 from app.services.system.preconditions import check_invoice_preconditions
 
@@ -150,9 +149,9 @@ async def get_invoice_preconditions(
 ) -> dict:
     """Devuelve el estado de las precondiciones legales para facturación (CONT.KILL).
 
-    Verifica tablas críticas: `invoice_series` (FAC.NUM), `verifactu_chain`
-    (FAC.HASH), `fiscal_approval_log` (SEC.APR). Si falta alguna, las rutas
-    de creación de factura deben rechazar POST con 503.
+    Verifica tablas críticas: `invoice_series` (FAC.NUM) y `fiscal_approval_log`
+    (SEC.APR). Si falta alguna, las rutas de creación de factura deben rechazar
+    POST con 503.
     """
     return await check_invoice_preconditions(db)
 
@@ -179,47 +178,6 @@ async def require_invoice_preconditions(
                 "missing": status_check["missing"],
             },
         )
-
-
-# ── A.5 backfill Verifactu — recompone cadena retroactiva ──────────────────
-
-
-class BackfillVerifactuRequest(BaseModel):
-    nif_emisor: str = Field(..., min_length=8, max_length=20)
-
-
-class BackfillVerifactuResponse(BaseModel):
-    tenant_id: str
-    invoices_total: int
-    already_chained: int
-    backfilled: int
-    started_at: str
-    finished_at: str
-
-
-@router.post(
-    "/backfill/verifactu",
-    response_model=BackfillVerifactuResponse,
-    dependencies=[_admin_only],
-)
-async def backfill_verifactu_endpoint(
-    payload: BackfillVerifactuRequest,
-    user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-) -> dict:
-    """Reconstruye la cadena Verifactu del tenant del admin autenticado (A.5).
-
-    Operación idempotente — re-ejecutar es seguro. Solo admin: el backfill
-    firma hashes a posteriori, y solo el tenant que migró debería iniciarlo
-    tras haber revisado que los datos importados son correctos.
-    """
-    result = await backfill_tenant_verifactu_chain(
-        db,
-        tenant_id=user.tenant_id,
-        nif_emisor=payload.nif_emisor.upper().strip(),
-    )
-    await db.commit()
-    return result.to_dict()
 
 
 # ── CONT.LOG — bundle de diagnóstico exportable ────────────────────────────

@@ -120,9 +120,8 @@ async def _create_invoice_async(
                 db.add(local_client)
                 await db.flush()
 
-            # Creación delegada al service (fuente de verdad única): numeración
-            # con advisory lock (RD 1619/2012), totales Decimal, huella Verifactu
-            # atómica (RD 1007/2023) y backstop de números duplicados.
+            # Creación delegada al service (fuente de verdad única): proforma sin
+            # valor fiscal, sin numeración correlativa, con totales en Decimal.
             from app.services.billing.commands import create_invoice as create_invoice_svc
 
             new_invoice = await create_invoice_svc(

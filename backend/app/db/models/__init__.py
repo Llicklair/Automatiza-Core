@@ -28,7 +28,6 @@ from .billing import (  # noqa: F401
     Quote,
     QuoteLine,
     RecurringInvoice,
-    VerifactuConfig,
 )
 from .calendar import Event, Reservation  # noqa: F401
 from .crm import Activity, Client, Opportunity  # noqa: F401

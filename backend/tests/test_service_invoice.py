@@ -1,9 +1,10 @@
 """Tests para app.services.billing.invoice — CRUD de facturas."""
 from datetime import UTC, datetime
+from decimal import Decimal
 from uuid import uuid4
 
 import pytest
-from app.db.models.models import Client, Tenant
+from app.db.models.models import Client, Invoice, Tenant
 from app.services.billing.invoice import (
     VALID_IVA,
     create_invoice,
@@ -12,6 +13,7 @@ from app.services.billing.invoice import (
     list_invoices,
     update_status,
 )
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -76,7 +78,8 @@ class TestCreateInvoice:
         assert invoice is not None
         assert invoice.tenant_id == tenant.id
         assert invoice.client_id == client.id
-        assert invoice.invoice_number is not None
+        assert invoice.invoice_number is None  # PROFORMA: sin número fiscal
+        assert invoice.invoice_type == "proforma"
 
     @pytest.mark.asyncio
     async def test_invoice_amounts_calculated(self, db: AsyncSession):
@@ -143,7 +146,9 @@ class TestCreateInvoice:
             await create_invoice(client.id, payload, lines, tenant.id, uid, db)
 
     @pytest.mark.asyncio
-    async def test_invoice_manual_number(self, db: AsyncSession):
+    async def test_manual_number_ignored_for_proforma(self, db: AsyncSession):
+        """El número manual se ignora: una emisión propia se degrada a PROFORMA
+        sin número (solo las recibidas conservan el número externo)."""
         tenant, client = await _seed_tenant_client(db)
         uid = uuid4()
         payload = {
@@ -155,25 +160,31 @@ class TestCreateInvoice:
             {"description": "Test", "quantity": 1, "unit_price": 10.0, "tax_percentage": 21.0}
         ]
         invoice = await create_invoice(client.id, payload, lines, tenant.id, uid, db)
-        assert invoice.invoice_number == "MANUAL-001"
+        assert invoice.invoice_number is None
+        assert invoice.invoice_type == "proforma"
 
     @pytest.mark.asyncio
-    async def test_duplicate_issued_number_raises(self, db: AsyncSession):
-        """Dos facturas emitidas con el mismo número manual → la 2ª se rechaza."""
+    async def test_duplicate_issued_number_blocked_by_db(self, db: AsyncSession):
+        """El índice único parcial (tenant, número) sobre facturas EMITIDAS
+        (issued/rectificativa) sigue vigente. create_invoice ya no las produce
+        (degrada a proforma), así que se insertan directamente como haría una
+        importación o una carrera concurrente → IntegrityError."""
         tenant, client = await _seed_tenant_client(db)
-        uid = uuid4()
-        lines = [{"description": "X", "quantity": 1, "unit_price": 10.0, "tax_percentage": 21.0}]
-        await create_invoice(
-            client.id,
-            {"date": datetime.now(UTC), "status": "draft", "invoice_number": "A2026-0001"},
-            lines, tenant.id, uid, db,
-        )
-        with pytest.raises(ValueError, match="Ya existe una factura con el número"):
-            await create_invoice(
-                client.id,
-                {"date": datetime.now(UTC), "status": "draft", "invoice_number": "A2026-0001"},
-                lines, tenant.id, uid, db,
+
+        def _issued(num: str) -> Invoice:
+            return Invoice(
+                id=uuid4(), tenant_id=tenant.id, client_id=client.id,
+                invoice_number=num, date=datetime.now(UTC), status="draft",
+                invoice_type="issued", amount_base=Decimal("10"),
+                tax_amount=Decimal("2.1"), amount_total=Decimal("12.1"),
             )
+
+        db.add(_issued("A2026-0001"))
+        await db.flush()
+        db.add(_issued("A2026-0001"))
+        with pytest.raises(IntegrityError):
+            await db.flush()
+        await db.rollback()
 
     @pytest.mark.asyncio
     async def test_received_can_share_number_with_issued(self, db: AsyncSession):
@@ -201,10 +212,12 @@ class TestCreateInvoice:
         assert recv.invoice_type == "received"
 
     @pytest.mark.asyncio
-    async def test_invoice_auto_number_with_series(self, db: AsyncSession):
+    async def test_erp_create_produces_proforma(self, db: AsyncSession):
+        """Toda emisión propia se degrada a PROFORMA sin número fiscal."""
         tenant, client = await _seed_tenant_client(db)
         invoice = await _create_basic_invoice(db, tenant, client)
-        assert invoice.invoice_number.startswith("F")
+        assert invoice.invoice_type == "proforma"
+        assert invoice.invoice_number is None
 
     @pytest.mark.asyncio
     async def test_invoice_strips_frontend_totals(self, db: AsyncSession):
@@ -224,6 +237,35 @@ class TestCreateInvoice:
         invoice = await create_invoice(client.id, payload, lines, tenant.id, uid, db)
         # Should be calculated, not the 9999 values
         assert float(invoice.amount_total) == 121.0
+
+
+class TestFacturaeProformaGuard:
+    """Defensa en profundidad: generate_facturae_xml no debe producir una
+    FacturaE oficial de una proforma, aunque se le llame directamente."""
+
+    @pytest.mark.asyncio
+    async def test_generate_facturae_raises_for_proforma(self, db: AsyncSession):
+        from app.services.billing.facturae import ProformaNotFiscalError, generate_facturae_xml
+
+        tenant, client = await _seed_tenant_client(db)
+        invoice = await _create_basic_invoice(db, tenant, client)
+        assert invoice.invoice_type == "proforma"
+        assert invoice.invoice_number is None
+
+        with pytest.raises(ProformaNotFiscalError):
+            await generate_facturae_xml(invoice.id, tenant.id, db)
+
+    def test_is_non_fiscal_proforma_predicate(self):
+        from app.services.billing.facturae import is_non_fiscal_proforma
+
+        # No fiscales → bloqueadas
+        assert is_non_fiscal_proforma("proforma", None) is True
+        assert is_non_fiscal_proforma("issued", None) is True
+        assert is_non_fiscal_proforma("issued", "") is True
+        assert is_non_fiscal_proforma("issued", "PROFORMA-abc12345") is True
+        # Fiscales genuinas → permitidas
+        assert is_non_fiscal_proforma("issued", "A2026-0001") is False
+        assert is_non_fiscal_proforma("rectificativa", "R2026-0001") is False
 
 
 class TestListInvoices:

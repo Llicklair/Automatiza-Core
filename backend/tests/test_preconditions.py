@@ -62,10 +62,10 @@ class TestPreconditions:
             f"/system/preconditions (debía ser 403)."
         )
 
-    async def test_required_tables_son_las_3_esperadas(self):
-        """La constante REQUIRED_TABLES debe cubrir FAC.NUM + FAC.HASH + SEC.APR."""
+    async def test_required_tables_esperadas(self):
+        """La constante REQUIRED_TABLES debe cubrir FAC.NUM + SEC.APR (el core
+        VeriFactu/SIF fue externalizado: ya no existe la tabla verifactu_chain)."""
         assert set(REQUIRED_TABLES) == {
             "invoice_series",         # FAC.NUM
-            "verifactu_chain",        # FAC.HASH
             "fiscal_approval_log",    # SEC.APR
         }

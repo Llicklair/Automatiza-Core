@@ -1,4 +1,4 @@
-"""Modelo de registro de backups locales (BAK.LOC + BAK.VF)."""
+"""Modelo de registro de backups locales (BAK.LOC)."""
 
 from .common import (
     UUID,
@@ -18,9 +18,6 @@ class BackupRecord(Base):
 
     Tipos (`kind`):
     * `full` — pg_dump completo cifrado con clave maestra del usuario.
-    * `verifactu` — solo schema `verifactu_chain` cifrado con **clave distinta**
-      (consensuado Ronda 11 R.5 — clave segregada para auditoría AEAT
-      sobreviva incluso si la clave principal se compromete).
 
     Append-only enforced en Postgres (migración 0017 triggers).
     """
@@ -29,7 +26,7 @@ class BackupRecord(Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
-    kind = Column(String(20), nullable=False)  # "full" | "verifactu"
+    kind = Column(String(20), nullable=False)  # "full"
     destination_path = Column(String(1000), nullable=False)
     size_bytes = Column(BigInteger, nullable=False)
     sha256_hex = Column(String(64), nullable=False)

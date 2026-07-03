@@ -6,16 +6,15 @@ SCOPE.md: dashboard no-vacío en <5 min). Todo lo sembrado lleva ``is_demo=True`
 
   - **Visible** en listados y analítica (dashboard, /facturacion, /clientes…) —
     ese es justo el objetivo.
-  - **Invisible** a TODA declaración fiscal: 303/130/390/347/libro registro y la
-    cadena VeriFactu excluyen ``Invoice.is_demo`` (ver services/reports/* y
-    services/billing/backfill_verifactu.py). Las facturas demo NO consumen la
-    serie correlativa real (numeración ``DEMO-NNNN``, sin pasar por
+  - **Invisible** a TODA declaración fiscal: 303/130/390/347/libro registro
+    excluyen ``Invoice.is_demo`` (ver services/reports/*). Las facturas demo NO
+    consumen la serie correlativa real (numeración ``DEMO-NNNN``, sin pasar por
     ``next_invoice_number``).
   - **Borrable de golpe** con ``clear_demo_data`` ("Borrar datos de ejemplo").
 
 Se construye DIRECTAMENTE (sin ``create_invoice``/``create_client``) a propósito:
 el seed NO debe emitir eventos de negocio (dispararían workflows sobre datos
-falsos), ni encadenar VeriFactu, ni consumir la serie fiscal. Reutiliza
+falsos) ni consumir la serie fiscal. Reutiliza
 ``compute_invoice_totals`` para los importes (misma aritmética Decimal validada).
 
 Idempotente: si ya hay datos demo en el tenant, ``seed_demo_data`` no duplica.
@@ -125,7 +124,7 @@ async def _build_demo_invoice(
     status: str,
     due_date: datetime | None = None,
 ) -> Invoice:
-    """Construye una factura demo + líneas SIN VeriFactu ni serie correlativa."""
+    """Construye una factura demo + líneas SIN serie correlativa fiscal."""
     totals = compute_invoice_totals(lines_data)
     inv = Invoice(
         tenant_id=tenant_id,

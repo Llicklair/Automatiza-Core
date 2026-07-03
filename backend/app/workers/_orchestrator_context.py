@@ -11,7 +11,7 @@ import uuid
 from datetime import UTC, date, datetime
 from decimal import Decimal
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 from app.core.datetime_utils import local_today
 from app.db.models.auth import Tenant
@@ -411,23 +411,23 @@ async def _create_invoice_from_approval(task, payload_data: dict, db) -> bool:
         await db.commit()
         return False
 
-    # Crear factura
+    # Crear proforma. El ERP ya NO emite facturas fiscales (Opción A): la
+    # reanudación desde una aprobación crea una PROFORMA sin número correlativo
+    # — un borrador sin valor fiscal, misma degradación que
+    # services/billing/commands.create_invoice. No se fabrica número "FAC-...".
     tax_amount = round(amount_base * (vat_rate / Decimal("100")), 2)
     total_amount = amount_base + tax_amount
-
-    count_res = await db.execute(select(func.count(Invoice.id)).where(Invoice.tenant_id == task.tenant_id))
-    invoice_number = f"FAC-{inv_date.year}-{(count_res.scalar() or 0) + 1:04d}"
 
     new_invoice = Invoice(
         tenant_id=task.tenant_id,
         client_id=cliente_local.id,
-        invoice_number=invoice_number,
+        invoice_number=None,
         date=inv_date,
         amount_base=amount_base,
         tax_amount=tax_amount,
         amount_total=total_amount,
         status="draft",
-        invoice_type="issued",
+        invoice_type="proforma",
         external_id=None,
     )
     db.add(new_invoice)

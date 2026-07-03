@@ -6,8 +6,6 @@ para evitar emitir documentos no defendibles ante AEAT/inspección.
 Precondiciones verificadas:
 * **FAC.NUM**: la tabla `invoice_series` existe — numeración correlativa
   por serie/año está disponible.
-* **FAC.HASH**: la tabla `verifactu_chain` existe — cadena hash Verifactu
-  está disponible (RD 1007/2023 Art. 8).
 * **SEC.APR**: la tabla `fiscal_approval_log` existe — aprobación fiscal
   humana puede registrarse cuando proceda.
 """
@@ -15,7 +13,7 @@ Precondiciones verificadas:
 from sqlalchemy import inspect
 from sqlalchemy.ext.asyncio import AsyncSession
 
-REQUIRED_TABLES = ("invoice_series", "verifactu_chain", "fiscal_approval_log")
+REQUIRED_TABLES = ("invoice_series", "fiscal_approval_log")
 
 
 async def check_invoice_preconditions(db: AsyncSession) -> dict:

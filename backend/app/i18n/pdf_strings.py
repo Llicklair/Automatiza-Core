@@ -51,8 +51,6 @@ _TRANSLATIONS: dict[Locale, dict[str, str]] = {
         "invoice.payment_method": "Método de pago",
         "invoice.notes": "Notas",
         "invoice.terms": "Condiciones",
-        "invoice.verifactu_hash": "Huella Verifactu",
-        "invoice.verifactu_verify": "Verifica esta factura en",
         # Nómina
         "payroll.title": "Nómina",
         "payroll.period": "Período de liquidación",
@@ -105,8 +103,6 @@ _TRANSLATIONS: dict[Locale, dict[str, str]] = {
         "invoice.payment_method": "Payment method",
         "invoice.notes": "Notes",
         "invoice.terms": "Terms",
-        "invoice.verifactu_hash": "Verifactu fingerprint",
-        "invoice.verifactu_verify": "Verify this invoice at",
         "payroll.title": "Payslip",
         "payroll.period": "Pay period",
         "payroll.employee": "Employee",

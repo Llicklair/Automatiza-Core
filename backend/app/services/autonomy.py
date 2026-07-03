@@ -62,7 +62,7 @@ KNOWN_DOMAINS: frozenset[str] = frozenset(
 )
 
 # Dominios con modo FORZADO — no configurables por el tenant ni por API.
-# fiscal (Verifactu/AEAT): presentar ante la Administración exige SIEMPRE un
+# fiscal (modelos AEAT): presentar ante la Administración exige SIEMPRE un
 # humano explícito; un AUTO aquí es riesgo legal directo.
 FORCED_MODES: dict[str, AutonomyMode] = {
     "fiscal": "MANUAL",

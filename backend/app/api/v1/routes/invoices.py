@@ -13,10 +13,10 @@ from app.api.v1.schemas.erp import InvoiceCreate, InvoiceResponse, InvoiceStatus
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.auth import Tenant
-from app.db.models.models import User
+from app.db.models.models import Invoice, User
 from app.middleware.rate_limit import limiter
 from app.services.billing import invoice as svc
-from app.services.billing.facturae import generate_facturae_xml
+from app.services.billing.facturae import generate_facturae_xml, is_non_fiscal_proforma
 from app.services.event_bus import emit_event
 
 logger = logging.getLogger(__name__)
@@ -316,7 +316,7 @@ async def delete_invoice(
     try:
         deleted = await svc.delete_invoice(invoice_id, current_user.tenant_id, db)
     except ValueError as e:
-        # Verifactu inmutable o periodo contable cerrado → 409 (conflicto), no 500.
+        # Periodo contable cerrado u otra invariante → 409 (conflicto), no 500.
         raise HTTPException(status_code=409, detail=str(e)) from e
     if not deleted:
         raise HTTPException(status_code=404, detail="Factura no encontrada")
@@ -391,11 +391,10 @@ async def create_rectificativa(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Emite una factura rectificativa por anulación de la factura `invoice_id`.
+    """Crea una proforma de rectificación/abono para la factura `invoice_id`.
 
-    Body: {"reason": str, "serie": str?}. Crea una nueva factura que minora la
-    original con importes negativos (RD 1619/2012 Art. 15), su numeración propia
-    y su eslabón en la cadena Verifactu.
+    Body: {"reason": str, "serie": str?}. Genera una nueva proforma (sin valor
+    fiscal) que minora la original con importes negativos.
     """
     reason = (payload or {}).get("reason") or ""
     serie = (payload or {}).get("serie") or "R"
@@ -495,6 +494,27 @@ async def download_facturae(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    # GUARD (Opción A): el ERP no emite facturas fiscales, solo proformas no
+    # fiscales (invoice_number=None, invoice_type="proforma"). Generar/firmar una
+    # FacturaE oficial de una proforma la haría indistinguible de una factura real
+    # ante FACe/terceros. Se bloquea ANTES de generar o firmar nada.
+    guard_res = await db.execute(
+        select(Invoice.invoice_type, Invoice.invoice_number).where(
+            Invoice.id == invoice_id, Invoice.tenant_id == current_user.tenant_id
+        )
+    )
+    guard_row = guard_res.first()
+    if guard_row is None:
+        raise HTTPException(status_code=404, detail="Factura no encontrada")
+    if is_non_fiscal_proforma(guard_row.invoice_type, guard_row.invoice_number):
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "No se puede generar FacturaE de una proforma: la factura debe "
+                "emitirse en el sistema de facturación certificado externo."
+            ),
+        )
+
     try:
         xml_bytes, file_name = await generate_facturae_xml(invoice_id, current_user.tenant_id, db)
     except ValueError as e:
@@ -516,24 +536,3 @@ async def download_facturae(
         media_type="application/xml",
         headers={"Content-Disposition": f'attachment; filename="{file_name}"'},
     )
-
-
-@router.post("/invoices/{invoice_id}/verifactu-send", tags=["erp"])
-@limiter.limit("10/minute")
-async def send_to_verifactu(
-    request: Request,
-    invoice_id: UUID,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    # Pipeline REAL de envío a VeriFactu, cableado pero INACTIVO: con confirmed=False
-    # solo valida (dry-run), NUNCA hace POST a la AEAT ni marca 'sent' sin acuse real.
-    # Activar el envío real exige modo voluntary + certificado + homologación AEAT
-    # (entonces se pasará confirmed=True). Antes esto era una simulación que fingía
-    # "enviado"; ahora no se finge nada.
-    from app.services.billing.verifactu_submit import submit_invoice_to_verifactu
-
-    try:
-        return await submit_invoice_to_verifactu(db, invoice_id, current_user.tenant_id, confirmed=False)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e)) from e

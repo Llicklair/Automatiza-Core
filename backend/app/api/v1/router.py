@@ -57,8 +57,6 @@ from app.api.v1.routes import (
     tenant,
     treasury,
     users,
-    verifactu_config,
-    verify,
     warehouses,
     workflows,
 )
@@ -104,14 +102,12 @@ api_router.include_router(import_bulk.router)
 api_router.include_router(alerts.router, prefix="/alerts", tags=["alerts"], dependencies=_PRO)
 api_router.include_router(calendar.router)
 api_router.include_router(client_portal.router, dependencies=_GESTORIA)
-api_router.include_router(verify.router)
 api_router.include_router(telemetry.router)
 api_router.include_router(backup_local.router)
 api_router.include_router(onboarding_regap.router)
 api_router.include_router(onboarding_wizard.router)
 api_router.include_router(autonomy.router)
 api_router.include_router(notifications.router)
-api_router.include_router(verifactu_config.router)
 api_router.include_router(presentacion_asistida.router, dependencies=_PRO)
 api_router.include_router(modelos_aeat.router, dependencies=_PRO)
 api_router.include_router(aeat_presentation.router, dependencies=_PRO)

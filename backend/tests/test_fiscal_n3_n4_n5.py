@@ -4,13 +4,10 @@
       worker + empresa; el coste real de personal deja de estar infravalorado.
 - N4: el Modelo 130 resta las retenciones de IRPF soportadas (casilla 06) en vez
       de forzarlas a 0; el autónomo no paga de más.
-- N5: el DesgloseIVA del registro VeriFactu resta el descuento de línea, igual que
-      compute_invoice_totals / vat_breakdown_by_rate (antes usaba la base bruta).
 """
 
 from datetime import UTC, datetime
 from decimal import Decimal
-from types import SimpleNamespace
 
 from sqlalchemy import select
 
@@ -20,7 +17,6 @@ from app.db.models.crm import Client
 from app.db.models.hr import Employee, Payroll
 from app.services.aeat.casillas_130 import build_casillas_130
 from app.services.billing.auto_accounting import create_payroll_journal_entry
-from app.services.billing.registro_facturacion import _detalles
 from app.services.reports.modelos_aeat import build_modelo_130_data
 
 # ─── N3: cuota patronal de SS (642) en el asiento de nómina ───────────────────
@@ -93,20 +89,3 @@ async def test_modelo_130_resta_retenciones_soportadas(db, seed_tenant_and_user)
     cas = {c.codigo: float(c.valor) for c in build_casillas_130(data)}
     assert cas["06"] == 1500.0  # retenciones soportadas
     assert cas["07"] == 100.0   # casilla 04 − 05 − 06 = 1600 − 0 − 1500
-
-
-# ─── N5: el desglose VeriFactu resta el descuento de línea ─────────────────────
-
-
-def test_detalles_verifactu_resta_descuento_de_linea():
-    inv = SimpleNamespace(amount_base=Decimal("90"), tax_amount=Decimal("18.90"))
-    lines = [SimpleNamespace(
-        tax_percentage=Decimal("21"), quantity=Decimal("1"),
-        unit_price=Decimal("100"), discount_percentage=Decimal("10"),
-    )]
-    dets = _detalles(inv, lines)
-
-    assert len(dets) == 1
-    assert dets[0].tipo == "21"
-    assert dets[0].base == "90.00"   # 100 − 10% (antes daba 100.00 = base inflada)
-    assert dets[0].cuota == "18.90"  # 90 × 21%

@@ -73,6 +73,11 @@ def _invoice_lines_table(
 def _simple_header(company: dict, data: dict, s, accent: str, doc_title: str = "FACTURA") -> list:
     """Cabecera simple (line_only / rectificativa / retención) sin banda de color."""
     title_color = accent
+    # Una proforma impone su propio título ("PROFORMA / BORRADOR") vía data y una
+    # etiqueta de número no fiscal ("Ref." en vez de "Nº") para que no se lea como
+    # una factura fiscal.
+    doc_title = data.get("doc_title") or doc_title
+    num_label = data.get("number_label", "Nº")
     header_data = [
         [
             [
@@ -96,7 +101,7 @@ def _simple_header(company: dict, data: dict, s, accent: str, doc_title: str = "
                     ),
                 ),
                 Spacer(1, 6),
-                Paragraph(f"Nº {data.get('number', 'F-0001')}", s["right"]),
+                Paragraph(f"{num_label} {data.get('number', '—')}", s["right"]),
                 Paragraph(f"Fecha: {_format_date(data.get('date', ''))}", s["right"]),
             ],
         ]
@@ -133,6 +138,8 @@ Total: {invoice_data.get("amount_total", 0):.2f} EUR
 def _themed_header(invoice_data, company, th, styles, title_sty, body_sty, right_sty, bold, font, acc):
     """Genera la cabecera según el header_style del theme (color_band, dark_band, line_only)."""
     h_style = th["header_style"]
+    # "Ref." (no "Nº") para proformas: nunca una numeración de factura fiscal.
+    num_label = invoice_data.get("number_label", "Nº")
     elements = []
 
     if h_style == "color_band":
@@ -173,7 +180,7 @@ def _themed_header(invoice_data, company, th, styles, title_sty, body_sty, right
         inv_col = [
             Paragraph(invoice_data.get("doc_title", "FACTURA"), band_right),
             Spacer(1, 4),
-            Paragraph(f"Nº {invoice_data.get('number', 'F-0001')}", band_rsub),
+            Paragraph(f"{num_label} {invoice_data.get('number', '—')}", band_rsub),
             Paragraph(f"Fecha: {_format_date(invoice_data.get('date', ''))}", band_rsub),
         ]
         band_table = Table([[logo_col, inv_col]], colWidths=[110 * mm, 70 * mm])
@@ -226,7 +233,7 @@ def _themed_header(invoice_data, company, th, styles, title_sty, body_sty, right
         inv_col = [
             Paragraph(invoice_data.get("doc_title", "FACTURA"), dark_r),
             Spacer(1, 4),
-            Paragraph(f"Nº {invoice_data.get('number', 'F-0001')}", dark_rsub),
+            Paragraph(f"{num_label} {invoice_data.get('number', '—')}", dark_rsub),
             Paragraph(f"Fecha: {_format_date(invoice_data.get('date', ''))}", dark_rsub),
         ]
         band_table = Table([[logo_col, inv_col]], colWidths=[110 * mm, 70 * mm])
@@ -269,7 +276,7 @@ def _themed_header(invoice_data, company, th, styles, title_sty, body_sty, right
                 ),
             ),
             Spacer(1, 6),
-            Paragraph(f"Nº {invoice_data.get('number', 'F-0001')}", right_sty),
+            Paragraph(f"{num_label} {invoice_data.get('number', '—')}", right_sty),
             Paragraph(f"Fecha: {_format_date(invoice_data.get('date', ''))}", right_sty),
         ]
         if logo_pos == "right":
@@ -325,65 +332,36 @@ def _themed_header(invoice_data, company, th, styles, title_sty, body_sty, right
     return elements
 
 
-def _verifactu_qr_block(verifactu: dict | None) -> list:
-    """Genera el bloque QR Verifactu para insertar en el PDF (FAC.QR).
+def _draft_safety_marker(width_mm: float = 180.0) -> list:
+    """Sello visible "SIN VALOR FISCAL" para proformas/borradores.
 
-    `verifactu` debe ser un dict con `huella` (SHA-256 hex) y `verify_url`
-    (URL pública del endpoint `/verify/{huella}`). Si falta cualquiera de
-    los dos, no emite nada (la factura sigue siendo válida sin QR — el QR
-    solo aplica cuando hay registro Verifactu encadenado).
+    Barrera anti-confusión: garantiza que una proforma no pueda hacerse pasar
+    por una factura. Se inserta en la cabecera de todo documento no fiscal
+    generado por el ERP.
     """
-    if not REPORTLAB_AVAILABLE or not verifactu:
+    if not REPORTLAB_AVAILABLE:
         return []
-    huella = verifactu.get("huella")
-    verify_url = verifactu.get("verify_url")
-    if not huella or not verify_url:
-        return []
-
-    # Import diferido — solo cuando hay datos Verifactu.
-    from reportlab.graphics.barcode.qr import QrCodeWidget
-    from reportlab.graphics.shapes import Drawing
-
-    qr = QrCodeWidget(verify_url)
-    qr_size = 25 * mm
-    bounds = qr.getBounds()
-    qr_w = bounds[2] - bounds[0]
-    qr_h = bounds[3] - bounds[1]
-    drawing = Drawing(qr_size, qr_size, transform=[qr_size / qr_w, 0, 0, qr_size / qr_h, 0, 0])
-    drawing.add(qr)
-
-    caption_sty = ParagraphStyle(
-        "V_caption",
-        fontSize=7,
-        fontName="Helvetica",
-        textColor=colors.HexColor("#475569"),
+    marker_sty = ParagraphStyle(
+        "DraftSafetyMarker",
+        fontSize=11,
+        fontName="Helvetica-Bold",
+        textColor=colors.white,
         alignment=TA_CENTER,
     )
-    huella_sty = ParagraphStyle(
-        "V_huella",
-        fontSize=6,
-        fontName="Helvetica",
-        textColor=colors.HexColor("#94a3b8"),
-        alignment=TA_CENTER,
+    banner = Table(
+        [[Paragraph("SIN VALOR FISCAL — no es una factura", marker_sty)]],
+        colWidths=[width_mm * mm],
     )
-
-    qr_cell = Table(
-        [
-            [drawing],
-            [Paragraph("Verifactu — Escanea para verificar", caption_sty)],
-            [Paragraph(f"<font face='Helvetica'>Huella: {huella[:16]}…</font>", huella_sty)],
-        ],
-        colWidths=[qr_size + 4 * mm],
-    )
-    qr_cell.setStyle(
+    banner.setStyle(
         TableStyle(
             [
-                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#dc2626")),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("TOPPADDING", (0, 0), (-1, -1), 1),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 8),
             ]
         )
     )
-
-    return [Spacer(1, 4 * mm), qr_cell, Spacer(1, 2 * mm)]
+    return [banner, Spacer(1, 4 * mm)]

@@ -10,8 +10,8 @@ agregados, y descuenta stock atómicamente por cada línea con product_id
 asociado (StockMovement.reference = "POS_SESSION:<session_id>").
 
 No emite factura automáticamente — la integración con `create_invoice`
-y Verifactu queda como fase 2 (botón opcional "generar factura
-simplificada" sobre una sesión cerrada).
+queda como fase 2 (botón opcional "generar factura simplificada" sobre
+una sesión cerrada).
 """
 
 from .common import (

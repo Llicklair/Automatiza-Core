@@ -21,7 +21,7 @@ router = APIRouter(prefix="/backup-local", tags=["backup"])
 
 
 class RecordBackupRequest(BaseModel):
-    kind: str = Field(..., pattern="^(full|verifactu)$")
+    kind: str = Field(..., pattern="^full$")
     destination_path: str = Field(..., min_length=1, max_length=1000)
     size_bytes: int = Field(..., ge=0)
     sha256_hex: str = Field(..., min_length=64, max_length=64, pattern="^[0-9a-f]{64}$")
@@ -42,7 +42,6 @@ class RecordBackupResponse(BaseModel):
 class BackupStatusResponse(BaseModel):
     has_any_backup: bool
     last_full_backup_at: datetime | None
-    last_verifactu_backup_at: datetime | None
     stale: bool
     show_banner: bool
     days_since_last: int | None

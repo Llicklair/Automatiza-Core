@@ -5,11 +5,11 @@ Generación de PDFs de facturación: factura estándar, rectificativa y con rete
 import io
 
 from app.services.pdf._invoice_sections import (
+    _draft_safety_marker,
     _generate_simple_text_pdf,
     _invoice_lines_table,
     _simple_header,
     _themed_header,
-    _verifactu_qr_block,
 )
 from app.services.pdf.pdf_base import (
     REPORTLAB_AVAILABLE,
@@ -112,6 +112,10 @@ def generate_invoice_pdf(invoice_data: dict, theme_config: dict | None = None) -
     # ── CABECERA según header_style ──
     elements.extend(_themed_header(invoice_data, company, th, styles, title_sty, body_sty, right_sty, bold, font, acc))
 
+    # ── SELLO "SIN VALOR FISCAL" (proforma / borrador) ──
+    if invoice_data.get("is_proforma"):
+        elements.extend(_draft_safety_marker())
+
     # ── CLIENTE ──
     elements.extend(_client_block(client, header_sty, body_sty, bold_font=bold))
     elements.append(Spacer(1, 1 * mm))
@@ -173,9 +177,6 @@ def generate_invoice_pdf(invoice_data: dict, theme_config: dict | None = None) -
             elements.append(Spacer(1, 1.5 * mm))
             elements.append(Paragraph(str(notes), body_sty))
 
-    # ── QR VERIFACTU (si disponible) ──
-    elements.extend(_verifactu_qr_block(invoice_data.get("verifactu")))
-
     # ── PIE ──
     footer_text = (
         th.get("footer_text") or "Documento generado automáticamente por AutomatizaCore · Gracias por su confianza."
@@ -210,7 +211,13 @@ def generate_rectificative_invoice_pdf(data: dict, theme_config: dict | None = N
     original = data.get("original_invoice", {})
 
     # ── CABECERA ──
-    elements.extend(_simple_header(company, data, s, _accent, doc_title="FACTURA RECTIFICATIVA"))
+    # Las rectificaciones creadas por el ERP son proformas de abono sin valor
+    # fiscal: se sellan como tal salvo que el llamante indique lo contrario.
+    is_proforma = data.get("is_proforma", True)
+    doc_title = "PROFORMA / BORRADOR (Rectificación)" if is_proforma else "FACTURA RECTIFICATIVA"
+    elements.extend(_simple_header(company, data, s, _accent, doc_title=doc_title))
+    if is_proforma:
+        elements.extend(_draft_safety_marker())
 
     # ── CLIENTE ──
     elements.extend(_client_block(client, s["header"], s["body"]))
