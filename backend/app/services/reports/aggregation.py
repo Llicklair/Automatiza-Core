@@ -166,10 +166,16 @@ async def aggregate(db: AsyncSession, tenant_id: uuid.UUID, start: date, end: da
     month_str = start.strftime("%Y-%m")
 
     # ── Facturas ──
+    # MISMO filtro que Analítica (dashboard.py) y Fiscal (reports/fiscal.py): se
+    # excluyen anuladas (cancelled) y datos demo. Sin esto, una factura cancelada
+    # seguía sumando a los ingresos SOLO en este informe → tres cifras distintas
+    # para el mismo periodo (audit ERP 2026-07-03).
     inv_q = await db.execute(
         select(Invoice).where(
             and_(
                 Invoice.tenant_id == tenant_id,
+                Invoice.is_demo.is_(False),
+                Invoice.status.notin_(["cancelled"]),
                 func.date(Invoice.date) >= start,
                 func.date(Invoice.date) <= end,
             )

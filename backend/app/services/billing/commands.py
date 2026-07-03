@@ -225,7 +225,13 @@ async def create_rectificativa(
         amount_total=totals["amount_total"],
     )
     db.add(rect)
-    await db.flush()  # poblar rect.id antes de las líneas (atómico, sin commit)
+    try:
+        await db.flush()  # poblar rect.id antes de las líneas (atómico, sin commit)
+    except IntegrityError as exc:
+        # Backstop de la barrera de BD (uq_invoices_rectifies_once): dos peticiones
+        # concurrentes pasaron el guard de aplicación y chocaron aquí → mismo error
+        # de negocio, no un 500.
+        raise ValueError("Ya existe una factura rectificativa para esta factura.") from exc
 
     for ld in totals["lines"]:
         db.add(

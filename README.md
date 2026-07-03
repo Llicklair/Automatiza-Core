@@ -53,7 +53,7 @@ AutomatizaCore combina dos cosas que normalmente no van juntas:
 | Área | Estado | Notas |
 |---|---|---|
 | Facturación electrónica | ✅ Producción | Invoices, series, recurrentes, presupuestos, conversión cotización→factura, exportación PDF |
-| **Verifactu** | ✅ Producción | Cadena de hash, configuración por tenant, audit WORM, backfill |
+| **Verifactu** | 🟡 Beta (envío SIMULADO) | Cadena de hash, configuración por tenant, audit WORM, backfill LISTOS. El **envío a la AEAT es simulación** (`mark_verifactu_sent` marca la factura sin generar XML/firma/POST real): la presentación telemática real está **bloqueada por certificado FNMT** (ver SCOPE.md). No asumir que una factura "enviada" está presentada ante Hacienda |
 | Contabilidad española | ✅ Producción | Libro diario, P&G, balance, cuadro de cuentas, activos fijos |
 | Compras | ✅ Producción | Purchase orders, facturas de compra, proveedores |
 | Ventas | ✅ Producción | Sales orders, albaranes con reversa de stock, cotizaciones |

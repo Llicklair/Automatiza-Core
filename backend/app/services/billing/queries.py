@@ -66,9 +66,20 @@ def compute_invoice_totals(lines_data: list[dict], *, allow_negative: bool = Fal
         tax_perc = float(ld.get("tax_percentage", 21))
         if tax_perc not in VALID_IVA:
             raise ValueError(f"Tipo de IVA inválido: {tax_perc}%. Los valores permitidos son: 0%, 4%, 10%, 21%.")
+        if not (Decimal("0") <= discount <= Decimal("100")):
+            raise ValueError(f"Descuento por línea fuera de rango: {discount}%. Debe estar entre 0 y 100.")
         line_base = qty * uprice
         if discount > 0:
             line_base -= line_base * (discount / Decimal("100"))
+        # Una línea con base negativa (cantidad/precio negativos) solo es válida en
+        # una rectificativa/abono. En una factura ordinaria la validación del TOTAL
+        # no la detectaba si otra línea la compensaba → base de línea negativa
+        # camuflada en un F1 fiscalmente inválido (audit ERP 2026-07-03).
+        if line_base < 0 and not allow_negative:
+            raise ValueError(
+                "Una línea no puede tener base negativa en una factura ordinaria. "
+                "Usa una factura rectificativa para abonos."
+            )
         line_tax = line_base * (_d(tax_perc) / Decimal("100"))
         total_base += line_base
         total_tax += line_tax

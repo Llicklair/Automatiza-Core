@@ -18,19 +18,48 @@ def test_linea_simple():
 
 
 def test_descuento():
-    r = compute_invoice_totals(
-        [{"quantity": 1, "unit_price": 100, "discount_percentage": 10, "tax_percentage": 21}]
-    )
+    r = compute_invoice_totals([{"quantity": 1, "unit_price": 100, "discount_percentage": 10, "tax_percentage": 21}])
     assert r["amount_base"] == 90.0
     assert r["tax_amount"] == 18.9
     assert r["amount_total"] == 108.9
 
 
+# ── Validación de rango de línea (audit ERP 2026-07-03) ──────────────────
+
+
+def test_descuento_fuera_de_rango_rechazado():
+    with pytest.raises(ValueError, match="Descuento por línea fuera de rango"):
+        compute_invoice_totals([{"quantity": 1, "unit_price": 100, "discount_percentage": 150}])
+    with pytest.raises(ValueError, match="Descuento por línea fuera de rango"):
+        compute_invoice_totals([{"quantity": 1, "unit_price": 100, "discount_percentage": -5}])
+
+
+def test_linea_base_negativa_rechazada_en_factura_ordinaria():
+    # Una línea con cantidad negativa que se camufla en un total positivo:
+    # antes pasaba (solo se validaba el total agregado); ahora se rechaza.
+    with pytest.raises(ValueError, match="base negativa"):
+        compute_invoice_totals(
+            [
+                {"quantity": 1, "unit_price": 100, "tax_percentage": 21},
+                {"quantity": -1, "unit_price": 50, "tax_percentage": 21},
+            ]
+        )
+
+
+def test_linea_base_negativa_permitida_en_rectificativa():
+    # allow_negative=True (abono): las líneas negativas son legítimas.
+    r = compute_invoice_totals([{"quantity": 1, "unit_price": -100, "tax_percentage": 21}], allow_negative=True)
+    assert r["amount_base"] == -100.0
+    assert r["amount_total"] == -121.0
+
+
 def test_multilinea_iva_mixto():
-    r = compute_invoice_totals([
-        {"quantity": 1, "unit_price": 100, "tax_percentage": 21},
-        {"quantity": 1, "unit_price": 50, "tax_percentage": 10},
-    ])
+    r = compute_invoice_totals(
+        [
+            {"quantity": 1, "unit_price": 100, "tax_percentage": 21},
+            {"quantity": 1, "unit_price": 50, "tax_percentage": 10},
+        ]
+    )
     assert r["amount_base"] == 150.0
     assert r["tax_amount"] == 26.0  # 21 + 5
     assert r["amount_total"] == 176.0
@@ -95,9 +124,7 @@ def test_negativo_sigue_validando_iva():
 def test_rectificativa_anula_factura_a_cero():
     # Una rectificativa por anulación (líneas negadas) debe dejar el neto a 0
     # al sumarse con la original: aquí comprobamos que la negación es exacta.
-    original = compute_invoice_totals(
-        [{"quantity": 2, "unit_price": 100, "tax_percentage": 21}]
-    )
+    original = compute_invoice_totals([{"quantity": 2, "unit_price": 100, "tax_percentage": 21}])
     abono = compute_invoice_totals(
         [{"quantity": 2, "unit_price": -100, "tax_percentage": 21}],
         allow_negative=True,

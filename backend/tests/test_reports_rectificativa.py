@@ -18,9 +18,7 @@ from app.services.reports.aggregation import aggregate
 
 async def _seed_tenant_with_rectificativa() -> UUID:
     async with AsyncSessionLocal() as db:
-        tenant = Tenant(
-            id=uuid4(), name="Informes S.L.", nif=f"B{str(uuid4().int)[:8]}", plan="starter"
-        )
+        tenant = Tenant(id=uuid4(), name="Informes S.L.", nif=f"B{str(uuid4().int)[:8]}", plan="starter")
         db.add(tenant)
         await db.flush()
         client = Client(id=uuid4(), tenant_id=tenant.id, name="Cliente", nif="B87654321")
@@ -63,3 +61,60 @@ async def test_ingresos_del_informe_netean_rectificativas():
     assert snap.facturas.ingresos_total == 968.0
     # La rectificativa cuenta como documento emitido (cadena de facturación).
     assert snap.facturas.facturas_emitidas == 2
+
+
+async def test_informe_excluye_canceladas_y_demo():
+    """El informe NO suma facturas anuladas ni demo — igual que Analítica y AEAT
+    (audit ERP 2026-07-03). Antes una cancelada seguía inflando los ingresos."""
+    async with AsyncSessionLocal() as db:
+        tenant = Tenant(id=uuid4(), name="Cancel S.L.", nif=f"B{str(uuid4().int)[:8]}", plan="starter")
+        db.add(tenant)
+        await db.flush()
+        client = Client(id=uuid4(), tenant_id=tenant.id, name="Cliente", nif="B11223344")
+        db.add(client)
+        await db.flush()
+        base = {"tenant_id": tenant.id, "client_id": client.id, "invoice_type": "issued"}
+        db.add(
+            Invoice(
+                id=uuid4(),
+                invoice_number="F-1",
+                date=datetime(2026, 5, 10, tzinfo=UTC),
+                amount_base=Decimal("1000"),
+                tax_amount=Decimal("210"),
+                amount_total=Decimal("1210"),
+                status="paid",
+                **base,
+            )
+        )
+        # Esta cancelada NO debe contar.
+        db.add(
+            Invoice(
+                id=uuid4(),
+                invoice_number="F-2",
+                date=datetime(2026, 5, 12, tzinfo=UTC),
+                amount_base=Decimal("500"),
+                tax_amount=Decimal("105"),
+                amount_total=Decimal("605"),
+                status="cancelled",
+                **base,
+            )
+        )
+        # Esta demo tampoco.
+        db.add(
+            Invoice(
+                id=uuid4(),
+                invoice_number="F-3",
+                date=datetime(2026, 5, 13, tzinfo=UTC),
+                amount_base=Decimal("300"),
+                tax_amount=Decimal("63"),
+                amount_total=Decimal("363"),
+                status="paid",
+                is_demo=True,
+                **base,
+            )
+        )
+        await db.commit()
+        tid = tenant.id
+        snap = await aggregate(db, tid, date(2026, 5, 1), date(2026, 5, 31))
+    assert snap.facturas.ingresos_total == 1210.0  # solo la válida
+    assert snap.facturas.facturas_emitidas == 1

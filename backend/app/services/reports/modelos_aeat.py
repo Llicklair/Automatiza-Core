@@ -23,6 +23,7 @@ from sqlalchemy.orm import joinedload as jl
 from app.db.models.crm import Client
 from app.db.models.hr import Employee
 from app.db.models.models import Invoice, Payroll, Tenant
+from app.services.billing.constants import EMITTED_INVOICE_TYPES
 
 # Umbral legal del Modelo 347 (operaciones con terceros).
 MODELO_347_THRESHOLD = Decimal("3005.06")
@@ -49,7 +50,7 @@ async def _invoices_in_period(
     # excluyen las anuladas ('cancelled') para cuadrar con el libro registro.
     # Los borradores SÍ cuentan (las compras nacen 'draft').
     type_clause = (
-        Invoice.invoice_type.in_(("issued", "rectificativa"))
+        Invoice.invoice_type.in_(EMITTED_INVOICE_TYPES)
         if invoice_type == "issued"
         else Invoice.invoice_type == invoice_type
     )

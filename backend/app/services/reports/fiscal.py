@@ -17,6 +17,7 @@ from sqlalchemy.orm import joinedload as jl
 
 from app.core.security import sanitize_spreadsheet_cell
 from app.db.models.models import Invoice, Payroll, Tenant
+from app.services.billing.constants import EMITTED_INVOICE_TYPES
 from app.services.reports._schemas import (
     FiscalIRPF,
     FiscalIS,
@@ -50,9 +51,7 @@ def _period_invoices_stmt(tenant_id: uuid.UUID, *, side: str, start: date, end: 
         compras nacen 'draft' y el 303 ya las declara (preventive_check avisa).
       - Los datos demo del onboarding nunca entran en lo fiscal.
     """
-    type_clause = (
-        Invoice.invoice_type.in_(("issued", "rectificativa")) if side == "issued" else Invoice.invoice_type == side
-    )
+    type_clause = Invoice.invoice_type.in_(EMITTED_INVOICE_TYPES) if side == "issued" else Invoice.invoice_type == side
     return (
         select(Invoice)
         .options(jl(Invoice.lines))

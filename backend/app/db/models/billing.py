@@ -53,6 +53,16 @@ class Invoice(Base):
             postgresql_where=text("invoice_type IN ('issued', 'rectificativa')"),
             sqlite_where=text("invoice_type IN ('issued', 'rectificativa')"),
         ),
+        # Anti doble-abono (TOCTOU): una factura original se rectifica una sola
+        # vez. El guard de aplicación (SELECT-then-insert) lo saltaban dos
+        # peticiones concurrentes; esta barrera de BD lo impide físicamente.
+        Index(
+            "uq_invoices_rectifies_once",
+            "rectifies_invoice_id",
+            unique=True,
+            postgresql_where=text("rectifies_invoice_id IS NOT NULL"),
+            sqlite_where=text("rectifies_invoice_id IS NOT NULL"),
+        ),
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

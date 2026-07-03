@@ -1,4 +1,5 @@
 """Tests para endpoints Quotes /api/v1/quotes/*."""
+
 from uuid import uuid4
 
 import pytest
@@ -66,9 +67,7 @@ class TestQuotes:
     @pytest.mark.asyncio
     async def test_get_quote(self, auth_client: AsyncClient):
         client_id = await self._create_client(auth_client)
-        create_resp = await auth_client.post(
-            "/api/v1/quotes/", json={"client_id": client_id}
-        )
+        create_resp = await auth_client.post("/api/v1/quotes/", json={"client_id": client_id})
         quote_id = create_resp.json()["id"]
         resp = await auth_client.get(f"/api/v1/quotes/{quote_id}")
         assert resp.status_code == 200
@@ -83,30 +82,22 @@ class TestQuotes:
     @pytest.mark.asyncio
     async def test_update_quote(self, auth_client: AsyncClient):
         client_id = await self._create_client(auth_client)
-        create_resp = await auth_client.post(
-            "/api/v1/quotes/", json={"client_id": client_id}
-        )
+        create_resp = await auth_client.post("/api/v1/quotes/", json={"client_id": client_id})
         quote_id = create_resp.json()["id"]
-        resp = await auth_client.patch(
-            f"/api/v1/quotes/{quote_id}", json={"notes": "Updated notes", "status": "sent"}
-        )
+        resp = await auth_client.patch(f"/api/v1/quotes/{quote_id}", json={"notes": "Updated notes", "status": "sent"})
         assert resp.status_code == 200
         assert resp.json()["notes"] == "Updated notes"
 
     @pytest.mark.asyncio
     async def test_update_quote_not_found(self, auth_client: AsyncClient):
         fake_id = str(uuid4())
-        resp = await auth_client.patch(
-            f"/api/v1/quotes/{fake_id}", json={"notes": "X"}
-        )
+        resp = await auth_client.patch(f"/api/v1/quotes/{fake_id}", json={"notes": "X"})
         assert resp.status_code == 404
 
     @pytest.mark.asyncio
     async def test_delete_quote(self, auth_client: AsyncClient):
         client_id = await self._create_client(auth_client)
-        create_resp = await auth_client.post(
-            "/api/v1/quotes/", json={"client_id": client_id}
-        )
+        create_resp = await auth_client.post("/api/v1/quotes/", json={"client_id": client_id})
         quote_id = create_resp.json()["id"]
         resp = await auth_client.delete(f"/api/v1/quotes/{quote_id}")
         assert resp.status_code == 204
@@ -125,3 +116,19 @@ class TestQuotes:
         resp = await auth_client.get("/api/v1/quotes/")
         assert resp.status_code == 200
         assert len(resp.json()) == 2
+
+    @pytest.mark.asyncio
+    async def test_convert_dos_veces_rechaza_la_segunda(self, auth_client: AsyncClient):
+        """Anti doble-conversión (audit ERP 2026-07-03): el segundo convert del
+        mismo presupuesto devuelve 400, no una segunda factura."""
+        client_id = await self._create_client(auth_client)
+        payload = {
+            "client_id": client_id,
+            "lines": [{"description": "X", "quantity": 1.0, "unit_price": 100.0, "tax_percentage": 21.0}],
+        }
+        qid = (await auth_client.post("/api/v1/quotes/", json=payload)).json()["id"]
+        r1 = await auth_client.post(f"/api/v1/quotes/{qid}/convert-to-invoice")
+        assert r1.status_code == 200
+        r2 = await auth_client.post(f"/api/v1/quotes/{qid}/convert-to-invoice")
+        assert r2.status_code == 400
+        assert "convertido" in r2.json()["detail"]

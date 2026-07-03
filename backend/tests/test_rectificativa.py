@@ -10,10 +10,12 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
+from decimal import Decimal
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.models import Client, Tenant
+from app.db.models.models import Client, Invoice, Tenant
 from app.db.models.billing import InvoiceLine
 from app.services.billing.invoice import create_invoice, create_rectificativa
 
@@ -23,7 +25,10 @@ async def _seed(db: AsyncSession):
     db.add(tenant)
     await db.flush()
     client = Client(
-        id=uuid4(), tenant_id=tenant.id, name="Cliente", nif="A11223344",
+        id=uuid4(),
+        tenant_id=tenant.id,
+        name="Cliente",
+        nif="A11223344",
         email="c@test.com",
     )
     db.add(client)
@@ -38,6 +43,39 @@ async def _original(db, tenant, client):
         {"description": "Material", "quantity": 1, "unit_price": 50.0, "tax_percentage": 10.0},
     ]
     return await create_invoice(client.id, payload, lines, tenant.id, uuid4(), db)
+
+
+@pytest.mark.asyncio
+async def test_barrera_bd_una_rectificativa_por_original(db: AsyncSession):
+    """La BARRERA de BD (uq_invoices_rectifies_once), no solo el guard de app:
+    dos rectificativas con el mismo rectifies_invoice_id chocan al flush.
+
+    Inserta directamente (saltando create_rectificativa) como haría una carrera
+    concurrente que pasa el SELECT-then-insert a la vez → IntegrityError.
+    """
+    tenant, client = await _seed(db)
+    orig = await _original(db, tenant, client)
+
+    def _rect(num: str) -> Invoice:
+        return Invoice(
+            id=uuid4(),
+            tenant_id=tenant.id,
+            client_id=client.id,
+            invoice_number=num,
+            date=datetime.now(UTC),
+            status="pending",
+            invoice_type="rectificativa",
+            rectifies_invoice_id=orig.id,
+            amount_base=Decimal("-1"),
+            amount_total=Decimal("-1"),
+        )
+
+    db.add(_rect("R-A"))
+    await db.flush()
+    db.add(_rect("R-B"))
+    with pytest.raises(IntegrityError):
+        await db.flush()
+    await db.rollback()
 
 
 class TestCreateRectificativa:
@@ -82,9 +120,7 @@ class TestCreateRectificativa:
 
         rect = await create_rectificativa(orig.id, "motivo", tenant.id, db)
 
-        res = await db.execute(
-            select(InvoiceLine).where(InvoiceLine.invoice_id == rect.id)
-        )
+        res = await db.execute(select(InvoiceLine).where(InvoiceLine.invoice_id == rect.id))
         rect_lines = res.scalars().all()
         assert len(rect_lines) == 2
         for ln in rect_lines:

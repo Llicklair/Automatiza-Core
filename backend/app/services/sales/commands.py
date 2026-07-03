@@ -12,7 +12,7 @@ from datetime import date as date_type
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import desc, func, select
+from sqlalchemy import desc, select, text, update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
@@ -34,6 +34,7 @@ from app.db.models.models import (
     StockMovement,
 )
 from app.services._tenant_guard import assert_fk_in_tenant
+from app.services.billing.numbering import next_invoice_number
 from app.services.sales.queries import _get_quote_or_raise, _quote_query_with_rels
 
 logger = logging.getLogger(__name__)
@@ -313,13 +314,27 @@ async def convert_to_invoice(
 ) -> dict:
     quote = await _get_quote_or_raise(db, quote_id, tenant_id)
 
-    if quote.status == "accepted":
+    # Claim ATÓMICO anti doble-conversión (TOCTOU): un UPDATE condicional flip
+    # status→accepted; solo un convertidor concurrente (doble clic, reintento)
+    # matchea `status != 'accepted'`, el resto obtiene 0 filas y aborta. Antes era
+    # check-then-act (SELECT estado → crear factura) → dos clics = dos facturas
+    # (audit ERP 2026-07-03). Todo va en la misma transacción: si la creación
+    # falla luego, el rollback revierte también este claim.
+    claim = await db.execute(
+        update(Quote)
+        .where(Quote.id == quote_id, Quote.tenant_id == tenant_id, Quote.status != "accepted")
+        .values(status="accepted")
+        .returning(Quote.id)
+    )
+    if claim.first() is None:
         raise ValueError("Este presupuesto ya fue convertido en factura")
 
-    count_res = await db.execute(select(func.count(Invoice.id)).where(Invoice.tenant_id == tenant_id))
-    invoice_count = (count_res.scalar() or 0) + 1
+    # Numeración por el numerador correlativo PROTEGIDO (advisory lock + FOR
+    # UPDATE), la misma serie que las facturas directas. Antes usaba COUNT(*) sin
+    # lock y una serie 'FAC-' paralela → colisión bajo concurrencia + dos series
+    # correlativas distintas (ilegal, RD 1619/2012).
     now = datetime.now(UTC)
-    invoice_number = f"FAC-{now.year}-{invoice_count:04d}"
+    invoice_number = await next_invoice_number(db, tenant_id)
 
     new_invoice = Invoice(
         tenant_id=tenant_id,
@@ -352,7 +367,7 @@ async def convert_to_invoice(
             )
         )
 
-    quote.status = "accepted"
+    # quote.status ya se fijó a "accepted" en el claim atómico de arriba.
     await db.commit()
 
     try:
@@ -393,8 +408,17 @@ async def convert_to_invoice(
 
 
 async def _next_albaran_number(tenant_id: UUID, db: AsyncSession) -> str:
+    # Advisory lock por tenant (mismo idiom que next_invoice_number): serializa
+    # la asignación del número entre creaciones concurrentes de albarán. Antes
+    # leía el MAX sin lock → dos altas simultáneas generaban el mismo número.
+    if db.bind is not None and db.bind.dialect.name == "postgresql":
+        await db.execute(text("SELECT pg_advisory_xact_lock(hashtext(:k))"), {"k": f"{tenant_id}:albaran"})
     result = await db.execute(
-        select(DeliveryNote).where(DeliveryNote.tenant_id == tenant_id).order_by(desc(DeliveryNote.created_at)).limit(1)
+        select(DeliveryNote)
+        .where(DeliveryNote.tenant_id == tenant_id)
+        .order_by(desc(DeliveryNote.created_at))
+        .limit(1)
+        .with_for_update()
     )
     last = result.scalar_one_or_none()
     if last and last.albaran_number:
