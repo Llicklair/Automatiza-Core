@@ -53,7 +53,7 @@ AutomatizaCore combina dos cosas que normalmente no van juntas:
 | Área | Estado | Notas |
 |---|---|---|
 | Facturación electrónica | ✅ Producción | Invoices, series, recurrentes, presupuestos, conversión cotización→factura, exportación PDF |
-| **Verifactu** | 🟡 Beta (envío SIMULADO) | Cadena de hash, configuración por tenant, audit WORM, backfill LISTOS. El **envío a la AEAT es simulación** (`mark_verifactu_sent` marca la factura sin generar XML/firma/POST real): la presentación telemática real está **bloqueada por certificado FNMT** (ver SCOPE.md). No asumir que una factura "enviada" está presentada ante Hacienda |
+| **Verifactu** | 🟡 Beta (pipeline real, envío gated) | Cadena de hash, config por tenant, audit WORM, backfill LISTOS. El envío **NO es una simulación**: el botón corre el pipeline real (genera el XML oficial y lo valida contra el XSD de la AEAT) en modo **dry-run** — nunca finge un acuse. El POST real a la AEAT está deliberadamente *gated* (`confirmed=True` + modo `voluntary` + certificado del tenant + `libxmlsec1` + `VERIFACTU_SIF_NIF` real). **Sin activar** porque el endpoint/sobre SOAP/perfil XAdES están POR CONFIRMAR y no son verificables sin certificado + preproducción AEAT (ver `tasks/verifactu_envio_spec.md`) |
 | Contabilidad española | ✅ Producción | Libro diario, P&G, balance, cuadro de cuentas, activos fijos |
 | Compras | ✅ Producción | Purchase orders, facturas de compra, proveedores |
 | Ventas | ✅ Producción | Sales orders, albaranes con reversa de stock, cotizaciones |
