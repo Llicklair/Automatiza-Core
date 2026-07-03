@@ -63,7 +63,7 @@ export const tasks = {
     cleanup: () => request<{ deleted: number }>("/api/v1/tasks/cleanup", { method: "DELETE" }),
 };
 
-export const TERMINAL_TASK_STATUSES = new Set(["done", "failed", "awaiting_approval"]);
+export const TERMINAL_TASK_STATUSES = new Set(["done", "failed", "awaiting_approval", "cancelled"]);
 
 export class TaskTimeoutError extends Error {
     constructor(public taskId: string, timeoutMs: number) {

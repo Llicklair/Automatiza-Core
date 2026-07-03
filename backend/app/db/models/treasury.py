@@ -7,7 +7,7 @@ Ciclo de vida de una remesa:
 
 import uuid
 
-from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -77,4 +77,32 @@ class SepaRemittanceOrder(Base):
     invoice_id = Column(UUID(as_uuid=True), ForeignKey("invoices.id"), nullable=True)
     payroll_id = Column(UUID(as_uuid=True), ForeignKey("payrolls.id"), nullable=True)
 
+    # Se pone a True cuando la remesa padre pasa a `cancelled` (ver
+    # update_remittance_status). Desnormaliza el estado del padre para que los
+    # índices únicos PARCIALES de abajo puedan excluir remesas canceladas: una
+    # factura/nómina de una remesa cancelada vuelve a estar libre para re-remesar.
+    is_cancelled = Column(Boolean, nullable=False, server_default=text("false"), default=False)
+
     remittance = relationship("SepaRemittance", back_populates="orders")
+
+    # Barrera de BD anti doble-pago (TOCTOU): una factura/nómina puede estar en
+    # como mucho UNA remesa viva (no cancelada). Respalda el guard de aplicación
+    # `_assert_links_free`; sin esto, dos generaciones concurrentes lo saltaban.
+    # Predicado por dialecto (postgres usa `false`, sqlite `0`) para que la
+    # barrera valga también en los tests sobre SQLite, no solo en producción.
+    __table_args__ = (
+        Index(
+            "uq_remittance_order_invoice_active",
+            "invoice_id",
+            unique=True,
+            postgresql_where=text("invoice_id IS NOT NULL AND is_cancelled = false"),
+            sqlite_where=text("invoice_id IS NOT NULL AND is_cancelled = 0"),
+        ),
+        Index(
+            "uq_remittance_order_payroll_active",
+            "payroll_id",
+            unique=True,
+            postgresql_where=text("payroll_id IS NOT NULL AND is_cancelled = false"),
+            sqlite_where=text("payroll_id IS NOT NULL AND is_cancelled = 0"),
+        ),
+    )

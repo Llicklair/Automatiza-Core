@@ -31,9 +31,15 @@ function TasksKanbanContent() {
                     </p>
                 </div>
                 <div className="flex gap-3">
-                    <button className="flex items-center gap-2 bg-card border border-border hover:border-border hover:bg-muted text-foreground px-5 py-2.5 rounded-full font-medium transition-colors">
-                        <Search className="w-4 h-4" /> {t("tareas.filter")}
-                    </button>
+                    <div className="relative">
+                        <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                            value={k.search}
+                            onChange={e => k.setSearch(e.target.value)}
+                            placeholder={t("tareas.filter")}
+                            className="pl-9 pr-4 py-2.5 rounded-full bg-card border border-border text-foreground text-sm focus:outline-none focus:border-pink-500/50 w-56"
+                        />
+                    </div>
                     <button
                         onClick={() => k.setShowModal(true)}
                         className="flex items-center gap-2 bg-pink-600 hover:bg-pink-500 text-foreground shadow-lg shadow-pink-500/20 px-5 py-2.5 rounded-full font-medium transition-colors"

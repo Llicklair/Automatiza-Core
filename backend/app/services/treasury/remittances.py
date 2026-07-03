@@ -11,7 +11,8 @@ la remesa con sus órdenes en la misma transacción.
 import uuid
 from datetime import date, datetime, timezone
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.treasury import SepaRemittance, SepaRemittanceOrder
@@ -191,7 +192,16 @@ async def _persist(
             )
         )
     db.add(remittance)
-    await db.flush()
+    try:
+        await db.flush()
+    except IntegrityError as exc:
+        # Red de seguridad de la barrera de BD (índice parcial único): dos
+        # generaciones concurrentes pasaron el guard de aplicación y chocaron
+        # aquí. Se convierte en el mismo error de negocio, no en un 500.
+        raise RemittanceError(
+            "Alguna factura o nómina de esta remesa ya está incluida en otra remesa viva. "
+            "Cancélala antes de volver a generar una remesa con los mismos elementos."
+        ) from exc
     return remittance
 
 
@@ -247,6 +257,14 @@ async def update_remittance_status(
     remittance.status = new_status
     if new_status == "executed":
         remittance.executed_at = datetime.now(timezone.utc)
+    if new_status == "cancelled":
+        # Libera las facturas/nóminas de esta remesa del índice único parcial,
+        # para que puedan incluirse en una remesa nueva (vía de escape del guard).
+        await db.execute(
+            update(SepaRemittanceOrder)
+            .where(SepaRemittanceOrder.remittance_id == remittance_id)
+            .values(is_cancelled=True)
+        )
     if bank_transaction_id is not None:
         remittance.bank_transaction_id = bank_transaction_id
     await db.flush()

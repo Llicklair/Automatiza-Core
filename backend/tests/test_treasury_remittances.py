@@ -1,12 +1,15 @@
 """Tests de remesas SEPA persistidas: pain.008 + ciclo de estados."""
+
 import uuid
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from xml.etree.ElementTree import fromstring
 
 import pytest
+from sqlalchemy.exc import IntegrityError
 
 from app.db.models.models import Client, Invoice
+from app.db.models.treasury import SepaRemittance, SepaRemittanceOrder
 
 from app.services.treasury.remittances import (
     RemittanceError,
@@ -34,9 +37,7 @@ _TOMORROW = date.today() + timedelta(days=1)
 
 
 def _creditor() -> CreditorParty:
-    return CreditorParty(
-        name="Acme SL", iban=_IBAN_A, creditor_id="ES12000B12345678"
-    )
+    return CreditorParty(name="Acme SL", iban=_IBAN_A, creditor_id="ES12000B12345678")
 
 
 def _dd_order(seq: str = "RCUR", amount: str = "100.00") -> DirectDebitOrder:
@@ -71,9 +72,7 @@ def test_pain008_xml_estructura_basica():
 
 
 def test_pain008_agrupa_pmtinf_por_secuencia():
-    xml_str, summary = build_pain008(
-        _creditor(), _TOMORROW, [_dd_order("FRST"), _dd_order("RCUR"), _dd_order("RCUR")]
-    )
+    xml_str, summary = build_pain008(_creditor(), _TOMORROW, [_dd_order("FRST"), _dd_order("RCUR"), _dd_order("RCUR")])
     root = fromstring(xml_str)
     pmts = root.findall(".//p:PmtInf", _NS008)
     assert len(pmts) == 2
@@ -125,9 +124,7 @@ def _transfer_orders() -> list[TransferOrder]:
 async def test_remesa_pain001_se_persiste(db, seed_tenant_and_user):
     tenant, _u, _t = seed_tenant_and_user
     debtor = DebtorParty(name="Acme SL", iban=_IBAN_A)
-    rem = await create_transfer_remittance(
-        db, tenant.id, debtor, _TOMORROW, _transfer_orders()
-    )
+    rem = await create_transfer_remittance(db, tenant.id, debtor, _TOMORROW, _transfer_orders())
     assert rem.status == "generated"
     assert rem.remittance_type == "pain.001"
     assert rem.nb_of_txs == 1
@@ -144,9 +141,7 @@ async def test_remesa_pain001_se_persiste(db, seed_tenant_and_user):
 @pytest.mark.asyncio
 async def test_remesa_pain008_se_persiste_con_mandato(db, seed_tenant_and_user):
     tenant, _u, _t = seed_tenant_and_user
-    rem = await create_direct_debit_remittance(
-        db, tenant.id, _creditor(), _TOMORROW, [_dd_order()]
-    )
+    rem = await create_direct_debit_remittance(db, tenant.id, _creditor(), _TOMORROW, [_dd_order()])
     assert rem.remittance_type == "pain.008"
     assert rem.orders[0].mandate_id == "MNDT-001"
     assert rem.orders[0].sequence_type == "RCUR"
@@ -156,9 +151,7 @@ async def test_remesa_pain008_se_persiste_con_mandato(db, seed_tenant_and_user):
 async def test_ciclo_estados_remesa(db, seed_tenant_and_user):
     tenant, _u, _t = seed_tenant_and_user
     debtor = DebtorParty(name="Acme SL", iban=_IBAN_A)
-    rem = await create_transfer_remittance(
-        db, tenant.id, debtor, _TOMORROW, _transfer_orders()
-    )
+    rem = await create_transfer_remittance(db, tenant.id, debtor, _TOMORROW, _transfer_orders())
 
     rem = await update_remittance_status(db, tenant.id, rem.id, "sent")
     assert rem.status == "sent"
@@ -179,9 +172,7 @@ async def test_ciclo_estados_remesa(db, seed_tenant_and_user):
 async def test_transicion_invalida_rechazada(db, seed_tenant_and_user):
     tenant, _u, _t = seed_tenant_and_user
     debtor = DebtorParty(name="Acme SL", iban=_IBAN_A)
-    rem = await create_transfer_remittance(
-        db, tenant.id, debtor, _TOMORROW, _transfer_orders()
-    )
+    rem = await create_transfer_remittance(db, tenant.id, debtor, _TOMORROW, _transfer_orders())
     with pytest.raises(RemittanceError):
         await update_remittance_status(db, tenant.id, rem.id, "reconciled")
 
@@ -190,12 +181,8 @@ async def test_transicion_invalida_rechazada(db, seed_tenant_and_user):
 async def test_list_remittances_filtra_por_estado(db, seed_tenant_and_user):
     tenant, _u, _t = seed_tenant_and_user
     debtor = DebtorParty(name="Acme SL", iban=_IBAN_A)
-    r1 = await create_transfer_remittance(
-        db, tenant.id, debtor, _TOMORROW, _transfer_orders()
-    )
-    await create_transfer_remittance(
-        db, tenant.id, debtor, _TOMORROW, _transfer_orders()
-    )
+    r1 = await create_transfer_remittance(db, tenant.id, debtor, _TOMORROW, _transfer_orders())
+    await create_transfer_remittance(db, tenant.id, debtor, _TOMORROW, _transfer_orders())
     await update_remittance_status(db, tenant.id, r1.id, "sent")
 
     todas, total = await list_remittances(db, tenant.id)
@@ -236,13 +223,9 @@ async def test_guard_rechaza_factura_en_dos_remesas_vivas(db, seed_tenant_and_us
     inv = await _seed_invoice(db, tenant.id)
     debtor = DebtorParty(name="Acme SL", iban=_IBAN_A)
     links = [{"invoice_id": inv.id}]
-    await create_transfer_remittance(
-        db, tenant.id, debtor, _TOMORROW, _transfer_orders(), links=links
-    )
+    await create_transfer_remittance(db, tenant.id, debtor, _TOMORROW, _transfer_orders(), links=links)
     with pytest.raises(RemittanceError, match="ya está incluida"):
-        await create_transfer_remittance(
-            db, tenant.id, debtor, _TOMORROW, _transfer_orders(), links=links
-        )
+        await create_transfer_remittance(db, tenant.id, debtor, _TOMORROW, _transfer_orders(), links=links)
 
 
 @pytest.mark.asyncio
@@ -251,13 +234,9 @@ async def test_guard_permite_reintentar_tras_cancelar(db, seed_tenant_and_user):
     inv = await _seed_invoice(db, tenant.id)
     debtor = DebtorParty(name="Acme SL", iban=_IBAN_A)
     links = [{"invoice_id": inv.id}]
-    rem = await create_transfer_remittance(
-        db, tenant.id, debtor, _TOMORROW, _transfer_orders(), links=links
-    )
+    rem = await create_transfer_remittance(db, tenant.id, debtor, _TOMORROW, _transfer_orders(), links=links)
     await update_remittance_status(db, tenant.id, rem.id, "cancelled")
-    rem2 = await create_transfer_remittance(
-        db, tenant.id, debtor, _TOMORROW, _transfer_orders(), links=links
-    )
+    rem2 = await create_transfer_remittance(db, tenant.id, debtor, _TOMORROW, _transfer_orders(), links=links)
     assert rem2.status == "generated"
 
 
@@ -265,9 +244,78 @@ async def test_guard_permite_reintentar_tras_cancelar(db, seed_tenant_and_user):
 async def test_cancelled_solo_desde_generated(db, seed_tenant_and_user):
     tenant, _u, _t = seed_tenant_and_user
     debtor = DebtorParty(name="Acme SL", iban=_IBAN_A)
-    rem = await create_transfer_remittance(
-        db, tenant.id, debtor, _TOMORROW, _transfer_orders()
-    )
+    rem = await create_transfer_remittance(db, tenant.id, debtor, _TOMORROW, _transfer_orders())
     await update_remittance_status(db, tenant.id, rem.id, "sent")
     with pytest.raises(RemittanceError, match="Transición inválida"):
         await update_remittance_status(db, tenant.id, rem.id, "cancelled")
+
+
+def _bare_remittance(tenant_id, msg_id: str) -> SepaRemittance:
+    """Remesa mínima válida para tests que insertan órdenes directamente."""
+    return SepaRemittance(
+        tenant_id=tenant_id,
+        remittance_type="pain.001",
+        msg_id=msg_id,
+        status="generated",
+        execution_date=_TOMORROW,
+        party_iban=_IBAN_A,
+        nb_of_txs=1,
+        total_amount=Decimal("100.00"),
+        xml="<xml/>",
+        sha256="0" * 64,
+    )
+
+
+def _bare_order(remittance, invoice_id) -> SepaRemittanceOrder:
+    return SepaRemittanceOrder(
+        remittance=remittance,
+        counterparty_name="X",
+        counterparty_iban=_IBAN_B,
+        amount=Decimal("100.00"),
+        end_to_end_id=f"E2E-{uuid.uuid4().hex[:16].upper()}",
+        invoice_id=invoice_id,
+    )
+
+
+@pytest.mark.asyncio
+async def test_barrera_bd_rechaza_orden_duplicada_viva(db, seed_tenant_and_user):
+    """La BARRERA de BD (índice parcial único), no solo el guard de aplicación:
+    dos órdenes vivas con la misma factura chocan al flush → IntegrityError.
+
+    Salta el guard `_assert_links_free` insertando las órdenes directamente,
+    como haría una carrera concurrente que pasa el check-then-act a la vez.
+    """
+    tenant, _u, _t = seed_tenant_and_user
+    inv = await _seed_invoice(db, tenant.id)
+    db.add(_bare_order(_bare_remittance(tenant.id, "MSG-A"), inv.id))
+    await db.flush()
+    db.add(_bare_order(_bare_remittance(tenant.id, "MSG-B"), inv.id))
+    with pytest.raises(IntegrityError):
+        await db.flush()
+    await db.rollback()
+
+
+@pytest.mark.asyncio
+async def test_cancelar_marca_ordenes_is_cancelled(db, seed_tenant_and_user):
+    """Cancelar la remesa desnormaliza is_cancelled=True en sus órdenes (lo que
+    las libera del índice parcial único)."""
+    tenant, _u, _t = seed_tenant_and_user
+    inv = await _seed_invoice(db, tenant.id)
+    rem = await create_transfer_remittance(
+        db,
+        tenant.id,
+        DebtorParty(name="Acme SL", iban=_IBAN_A),
+        _TOMORROW,
+        _transfer_orders(),
+        links=[{"invoice_id": inv.id}],
+    )
+    assert all(not o.is_cancelled for o in rem.orders)
+    await update_remittance_status(db, tenant.id, rem.id, "cancelled")
+    from sqlalchemy import select
+
+    orders = (
+        (await db.execute(select(SepaRemittanceOrder).where(SepaRemittanceOrder.remittance_id == rem.id)))
+        .scalars()
+        .all()
+    )
+    assert orders and all(o.is_cancelled for o in orders)

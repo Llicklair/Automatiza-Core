@@ -18,6 +18,7 @@ export function useTasksKanban() {
     const [tasks, setTasks] = useState<ProjectTask[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [draggedTask, setDraggedTask] = useState<ProjectTask | null>(null);
+    const [search, setSearch] = useState("");
 
     // Modal crear
     const [showModal, setShowModal] = useState(false);
@@ -149,10 +150,16 @@ export function useTasksKanban() {
         }
     };
 
-    const getTasksByStatus = (status: TaskStatus) => tasks.filter(t => t.status === status);
+    const getTasksByStatus = (status: TaskStatus) => {
+        const term = search.trim().toLowerCase();
+        return tasks.filter(t =>
+            t.status === status &&
+            (!term || t.title.toLowerCase().includes(term) || (t.description ?? "").toLowerCase().includes(term))
+        );
+    };
 
     return {
-        tasks, isLoading, draggedTask,
+        tasks, isLoading, draggedTask, search, setSearch,
         showModal, setShowModal, saving, title, setTitle, description, setDescription, dueDate, setDueDate,
         editTask, setEditTask, editTitle, setEditTitle, editDescription, setEditDescription, editDueDate, setEditDueDate, editSaving,
         openMenuId, setOpenMenuId,
