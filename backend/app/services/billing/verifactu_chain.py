@@ -238,8 +238,14 @@ async def append_verifactu_record(
     invoice_number = invoice.invoice_number or ""
     serie = "".join(ch for ch in invoice_number if not ch.isdigit() and ch != "-")[:16] or "A"
 
-    # TipoFactura: F1 factura completa; R1 rectificativa (RD 1619/2012 Art. 15).
-    tipo_factura = "R1" if (invoice.invoice_type or "").lower() == "rectificativa" else "F1"
+    # TipoFactura (lista L2): R1 rectificativa (RD 1619/2012 Art. 15); F2 factura
+    # simplificada / ticket TPV (sin destinatario identificado); F1 completa.
+    if (invoice.invoice_type or "").lower() == "rectificativa":
+        tipo_factura = "R1"
+    elif invoice.is_simplified:
+        tipo_factura = "F2"
+    else:
+        tipo_factura = "F1"
     cuota = invoice.tax_amount if invoice.tax_amount is not None else Decimal("0.00")
     importe = invoice.amount_total if invoice.amount_total is not None else Decimal("0.00")
 

@@ -84,6 +84,10 @@ class Invoice(Base):
     # services/onboarding/seed.py. Las facturas demo NO consumen la serie
     # correlativa (numeración "DEMO-").
     is_demo = Column(Boolean, nullable=False, default=False, server_default=text("false"))
+    # Factura simplificada / ticket TPV (RD 1619/2012 Art. 4 y 7): sin destinatario
+    # identificado y con límite de importe. En VeriFactu genera un registro con
+    # TipoFactura F2 (lista L2) en vez de F1. False = factura completa (F1).
+    is_simplified = Column(Boolean, nullable=False, default=False, server_default=text("false"))
     notes = Column(Text)
     terms = Column(Text)
     external_id = Column(String(255))
