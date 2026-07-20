@@ -42,6 +42,10 @@ class PosSession(Base):
     tax_amount = Column(Numeric(10, 2), nullable=False, default=0)
     amount_total = Column(Numeric(10, 2), nullable=False, default=0)
     notes = Column(Text, nullable=True)
+    # Factura simplificada (F2) emitida a partir de esta sesión cerrada (fase 2 TPV).
+    # NULL mientras no se ha facturado; enlaza el ticket con su Invoice y sirve de
+    # guard de idempotencia (una sesión se factura una sola vez).
+    invoice_id = Column(UUID(as_uuid=True), ForeignKey("invoices.id"), nullable=True, index=True)
 
     opened_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     closed_at = Column(DateTime(timezone=True), nullable=True)

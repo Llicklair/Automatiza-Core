@@ -264,6 +264,106 @@ async def checkout(
     return await _reload_with_lines(db, tenant_id, session_id)
 
 
+WALK_IN_CLIENT_NAME = "Consumidor final (TPV)"
+
+
+async def _get_or_create_walk_in_client(db: AsyncSession, tenant_id: UUID):
+    """Cliente genérico de mostrador del tenant para tickets simplificados (F2).
+
+    Un ticket F2 no tiene destinatario identificado (el registro VeriFactu no lo
+    incluye). Este cliente solo satisface la FK NOT NULL de Invoice y agrupa las
+    ventas de mostrador; sin NIF (consumidor final). Idempotente por nombre.
+    """
+    from app.db.models.crm import Client
+
+    res = await db.execute(select(Client).where(Client.tenant_id == tenant_id, Client.name == WALK_IN_CLIENT_NAME))
+    client = res.scalars().first()
+    if client is not None:
+        return client
+    client = Client(tenant_id=tenant_id, name=WALK_IN_CLIENT_NAME, nif=None)
+    db.add(client)
+    await db.flush()
+    return client
+
+
+async def generar_factura_simplificada(db: AsyncSession, tenant_id: UUID, session_id: UUID):
+    """Emite la factura simplificada (F2) de una sesión de TPV cerrada.
+
+    Puente "fase 2" POS→facturación: crea una Invoice simplificada (is_simplified,
+    tipo "issued", ya cobrada) con las líneas de la sesión, encadena su registro
+    VeriFactu (TipoFactura F2 en modo voluntary) y enlaza la sesión. Idempotente:
+    si la sesión ya está facturada devuelve esa factura. Un único commit atómico.
+    """
+    from datetime import UTC, datetime
+
+    from app.db.models.billing import Invoice, InvoiceLine
+    from app.services.billing.numbering import next_invoice_number
+    from app.services.billing.verifactu_chain import maybe_append_verifactu_record
+
+    res = await db.execute(
+        select(PosSession)
+        .options(selectinload(PosSession.lines))
+        .where(PosSession.id == session_id, PosSession.tenant_id == tenant_id)
+    )
+    session = res.scalar_one_or_none()
+    if session is None:
+        raise ValueError("Sesión de TPV no encontrada.")
+    if session.status != "closed":
+        raise ValueError("Solo se factura una sesión de TPV cerrada.")
+
+    async def _load_invoice(invoice_id):
+        r = await db.execute(
+            select(Invoice)
+            .options(selectinload(Invoice.lines), selectinload(Invoice.client))
+            .where(Invoice.id == invoice_id)
+        )
+        return r.scalar_one()
+
+    # Idempotencia: una sesión se factura una sola vez.
+    if session.invoice_id is not None:
+        return await _load_invoice(session.invoice_id)
+
+    client = await _get_or_create_walk_in_client(db, tenant_id)
+    invoice_number = await next_invoice_number(db, tenant_id, series="T")
+
+    invoice = Invoice(
+        tenant_id=tenant_id,
+        client_id=client.id,
+        invoice_number=invoice_number,
+        date=datetime.now(UTC),
+        amount_base=session.amount_subtotal,
+        tax_amount=session.tax_amount,
+        amount_total=session.amount_total,
+        status="paid",
+        invoice_type="issued",
+        is_simplified=True,
+        notes=f"Ticket TPV sesión {session.id}",
+    )
+    db.add(invoice)
+    await db.flush()
+
+    for ln in session.lines:
+        db.add(
+            InvoiceLine(
+                invoice_id=invoice.id,
+                product_id=ln.product_id,
+                description=ln.description,
+                quantity=ln.quantity,
+                unit_price=ln.unit_price,
+                tax_percentage=ln.tax_percentage,
+                total=ln.total,
+            )
+        )
+
+    # VeriFactu: el ticket se expide en el acto → encadena el registro F2 antes del
+    # commit (atómico con la factura). En modo no_remission es un no-op.
+    await maybe_append_verifactu_record(db, invoice=invoice)
+
+    session.invoice_id = invoice.id
+    await db.commit()
+    return await _load_invoice(invoice.id)
+
+
 async def cancel_session(db: AsyncSession, tenant_id: UUID, session_id: UUID) -> PosSession:
     session = await _get_session_for_user(db, tenant_id, session_id)
     if session.status != "open":
