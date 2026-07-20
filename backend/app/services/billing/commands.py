@@ -283,6 +283,24 @@ async def update_status(
             f"Permitidos: {allowed_next_states('Invoice', prev_status)}"
         )
     invoice.status = new_status
+
+    # Verifactu (RD 1007/2023 Art. 8): la EXPEDICIÓN (borrador → emitida) es el
+    # hecho con efectos fiscales que genera el registro encadenado. `update_status`
+    # es el chokepoint por el que se expiden las facturas nacidas como borrador
+    # (quote→factura, aprobación de workflow, recurrentes del scheduler, reanudación
+    # del orquestador), que en su creación aún no encadenaban → factura emitida sin
+    # registro (doble uso, art. 201 bis LGT). Encadena ANTES del commit (atómico).
+    # Idempotente: no duplica las ya registradas al crearse (create_invoice). No
+    # aplica a demo ni a recibidas. En modo "no_remission" es un no-op.
+    if (
+        new_status in ("pending", "sent", "paid")
+        and (invoice.invoice_type or "issued") in EMITTED_INVOICE_TYPES
+        and not invoice.is_demo
+    ):
+        from app.services.billing.verifactu_chain import maybe_append_verifactu_record
+
+        await maybe_append_verifactu_record(db, invoice=invoice)
+
     await db.commit()
     await db.refresh(invoice)
 

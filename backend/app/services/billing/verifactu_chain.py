@@ -295,16 +295,14 @@ async def maybe_append_verifactu_record(
 
     tenant = await db.get(Tenant, invoice.tenant_id)
     if tenant is None or not tenant.nif:
-        # Sin NIF del emisor no podemos firmar el payload canónico.
-        # Lo dejamos pasar (la factura sigue siendo válida) pero avisamos.
-        import logging
-
-        logging.getLogger(__name__).warning(
-            "Verifactu: tenant %s sin NIF, omitiendo cadena para factura %s",
-            invoice.tenant_id,
-            invoice.id,
+        # Verifactu activo ("voluntary") obliga a registrar. Sin NIF del emisor no
+        # se puede firmar el payload canónico → antes se omitía con un warning y la
+        # factura se emitía SIN registro (agujero de doble uso, art. 201 bis LGT).
+        # Ahora se bloquea la emisión: fail-closed.
+        raise ValueError(
+            "Verifactu está activo pero el tenant no tiene NIF de emisor configurado; "
+            "no se puede emitir la factura sin él. Configura el NIF fiscal del negocio."
         )
-        return None
 
     return await append_verifactu_record(db, invoice=invoice, nif_emisor=tenant.nif)
 
