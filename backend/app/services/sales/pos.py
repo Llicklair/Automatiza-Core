@@ -300,14 +300,7 @@ async def generar_factura_simplificada(db: AsyncSession, tenant_id: UUID, sessio
     from app.services.billing.numbering import next_invoice_number
     from app.services.billing.verifactu_chain import maybe_append_verifactu_record
 
-    res = await db.execute(
-        select(PosSession)
-        .options(selectinload(PosSession.lines))
-        .where(PosSession.id == session_id, PosSession.tenant_id == tenant_id)
-    )
-    session = res.scalar_one_or_none()
-    if session is None:
-        raise ValueError("Sesión de TPV no encontrada.")
+    session = await _get_session_for_user(db, tenant_id, session_id)
     if session.status != "closed":
         raise ValueError("Solo se factura una sesión de TPV cerrada.")
 

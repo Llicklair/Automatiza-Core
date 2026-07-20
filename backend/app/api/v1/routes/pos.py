@@ -6,6 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.v1.schemas.erp import InvoiceResponse
 from app.api.v1.schemas.pos import (
     PosCheckoutRequest,
     PosLineAdd,
@@ -171,6 +172,23 @@ async def checkout(
             payload.payment_method,
             payload.notes,
         )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/sessions/{session_id}/factura", response_model=InvoiceResponse)
+@limiter.limit("30/minute")
+async def emitir_factura_simplificada(
+    request: Request,
+    session_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Emite la factura simplificada (F2) de una sesión de TPV cerrada. Idempotente."""
+    try:
+        return await svc.generar_factura_simplificada(db, current_user.tenant_id, session_id)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
