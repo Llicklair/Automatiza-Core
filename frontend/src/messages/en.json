@@ -5313,6 +5313,13 @@
       "facturaError": "Payment recorded, but the simplified invoice could not be issued",
       "cancelSuccess": "Session cancelled",
       "cancelError": "Error cancelling"
+    },
+    "ticket": {
+      "title": "Receipt issued",
+      "subtitle": "Simplified invoice {number}",
+      "qrHint": "Scan the QR to verify the invoice",
+      "noQr": "Verifactu is not active: the receipt is issued without a QR",
+      "newSale": "New sale"
     }
   },
   "albaranes": {

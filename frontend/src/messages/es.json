@@ -5313,6 +5313,13 @@
       "facturaError": "Cobro registrado, pero no se pudo emitir la factura simplificada",
       "cancelSuccess": "Sesión cancelada",
       "cancelError": "Error cancelando"
+    },
+    "ticket": {
+      "title": "Ticket emitido",
+      "subtitle": "Factura simplificada {number}",
+      "qrHint": "Escanea el QR para verificar la factura",
+      "noQr": "Verifactu no está activo: el ticket se emite sin QR",
+      "newSale": "Nueva venta"
     }
   },
   "albaranes": {

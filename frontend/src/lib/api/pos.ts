@@ -43,6 +43,11 @@ export interface PosCheckoutRequest {
     notes?: string | null;
 }
 
+export interface VerifactuQr {
+    huella: string;
+    verify_url: string;
+}
+
 /** Factura simplificada (F2) emitida a partir de una sesión de TPV cerrada. */
 export interface SimplifiedInvoice {
     id: string;
@@ -50,6 +55,9 @@ export interface SimplifiedInvoice {
     invoice_type: string;
     status: string;
     amount_total: number;
+    is_simplified: boolean;
+    /** QR Verifactu ({huella, verify_url}) o null si el tenant no tiene Verifactu activo. */
+    verifactu: VerifactuQr | null;
 }
 
 export const pos = {

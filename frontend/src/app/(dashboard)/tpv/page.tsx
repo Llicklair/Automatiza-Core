@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { usePos } from "./_hooks/usePos";
 import { BarcodeScanner } from "./_components/BarcodeScanner";
 import { PaymentModal } from "./_components/PaymentModal";
+import { TicketEmitido } from "./_components/TicketEmitido";
 import { showConfirm } from "@/stores/confirm";
 
 const fmt = (n: number) =>
@@ -23,6 +24,7 @@ export default function TpvPage() {
         subtotal, taxAmount, totalWithTax,
         openSession, addProductByCode, updateLineQuantity, removeLine,
         checkout, cancelSession,
+        lastFactura, clearLastFactura,
     } = usePos();
 
     const [code, setCode] = useState("");
@@ -58,21 +60,31 @@ export default function TpvPage() {
                     description={t("header.description")}
                     icon={ShoppingCart}
                 />
-                <div className="bg-card border border-border rounded-2xl p-10 text-center space-y-4">
-                    <div className="w-12 h-12 mx-auto rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
-                        <ShoppingCart className="w-6 h-6 text-cyan-400" />
+                {lastFactura ? (
+                    <TicketEmitido
+                        factura={lastFactura}
+                        onNew={() => {
+                            clearLastFactura();
+                            openSession();
+                        }}
+                    />
+                ) : (
+                    <div className="bg-card border border-border rounded-2xl p-10 text-center space-y-4">
+                        <div className="w-12 h-12 mx-auto rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+                            <ShoppingCart className="w-6 h-6 text-cyan-400" />
+                        </div>
+                        <div>
+                            <h2 className="text-base font-semibold text-foreground">{t("empty.title")}</h2>
+                            <p className="text-sm text-muted-foreground mt-1">
+                                {t("empty.description")}
+                            </p>
+                        </div>
+                        <Button onClick={openSession} disabled={busy}>
+                            {busy ? <Loader2 className="mr-2 w-4 h-4 animate-spin" /> : <Power className="mr-2 w-4 h-4" />}
+                            {t("empty.openButton")}
+                        </Button>
                     </div>
-                    <div>
-                        <h2 className="text-base font-semibold text-foreground">{t("empty.title")}</h2>
-                        <p className="text-sm text-muted-foreground mt-1">
-                            {t("empty.description")}
-                        </p>
-                    </div>
-                    <Button onClick={openSession} disabled={busy}>
-                        {busy ? <Loader2 className="mr-2 w-4 h-4 animate-spin" /> : <Power className="mr-2 w-4 h-4" />}
-                        {t("empty.openButton")}
-                    </Button>
-                </div>
+                )}
             </div>
         );
     }

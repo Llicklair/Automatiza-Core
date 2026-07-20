@@ -146,6 +146,13 @@ async def _load_verifactu(invoice_id: UUID, db: AsyncSession) -> dict | None:
     }
 
 
+async def load_verifactu_qr(invoice_id: UUID, db: AsyncSession) -> dict | None:
+    """QR Verifactu público de una factura: `{huella, verify_url}` o None si aún no
+    tiene registro encadenado. Mismo builder que el PDF (FAC.QR), reutilizable
+    desde rutas (p.ej. el ticket del TPV)."""
+    return await _load_verifactu(invoice_id, db)
+
+
 def _build_invoice_data(
     invoice,
     company_name: str,

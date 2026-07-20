@@ -72,6 +72,14 @@ class TestFacturaSimplificada:
         record = rec.scalar_one()
         assert "TipoFactura=F2" in record.payload_canonico
 
+        # QR Verifactu derivable del registro (para pintarlo en el ticket).
+        from app.services.billing.queries import load_verifactu_qr
+
+        qr = await load_verifactu_qr(invoice.id, db)
+        assert qr is not None
+        assert qr["huella"] == record.huella
+        assert f"/verify/{record.huella}" in qr["verify_url"]
+
     async def test_idempotente_no_duplica_factura(self, db, seed_tenant_and_user):
         tenant, user, _t = seed_tenant_and_user
         await set_mode(db, tenant_id=tenant.id, mode="voluntary")

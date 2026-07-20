@@ -6,9 +6,9 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.v1.schemas.erp import InvoiceResponse
 from app.api.v1.schemas.pos import (
     PosCheckoutRequest,
+    PosFacturaResponse,
     PosLineAdd,
     PosLineUpdate,
     PosSessionResponse,
@@ -17,6 +17,7 @@ from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.models import User
 from app.middleware.rate_limit import limiter
+from app.services.billing.queries import load_verifactu_qr
 from app.services.sales import pos as svc
 
 logger = logging.getLogger(__name__)
@@ -178,7 +179,7 @@ async def checkout(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.post("/sessions/{session_id}/factura", response_model=InvoiceResponse)
+@router.post("/sessions/{session_id}/factura", response_model=PosFacturaResponse)
 @limiter.limit("30/minute")
 async def emitir_factura_simplificada(
     request: Request,
@@ -186,13 +187,24 @@ async def emitir_factura_simplificada(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Emite la factura simplificada (F2) de una sesión de TPV cerrada. Idempotente."""
+    """Emite la factura simplificada (F2) de una sesión de TPV cerrada, con su QR
+    Verifactu. Idempotente."""
     try:
-        return await svc.generar_factura_simplificada(db, current_user.tenant_id, session_id)
+        invoice = await svc.generar_factura_simplificada(db, current_user.tenant_id, session_id)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    qr = await load_verifactu_qr(invoice.id, db)
+    return PosFacturaResponse(
+        id=invoice.id,
+        invoice_number=invoice.invoice_number,
+        invoice_type=invoice.invoice_type,
+        status=invoice.status,
+        amount_total=float(invoice.amount_total or 0),
+        is_simplified=invoice.is_simplified,
+        verifactu=qr,
+    )
 
 
 @router.post("/sessions/{session_id}/cancel", response_model=PosSessionResponse)

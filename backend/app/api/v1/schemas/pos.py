@@ -56,3 +56,24 @@ class PosSessionResponse(BaseModel):
 class PosCheckoutRequest(BaseModel):
     payment_method: Literal["cash", "card"]
     notes: str | None = None
+
+
+class VerifactuQr(BaseModel):
+    huella: str
+    verify_url: str
+
+
+class PosFacturaResponse(BaseModel):
+    """Factura simplificada (F2) emitida desde el TPV, con su QR Verifactu.
+
+    `verifactu` es None cuando el tenant no está en modo Verifactu (no hay registro
+    encadenado) → el ticket sale sin QR, igual que el PDF.
+    """
+
+    id: UUID
+    invoice_number: str | None = None
+    invoice_type: str
+    status: str
+    amount_total: float
+    is_simplified: bool
+    verifactu: VerifactuQr | None = None

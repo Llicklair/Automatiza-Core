@@ -28,7 +28,9 @@ class TestEmitirFacturaSimplificada:
         data = r.json()
         assert data["invoice_type"] == "issued"
         assert data["amount_total"] == 121.0
-        assert len(data["lines"]) == 1
+        assert data["is_simplified"] is True
+        # El campo del QR existe; es null en no_remission (sin registro encadenado).
+        assert "verifactu" in data
 
     async def test_idempotente_devuelve_la_misma_factura(self, auth_client: AsyncClient):
         sid = await self._closed_session(auth_client)

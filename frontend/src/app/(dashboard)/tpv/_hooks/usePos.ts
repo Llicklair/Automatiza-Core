@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api, type PosSession, type Product } from "@/lib/api";
+import type { SimplifiedInvoice } from "@/lib/api/pos";
 import { useToastStore } from "@/stores/toast";
 import { logError } from "@/lib/logger";
 
@@ -13,6 +14,7 @@ export function usePos() {
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(false);
     const [checkoutOpen, setCheckoutOpen] = useState(false);
+    const [lastFactura, setLastFactura] = useState<SimplifiedInvoice | null>(null);
 
     const loadCurrent = useCallback(async () => {
         setLoading(true);
@@ -33,6 +35,7 @@ export function usePos() {
     const openSession = useCallback(async () => {
         setBusy(true);
         try {
+            setLastFactura(null);
             const s = await api.pos.open();
             setSession(s);
         } catch (e: any) {
@@ -154,6 +157,7 @@ export function usePos() {
                 // idempotente, reintentar es seguro y no pierde la venta).
                 try {
                     const invoice = await api.pos.emitirFactura(closed.id);
+                    setLastFactura(invoice);
                     toast.success(
                         t("toast.facturaEmitida", {
                             number: invoice.invoice_number ?? invoice.id.slice(0, 8),
@@ -188,6 +192,8 @@ export function usePos() {
         }
     }, [session, toast, t]);
 
+    const clearLastFactura = useCallback(() => setLastFactura(null), []);
+
     const subtotal = session
         ? session.lines.reduce(
               (acc, l) => acc + Number(l.quantity) * Number(l.unit_price),
@@ -215,6 +221,8 @@ export function usePos() {
         removeLine,
         checkout,
         cancelSession,
+        lastFactura,
+        clearLastFactura,
         reload: loadCurrent,
     };
 }
