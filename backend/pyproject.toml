@@ -40,7 +40,7 @@ reportlab = "^4.2.0"
 # Pipeline: markdown → markdown-it-py → HTML → xhtml2pdf → PDF.
 xhtml2pdf = "^0.2.17"
 markdown-it-py = "^4.0"
-pandas = "^2.2.0"
+pandas = ">=2.2,<4.0"
 openpyxl = "^3.1.0"
 slowapi = "^0.1.9"
 croniter = ">=2,<7"
