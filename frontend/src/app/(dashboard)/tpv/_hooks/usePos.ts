@@ -149,6 +149,20 @@ export function usePos() {
                 toast.success(
                     t("toast.checkoutSuccess", { amount: `${closed.amount_total.toFixed(2)} €` }),
                 );
+                // VeriFactu: cada venta emite su factura simplificada (F2). El cobro
+                // ya quedó registrado; si la emisión falla se avisa aparte (es
+                // idempotente, reintentar es seguro y no pierde la venta).
+                try {
+                    const invoice = await api.pos.emitirFactura(closed.id);
+                    toast.success(
+                        t("toast.facturaEmitida", {
+                            number: invoice.invoice_number ?? invoice.id.slice(0, 8),
+                        }),
+                    );
+                } catch (e: any) {
+                    logError("tpv/usePos.emitirFactura", e);
+                    toast.error(e?.message || t("toast.facturaError"));
+                }
                 setCheckoutOpen(false);
                 setSession(null);
             } catch (e: any) {

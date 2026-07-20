@@ -5309,6 +5309,8 @@
       "removeLineError": "Error removing line",
       "checkoutSuccess": "Payment recorded · {amount}",
       "checkoutError": "Error charging",
+      "facturaEmitida": "Simplified invoice issued · {number}",
+      "facturaError": "Payment recorded, but the simplified invoice could not be issued",
       "cancelSuccess": "Session cancelled",
       "cancelError": "Error cancelling"
     }

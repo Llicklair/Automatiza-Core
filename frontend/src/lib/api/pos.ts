@@ -43,6 +43,15 @@ export interface PosCheckoutRequest {
     notes?: string | null;
 }
 
+/** Factura simplificada (F2) emitida a partir de una sesión de TPV cerrada. */
+export interface SimplifiedInvoice {
+    id: string;
+    invoice_number: string | null;
+    invoice_type: string;
+    status: string;
+    amount_total: number;
+}
+
 export const pos = {
     current: () => request<PosSession | null>("/api/v1/pos/sessions/current"),
 
@@ -91,6 +100,11 @@ export const pos = {
 
     cancel: (sessionId: string) =>
         request<PosSession>(`/api/v1/pos/sessions/${sessionId}/cancel`, {
+            method: "POST",
+        }),
+
+    emitirFactura: (sessionId: string) =>
+        request<SimplifiedInvoice>(`/api/v1/pos/sessions/${sessionId}/factura`, {
             method: "POST",
         }),
 };

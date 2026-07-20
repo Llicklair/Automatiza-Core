@@ -5309,6 +5309,8 @@
       "removeLineError": "Error eliminando línea",
       "checkoutSuccess": "Cobro registrado · {amount}",
       "checkoutError": "Error al cobrar",
+      "facturaEmitida": "Factura simplificada emitida · {number}",
+      "facturaError": "Cobro registrado, pero no se pudo emitir la factura simplificada",
       "cancelSuccess": "Sesión cancelada",
       "cancelError": "Error cancelando"
     }
