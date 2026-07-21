@@ -50,10 +50,24 @@ async def set_mode(
         raise ValueError(f"Modo inválido: {mode}")
 
     record = await get_config(db, tenant_id=tenant_id)
+    old_mode = record.mode
     record.mode = mode
     record.updated_by = updated_by
     record.updated_at = datetime.now(UTC)
     await db.flush()
+
+    # Evento SIF (RD 1007/2023 Art. 14): el cambio de modo de funcionamiento del
+    # SIF debe quedar registrado en la cadena de eventos. Mismo commit atómico.
+    if old_mode != mode:
+        from app.services.billing.sif_events import EVENT_CAMBIO_MODO, record_event
+
+        await record_event(
+            db,
+            tenant_id=tenant_id,
+            tipo_evento=EVENT_CAMBIO_MODO,
+            detalle=f"{old_mode}->{mode}",
+        )
+
     logger.info(
         "verifactu_mode.set tenant=%s mode=%s by=%s",
         tenant_id,

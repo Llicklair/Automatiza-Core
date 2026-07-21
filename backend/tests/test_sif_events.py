@@ -62,3 +62,24 @@ class TestSifEvents:
         # Cada tenant es el primer evento de su propia cadena.
         assert e1.huella_anterior is None
         assert e2.huella_anterior is None
+
+    async def test_cambiar_modo_verifactu_registra_evento(self, db, seed_tenant_and_user):
+        from sqlalchemy import select
+
+        from app.db.models.billing import SifEvent
+        from app.services.billing.sif_events import EVENT_CAMBIO_MODO
+        from app.services.billing.verifactu_mode import set_mode
+
+        tenant, _u, _t = seed_tenant_and_user
+        await set_mode(db, tenant_id=tenant.id, mode="voluntary")
+        await db.commit()
+
+        res = await db.execute(
+            select(SifEvent).where(
+                SifEvent.tenant_id == tenant.id,
+                SifEvent.tipo_evento == EVENT_CAMBIO_MODO,
+            )
+        )
+        events = res.scalars().all()
+        assert len(events) == 1
+        assert "voluntary" in (events[0].detalle or "")
