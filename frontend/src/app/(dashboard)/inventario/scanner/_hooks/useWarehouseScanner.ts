@@ -14,6 +14,25 @@ export function useWarehouseScanner() {
     // Origen alcanzable desde el móvil: la IP de LAN del equipo (no `localhost`,
     // que el teléfono no puede resolver). La pide al proceso Electron.
     const [lanOrigin, setLanOrigin] = useState<string | null>(null);
+    // Override de URL pública (p.ej. túnel Cloudflare): certificado de confianza
+    // real → la cámara del móvil funciona sin instalar nada. Tiene prioridad.
+    const [publicBase, setPublicBaseState] = useState<string>(() => {
+        if (typeof window === "undefined") return "";
+        try {
+            return window.localStorage.getItem("automatiza.tpv.publicBase") || "";
+        } catch {
+            return "";
+        }
+    });
+    const setPublicBase = (v: string) => {
+        const clean = v.trim().replace(/\/+$/, "");
+        setPublicBaseState(clean);
+        try {
+            window.localStorage.setItem("automatiza.tpv.publicBase", clean);
+        } catch {
+            /* modo privado */
+        }
+    };
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     useEffect(() => {
@@ -66,8 +85,18 @@ export function useWarehouseScanner() {
     };
 
     const scannerUrl = token
-        ? `${lanOrigin || window.location.origin}/mobile-scanner?token=${token.token}`
+        ? `${publicBase || lanOrigin || window.location.origin}/mobile-scanner?token=${token.token}`
         : null;
 
-    return { token, loading, copied, timeLeft, scannerUrl, generateToken, copyToken };
+    return {
+        token,
+        loading,
+        copied,
+        timeLeft,
+        scannerUrl,
+        generateToken,
+        copyToken,
+        publicBase,
+        setPublicBase,
+    };
 }

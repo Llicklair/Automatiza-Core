@@ -10,7 +10,7 @@ import { useWarehouseScanner } from "./_hooks/useWarehouseScanner";
 
 export default function WarehouseScannerPage() {
     const t = useTranslations("inventario");
-    const { token, loading, copied, timeLeft, scannerUrl, generateToken, copyToken } = useWarehouseScanner();
+    const { token, loading, copied, timeLeft, scannerUrl, generateToken, copyToken, publicBase, setPublicBase } = useWarehouseScanner();
 
     return (
         <div className="p-6 max-w-3xl mx-auto space-y-6">
@@ -62,6 +62,23 @@ export default function WarehouseScannerPage() {
                         {t("scanner.securityDesc")}
                     </p>
                 </div>
+            </div>
+
+            {/* URL pública (túnel) — cert de confianza real → la cámara del móvil va sin instalar nada */}
+            <div className="bg-card border border-border rounded-xl p-4 space-y-2">
+                <label className="text-xs font-medium text-foreground flex items-center gap-1.5">
+                    <Wifi className="w-3.5 h-3.5" /> URL pública / túnel (opcional)
+                </label>
+                <input
+                    type="text"
+                    value={publicBase}
+                    onChange={(e) => setPublicBase(e.target.value)}
+                    placeholder="https://xxxx.trycloudflare.com"
+                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+                />
+                <p className="text-[10px] text-muted-foreground">
+                    Si la pegas, el QR apunta ahí (certificado de confianza → la cámara del móvil funciona sin instalar nada). Vacío = usa la IP local.
+                </p>
             </div>
 
             <div className="bg-card border border-border rounded-xl p-6">
