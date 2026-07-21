@@ -381,6 +381,62 @@ ipcMain.handle("get-network-status", async () => {
   return { localNetworkEnabled, lanIP, urls };
 });
 
+// ── Impresión de tickets (TPV) ─────────────────────────────────────────────
+// El renderer manda el HTML del ticket (autocontenido, 80 mm) y lo imprimimos
+// en una ventana oculta. Con `silent` + `deviceName` va directo a la impresora
+// (térmica de TPV); sin ellos abre el diálogo del sistema (cualquier impresora).
+
+ipcMain.handle("list-printers", async () => {
+  try {
+    if (!mainWindow || mainWindow.isDestroyed()) return [];
+    return await mainWindow.webContents.getPrintersAsync();
+  } catch (err) {
+    return [];
+  }
+});
+
+ipcMain.handle("print-ticket", async (_event, payload = {}) => {
+  const { html, opts } = payload || {};
+  const options = opts || {};
+  let printWin = null;
+  try {
+    printWin = new BrowserWindow({
+      show: false,
+      webPreferences: {
+        sandbox: true,
+        contextIsolation: true,
+        nodeIntegration: false,
+        javascript: false, // el ticket es HTML estático: sin JS por seguridad
+      },
+    });
+    await printWin.loadURL("data:text/html;charset=utf-8," + encodeURIComponent(html || ""));
+    // Margen para decodificar el QR (data-URI SVG) antes de imprimir.
+    await new Promise((r) => setTimeout(r, 200));
+    const result = await new Promise((resolve) => {
+      const printOpts = {
+        silent: !!options.silent,
+        printBackground: true,
+        margins: { marginType: "none" },
+      };
+      if (options.deviceName) printOpts.deviceName = options.deviceName;
+      printWin.webContents.print(printOpts, (success, failureReason) => {
+        resolve({ success, failureReason: failureReason || null });
+      });
+    });
+    return result;
+  } catch (err) {
+    return { success: false, failureReason: String(err && err.message ? err.message : err) };
+  } finally {
+    // Retardo antes de destruir para no cortar el spooling del trabajo.
+    if (printWin && !printWin.isDestroyed()) {
+      const win = printWin;
+      setTimeout(() => {
+        if (win && !win.isDestroyed()) win.destroy();
+      }, 1500);
+    }
+  }
+});
+
 // ── Single instance lock (debe ir ANTES de whenReady) ──────────────────────
 
 const gotLock = app.requestSingleInstanceLock();

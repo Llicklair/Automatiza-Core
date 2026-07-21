@@ -40,7 +40,25 @@ declare global {
         removeUpdateListeners?: () => void;
     }
 
-    interface ElectronAPI extends AutoUpdateApi, UpdateChannelApi {
+    interface PrinterInfo {
+        name: string;
+        displayName?: string;
+        description?: string;
+        isDefault?: boolean;
+        status?: number;
+    }
+
+    interface PrintApi {
+        /** Imprime el HTML de un ticket (térmica de TPV o impresora normal). */
+        printTicket?: (
+            html: string,
+            opts?: { silent?: boolean; deviceName?: string },
+        ) => Promise<{ success: boolean; failureReason?: string | null }>;
+        /** Impresoras disponibles en el sistema. */
+        listPrinters?: () => Promise<PrinterInfo[]>;
+    }
+
+    interface ElectronAPI extends AutoUpdateApi, UpdateChannelApi, PrintApi {
         secureStore?: SecureStoreApi;
     }
 

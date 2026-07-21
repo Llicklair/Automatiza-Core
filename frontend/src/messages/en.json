@@ -5333,7 +5333,21 @@
       "subtitle": "Simplified invoice {number}",
       "qrHint": "Scan the QR to verify the invoice",
       "noQr": "Verifactu is not active: the receipt is issued without a QR",
-      "newSale": "New sale"
+      "newSale": "New sale",
+      "print": "Print",
+      "printError": "Could not print the receipt"
+    },
+    "printer": {
+      "button": "Printer",
+      "title": "Printer settings",
+      "printer": "Receipt printer",
+      "defaultPrinter": "System default printer",
+      "autoPrint": "Print the receipt automatically on checkout",
+      "autoPrintHint": "Prints directly to the selected printer, no dialog.",
+      "browserNote": "Printer selection and automatic printing are only available in the desktop app. In the browser the system dialog is used.",
+      "test": "Test print",
+      "testOk": "Test sent to the printer",
+      "testError": "Could not print the test"
     }
   },
   "albaranes": {

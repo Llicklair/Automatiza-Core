@@ -233,6 +233,28 @@ export async function fetchBlob(path: string, init?: RequestInit): Promise<Blob>
     return res.blob();
 }
 
+export async function fetchText(path: string, init?: RequestInit): Promise<string> {
+    let token = getToken();
+    const auth = (): Record<string, string> => token ? { Authorization: `Bearer ${token}` } : {};
+    const headers = () => ({ ...(init?.headers as Record<string, string>), ...auth() });
+    let res = await safeFetch(`${BASE}${path}`, { ...init, headers: headers() });
+    if (res.status === 401) {
+        const refreshed = await tryRefresh();
+        if (refreshed) {
+            token = getToken();
+            res = await safeFetch(`${BASE}${path}`, { ...init, headers: headers() });
+        }
+    }
+    if (!res.ok) {
+        let detail = "Error al obtener el contenido";
+        let errorType: string | undefined;
+        let requestId: string | undefined;
+        try { const err = await res.json(); detail = err.detail || detail; errorType = err.type; requestId = err.request_id; } catch { /* no json body */ }
+        throw new ApiError(res.status, parseDetail(detail), requestId, errorType);
+    }
+    return res.text();
+}
+
 export async function downloadBlob(path: string, filename: string): Promise<void> {
     let token = getToken();
     let res = await safeFetch(`${BASE}${path}`, {

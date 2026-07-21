@@ -1,7 +1,7 @@
 /**
  * TPV (Punto de Venta) API.
  */
-import { request } from "./client";
+import { request, fetchText } from "./client";
 
 export interface PosLine {
     id: string;
@@ -115,4 +115,8 @@ export const pos = {
         request<SimplifiedInvoice>(`/api/v1/pos/sessions/${sessionId}/factura`, {
             method: "POST",
         }),
+
+    /** HTML del ticket (80 mm) listo para imprimir en térmica de TPV o impresora normal. */
+    ticketHtml: (invoiceId: string): Promise<string> =>
+        fetchText(`/api/v1/invoices/${invoiceId}/ticket`),
 };

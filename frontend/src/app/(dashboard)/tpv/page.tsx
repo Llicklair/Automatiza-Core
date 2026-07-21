@@ -12,6 +12,7 @@ import { usePos } from "./_hooks/usePos";
 import { BarcodeScanner } from "./_components/BarcodeScanner";
 import { PaymentModal } from "./_components/PaymentModal";
 import { TicketEmitido } from "./_components/TicketEmitido";
+import { PrinterSettings } from "./_components/PrinterSettings";
 import { showConfirm } from "@/stores/confirm";
 
 const fmt = (n: number) =>
@@ -59,6 +60,7 @@ export default function TpvPage() {
                     title={t("title")}
                     description={t("header.description")}
                     icon={ShoppingCart}
+                    actions={<PrinterSettings />}
                 />
                 {lastFactura ? (
                     <TicketEmitido
@@ -107,9 +109,12 @@ export default function TpvPage() {
                 })}
                 icon={ShoppingCart}
                 actions={
-                    <Button variant="outline" size="sm" onClick={handleCancel} disabled={busy}>
-                        <X className="mr-1 w-3.5 h-3.5" /> {t("cancelSession")}
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <PrinterSettings />
+                        <Button variant="outline" size="sm" onClick={handleCancel} disabled={busy}>
+                            <X className="mr-1 w-3.5 h-3.5" /> {t("cancelSession")}
+                        </Button>
+                    </div>
                 }
             />
 

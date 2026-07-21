@@ -15,6 +15,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
   // Abrir URL en navegador externo del sistema (OAuth redes sociales)
   openExternal: (url) => ipcRenderer.invoke("open-external", url),
+  // Impresión de tickets TPV (térmica de 80 mm o impresora normal).
+  printTicket: (html, opts) => ipcRenderer.invoke("print-ticket", { html, opts }),
+  listPrinters: () => ipcRenderer.invoke("list-printers"),
   // Auto-update
   checkForUpdates: () => ipcRenderer.invoke("check-for-updates"),
   installUpdate: () => ipcRenderer.invoke("install-update"),

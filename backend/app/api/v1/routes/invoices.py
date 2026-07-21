@@ -18,10 +18,28 @@ from app.middleware.rate_limit import limiter
 from app.services.billing import invoice as svc
 from app.services.billing.facturae import generate_facturae_xml
 from app.services.event_bus import emit_event
+from app.services.sales.ticket_html import build_ticket_html
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+@router.get("/invoices/{invoice_id}/ticket", tags=["erp"])
+@limiter.limit("60/minute")
+async def get_invoice_ticket(
+    request: Request,
+    invoice_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Ticket de venta (80 mm) de la factura, en HTML autocontenido listo para
+    imprimir en impresora térmica de TPV o normal. Reutilizable para reimprimir."""
+    try:
+        html = await build_ticket_html(invoice_id, current_user.tenant_id, db)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return Response(content=html, media_type="text/html; charset=utf-8")
 
 
 @router.post("/invoices/scan", status_code=status.HTTP_200_OK, tags=["erp"])

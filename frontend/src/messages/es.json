@@ -5333,7 +5333,21 @@
       "subtitle": "Factura simplificada {number}",
       "qrHint": "Escanea el QR para verificar la factura",
       "noQr": "Verifactu no está activo: el ticket se emite sin QR",
-      "newSale": "Nueva venta"
+      "newSale": "Nueva venta",
+      "print": "Imprimir",
+      "printError": "No se pudo imprimir el ticket"
+    },
+    "printer": {
+      "button": "Impresora",
+      "title": "Ajustes de impresora",
+      "printer": "Impresora del ticket",
+      "defaultPrinter": "Impresora por defecto del sistema",
+      "autoPrint": "Imprimir el ticket automáticamente al cobrar",
+      "autoPrintHint": "Sale directo por la impresora seleccionada, sin diálogo.",
+      "browserNote": "La selección de impresora y la impresión automática solo están disponibles en la app de escritorio. En navegador se usa el diálogo del sistema.",
+      "test": "Imprimir prueba",
+      "testOk": "Prueba enviada a la impresora",
+      "testError": "No se pudo imprimir la prueba"
     }
   },
   "albaranes": {
