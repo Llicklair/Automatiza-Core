@@ -4,9 +4,12 @@ Una sesión de TPV cerrada genera una Invoice simplificada (is_simplified,
 invoice_type 'issued', cobrada) con un cliente mostrador genérico y su registro
 VeriFactu con TipoFactura F2. Idempotente: una sesión se factura una sola vez.
 """
+
 from decimal import Decimal
 
 import pytest
+from sqlalchemy import func, select
+
 from app.db.models.billing import Invoice, VerifactuRecord
 from app.db.models.crm import Client
 from app.db.models.pos import PosSession, PosSessionLine
@@ -15,7 +18,6 @@ from app.services.sales.pos import (
     WALK_IN_CLIENT_NAME,
     generar_factura_simplificada,
 )
-from sqlalchemy import func, select
 
 
 async def _closed_session(db, tenant, user, *, total=Decimal("121.00")):
@@ -112,8 +114,13 @@ class TestFacturaSimplificada:
         await generar_factura_simplificada(db, tenant.id, s2.id)
 
         count = await db.execute(
-            select(func.count(Client.id)).where(
-                Client.tenant_id == tenant.id, Client.name == WALK_IN_CLIENT_NAME
-            )
+            select(func.count(Client.id)).where(Client.tenant_id == tenant.id, Client.name == WALK_IN_CLIENT_NAME)
         )
         assert count.scalar() == 1
+
+    async def test_importe_supera_limite_no_se_emite_como_simplificada(self, db, seed_tenant_and_user):
+        tenant, user, _t = seed_tenant_and_user
+        session = await _closed_session(db, tenant, user, total=Decimal("3500.00"))
+
+        with pytest.raises(ValueError, match="límite"):
+            await generar_factura_simplificada(db, tenant.id, session.id)

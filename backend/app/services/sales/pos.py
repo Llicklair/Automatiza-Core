@@ -266,6 +266,10 @@ async def checkout(
 
 WALK_IN_CLIENT_NAME = "Consumidor final (TPV)"
 
+# Límite legal de la factura simplificada (art. 4 RD 1619/2012, general, IVA incl.):
+# por encima no puede emitirse como simplificada (F2); requiere factura completa.
+_F2_LIMITE_IMPORTE = Decimal("3000.00")
+
 
 async def _get_or_create_walk_in_client(db: AsyncSession, tenant_id: UUID):
     """Cliente genérico de mostrador del tenant para tickets simplificados (F2).
@@ -315,6 +319,12 @@ async def generar_factura_simplificada(db: AsyncSession, tenant_id: UUID, sessio
     # Idempotencia: una sesión se factura una sola vez.
     if session.invoice_id is not None:
         return await _load_invoice(session.invoice_id)
+
+    if session.amount_total is not None and Decimal(session.amount_total) > _F2_LIMITE_IMPORTE:
+        raise ValueError(
+            f"El importe {session.amount_total} € supera el límite de factura simplificada "
+            f"({_F2_LIMITE_IMPORTE} €); emite una factura completa con los datos del cliente."
+        )
 
     client = await _get_or_create_walk_in_client(db, tenant_id)
     invoice_number = await next_invoice_number(db, tenant_id, series="T")

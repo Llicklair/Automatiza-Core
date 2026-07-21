@@ -24,7 +24,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 from xml.etree.ElementTree import Element, SubElement, register_namespace, tostring
 
 from app.services.billing.verifactu_chain import _fmt_fecha_expedicion, _fmt_importe
@@ -157,7 +157,7 @@ def _sistema_informatico(parent: Element, s: SistemaInformatico) -> None:
     _txt(si, NS_SF, "IndicadorMultiplesOT", s.indicador_multiples_ot)
 
 
-def _encadenamiento(parent: Element, huella_anterior: Optional[str], prev_record) -> None:
+def _encadenamiento(parent: Element, huella_anterior: str | None, prev_record) -> None:
     """`Encadenamiento`: PrimerRegistro="S" o RegistroAnterior (4 campos).
 
     Si hay `huella_anterior`, el `RegistroAnterior` necesita la IDENTIDAD de la
@@ -185,9 +185,9 @@ def _encadenamiento(parent: Element, huella_anterior: Optional[str], prev_record
 
 @dataclass(frozen=True)
 class _Detalle:
-    tipo: Optional[str]  # TipoImpositivo (ej. "21"); None si no aplica
+    tipo: str | None  # TipoImpositivo (ej. "21"); None si no aplica
     base: str  # BaseImponibleOimporteNoSujeto
-    cuota: Optional[str]  # CuotaRepercutida
+    cuota: str | None  # CuotaRepercutida
 
 
 def _detalles(invoice, lines) -> list[_Detalle]:
@@ -255,14 +255,14 @@ def _descripcion(invoice, lines) -> str:
 
 def build_registro_alta_xml(
     *,
-    record: "VerifactuRecord",
-    invoice: "Invoice",
+    record: VerifactuRecord,
+    invoice: Invoice,
     emisor_nombre: str,
     lines=None,
-    sistema: Optional[SistemaInformatico] = None,
-    prev_record: Optional["VerifactuRecord"] = None,
-    descripcion: Optional[str] = None,
-    rectified_invoice: Optional["Invoice"] = None,
+    sistema: SistemaInformatico | None = None,
+    prev_record: VerifactuRecord | None = None,
+    descripcion: str | None = None,
+    rectified_invoice: Invoice | None = None,
 ) -> str:
     """Genera el XML `RegFactuSistemaFacturacion` con un `RegistroAlta`.
 
@@ -299,6 +299,10 @@ def build_registro_alta_xml(
         _txt(idr, NS_SF, "NumSerieFactura", rectified_invoice.invoice_number or "")
         _txt(idr, NS_SF, "FechaExpedicionFactura", _fmt_fecha_expedicion(rectified_invoice.date))
     _txt(alta, NS_SF, "DescripcionOperacion", (descripcion or _descripcion(invoice, lines))[:500])
+    # F2 (ticket TPV): factura simplificada sin destinatario identificado (art. 6.1.d
+    # RD 1619/2012). El XSD coloca este indicador tras `DescripcionOperacion`.
+    if p["TipoFactura"].upper() == "F2":
+        _txt(alta, NS_SF, "FacturaSinIdentifDestinatarioArt61d", "S")
     _desglose(alta, invoice, lines)
     _txt(alta, NS_SF, "CuotaTotal", p["CuotaTotal"])
     _txt(alta, NS_SF, "ImporteTotal", p["ImporteTotal"])
@@ -318,9 +322,9 @@ def build_registro_anulacion_xml(
     fecha_expedicion: str,
     huella: str,
     fecha_hora_gen: str,
-    huella_anterior: Optional[str] = None,
-    prev_record: Optional["VerifactuRecord"] = None,
-    sistema: Optional[SistemaInformatico] = None,
+    huella_anterior: str | None = None,
+    prev_record: VerifactuRecord | None = None,
+    sistema: SistemaInformatico | None = None,
 ) -> str:
     """Genera el XML `RegFactuSistemaFacturacion` con un `RegistroAnulacion`.
 
@@ -396,7 +400,7 @@ def validate_verifactu_xml(xml_str: str) -> list[str]:
     return [] if schema.validate(doc) else [str(err) for err in schema.error_log]
 
 
-async def generate_alta_xml(db, *, record: "VerifactuRecord", sistema=None) -> str:
+async def generate_alta_xml(db, *, record: VerifactuRecord, sistema=None) -> str:
     """Carga factura/emisor/registro-previo y construye el XML del `RegistroAlta`."""
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
