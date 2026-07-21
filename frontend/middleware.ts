@@ -4,7 +4,9 @@ import { NextRequest, NextResponse } from "next/server";
  * Middleware de autenticación: protege todas las rutas del dashboard.
  * Redirige a /login si no hay access_token en las cookies.
  */
-const PUBLIC_PATHS = ["/login", "/registro", "/forgot-password", "/api", "/_next", "/favicon.ico"];
+// `/mobile-scanner` se autentica por token en la URL (no por login/cookie): debe
+// ser pública en el middleware o rebota a /login antes de poder leer el token.
+const PUBLIC_PATHS = ["/login", "/registro", "/forgot-password", "/mobile-scanner", "/api", "/_next", "/favicon.ico"];
 
 export function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
