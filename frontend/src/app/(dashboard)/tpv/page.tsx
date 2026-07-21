@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { usePos } from "./_hooks/usePos";
-import { BarcodeScanner } from "./_components/BarcodeScanner";
+import { CameraBarcodeScanner } from "@/components/shared/CameraBarcodeScanner";
 import { PaymentModal } from "./_components/PaymentModal";
 import { TicketEmitido } from "./_components/TicketEmitido";
 import { PrinterSettings } from "./_components/PrinterSettings";
@@ -20,6 +20,7 @@ const fmt = (n: number) =>
 
 export default function TpvPage() {
     const t = useTranslations("tpv");
+    const tc = useTranslations("common");
     const {
         session, loading, busy, checkoutOpen, setCheckoutOpen,
         subtotal, taxAmount, totalWithTax,
@@ -258,12 +259,20 @@ export default function TpvPage() {
                 </div>
             </div>
 
-            <BarcodeScanner
+            <CameraBarcodeScanner
                 open={scannerOpen}
                 onClose={() => setScannerOpen(false)}
                 onScan={async (scanned) => {
                     setScannerOpen(false);
                     await addProductByCode(scanned);
+                }}
+                labels={{
+                    title: t("scanner.title"),
+                    aimHint: t("scanner.aimHint"),
+                    insecureContext: t("scanner.insecureContext"),
+                    cameraError: t("scanner.cameraError"),
+                    permissionHint: t("scanner.permissionHint"),
+                    close: tc("close"),
                 }}
             />
 

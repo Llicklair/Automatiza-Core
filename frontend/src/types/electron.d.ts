@@ -58,7 +58,15 @@ declare global {
         listPrinters?: () => Promise<PrinterInfo[]>;
     }
 
-    interface ElectronAPI extends AutoUpdateApi, UpdateChannelApi, PrintApi {
+    interface NetworkApi {
+        getNetworkStatus?: () => Promise<{
+            localNetworkEnabled: boolean;
+            lanIP: string | null;
+            urls?: string[];
+        }>;
+    }
+
+    interface ElectronAPI extends AutoUpdateApi, UpdateChannelApi, PrintApi, NetworkApi {
         secureStore?: SecureStoreApi;
     }
 

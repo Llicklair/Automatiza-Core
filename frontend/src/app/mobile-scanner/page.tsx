@@ -4,9 +4,10 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
     ScanLine, Package, ArrowDown, ArrowUp, Truck, Loader2,
-    CheckCircle2, XCircle, AlertTriangle,
+    CheckCircle2, XCircle, AlertTriangle, Camera,
 } from "lucide-react";
 import { mobileScanner, type ScannedProduct } from "@/lib/api/scanner";
+import { CameraBarcodeScanner } from "@/components/shared/CameraBarcodeScanner";
 
 type ActionResult = { success: boolean; message: string; data?: any };
 
@@ -17,6 +18,7 @@ function MobileScannerInner() {
     const [deviceInfo, setDeviceInfo] = useState<{ tenant_id: string; device: string } | null>(null);
 
     const [code, setCode] = useState("");
+    const [cameraOpen, setCameraOpen] = useState(false);
     const [product, setProduct] = useState<ScannedProduct | null>(null);
     const [loading, setLoading] = useState(false);
     const [quantity, setQuantity] = useState(1);
@@ -35,16 +37,23 @@ function MobileScannerInner() {
 
     const productCode = () => product?.barcode || product?.sku || code.trim();
 
-    const scanProduct = async () => {
-        if (!code.trim()) return;
+    const scanProduct = async (rawCode?: string) => {
+        const c = (rawCode ?? code).trim();
+        if (!c) return;
         setLoading(true); setProduct(null); setResult(null);
         try {
-            const data = await mobileScanner.scanProduct(token, code.trim());
+            const data = await mobileScanner.scanProduct(token, c);
             setProduct(data);
         } catch (e: any) {
             setResult({ success: false, message: e.message });
         }
         setLoading(false);
+    };
+
+    const onCameraScan = (scanned: string) => {
+        setCameraOpen(false);
+        setCode(scanned);
+        void scanProduct(scanned);
     };
 
     const stockEntry = async () => {
@@ -129,7 +138,15 @@ function MobileScannerInner() {
                         autoFocus
                     />
                     <button
-                        onClick={scanProduct}
+                        onClick={() => setCameraOpen(true)}
+                        className="px-3 py-2.5 rounded-lg bg-muted hover:bg-accent text-foreground"
+                        aria-label="Escanear con cámara"
+                        title="Escanear con cámara"
+                    >
+                        <Camera className="w-4 h-4" aria-hidden="true" />
+                    </button>
+                    <button
+                        onClick={() => scanProduct()}
                         disabled={loading || !code.trim()}
                         className="px-3 py-2.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-foreground"
                      aria-label="Escanear producto">
@@ -262,6 +279,13 @@ function MobileScannerInner() {
                     {result.message}
                 </div>
             )}
+
+            <CameraBarcodeScanner
+                open={cameraOpen}
+                onClose={() => setCameraOpen(false)}
+                onScan={onCameraScan}
+                labels={{ title: "Escanear producto", aimHint: "Apunta al código de barras del producto" }}
+            />
         </div>
     );
 }

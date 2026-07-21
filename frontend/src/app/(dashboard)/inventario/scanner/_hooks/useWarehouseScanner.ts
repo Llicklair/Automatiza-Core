@@ -11,7 +11,21 @@ export function useWarehouseScanner() {
     const [loading, setLoading] = useState(false);
     const [copied, setCopied] = useState(false);
     const [timeLeft, setTimeLeft] = useState(0);
+    // Origen alcanzable desde el móvil: la IP de LAN del equipo (no `localhost`,
+    // que el teléfono no puede resolver). La pide al proceso Electron.
+    const [lanOrigin, setLanOrigin] = useState<string | null>(null);
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    useEffect(() => {
+        const electron = window.electronAPI;
+        if (!electron?.getNetworkStatus) return;
+        electron
+            .getNetworkStatus()
+            .then((st) => {
+                if (st?.lanIP) setLanOrigin(`http://${st.lanIP}:${window.location.port || "3000"}`);
+            })
+            .catch(() => {});
+    }, []);
 
     const generateToken = async () => {
         setLoading(true);
@@ -49,7 +63,7 @@ export function useWarehouseScanner() {
     };
 
     const scannerUrl = token
-        ? `${window.location.origin}/mobile-scanner?token=${token.token}`
+        ? `${lanOrigin || window.location.origin}/mobile-scanner?token=${token.token}`
         : null;
 
     return { token, loading, copied, timeLeft, scannerUrl, generateToken, copyToken };

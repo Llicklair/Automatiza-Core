@@ -5,6 +5,7 @@ import {
     AlertTriangle, Wifi, RefreshCw, Timer,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { QRCodeSVG } from "qrcode.react";
 import { useWarehouseScanner } from "./_hooks/useWarehouseScanner";
 
 export default function WarehouseScannerPage() {
@@ -95,13 +96,12 @@ export default function WarehouseScannerPage() {
                         </div>
 
                         <div className="flex flex-col items-center py-6 space-y-3">
-                            <div className="w-48 h-48 bg-white rounded-2xl flex items-center justify-center p-4">
-                                <div className="text-center">
-                                    <QrCode className="w-16 h-16 text-muted-foreground mx-auto mb-2" />
-                                    <p className="text-[10px] text-muted-foreground font-mono break-all">
-                                        {token.token.slice(0, 20)}...
-                                    </p>
-                                </div>
+                            <div className="w-48 h-48 bg-white rounded-2xl flex items-center justify-center p-3">
+                                {scannerUrl ? (
+                                    <QRCodeSVG value={scannerUrl} size={168} />
+                                ) : (
+                                    <QrCode className="w-16 h-16 text-muted-foreground" />
+                                )}
                             </div>
                             <p className="text-[10px] text-muted-foreground">
                                 {t("scanner.scanHint")}
