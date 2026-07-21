@@ -505,6 +505,8 @@
     "orderEmptyDescription": "Crea tu primer pedido de venta.",
     "orderNoMatch": "No hay pedidos que coincidan con \"{search}\"",
     "orderNoNumber": "Sin número",
+    "printLabels": "Imprimir etiquetas",
+    "printLabelsError": "No se pudieron generar las etiquetas",
     "orderAdvanceTo": "Pasar a {status}",
     "orderSelectClient": "Seleccionar cliente…",
     "orderSelectProduct": "Seleccionar producto…",

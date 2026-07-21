@@ -1,10 +1,12 @@
 "use client";
 
-import { type SalesOrder } from "@/lib/api";
+import { useState } from "react";
+import { api, type SalesOrder } from "@/lib/api";
+import { useToastStore } from "@/stores/toast";
 import { fmt, STATUS_MAP, STATUS_FLOW } from "../_hooks/usePedidos";
 import {
     ClipboardList, ChevronDown, Package, Calendar, Check,
-    Loader2, Trash2
+    Loader2, Tags, Trash2
 } from "lucide-react";
 
 interface OrderCardProps {
@@ -25,6 +27,19 @@ export default function OrderCard({
 }: OrderCardProps) {
     const st = STATUS_MAP[order.status] || STATUS_MAP.draft;
     const nextStatus = STATUS_FLOW[order.status];
+    const toast = useToastStore();
+    const [printing, setPrinting] = useState(false);
+
+    const handlePrintLabels = async () => {
+        setPrinting(true);
+        try {
+            await api.erp.orders.labelsPdf(order.id);
+        } catch {
+            toast.error(t("printLabelsError"));
+        } finally {
+            setPrinting(false);
+        }
+    };
 
     return (
         <div className="bg-card border border-border rounded-2xl overflow-hidden">
@@ -47,6 +62,15 @@ export default function OrderCard({
                     <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isExpanded ? "rotate-180" : ""}`} />
                 </button>
                 <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                        onClick={handlePrintLabels}
+                        disabled={printing}
+                        className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                        title={t("printLabels")}
+                        aria-label={t("printLabels")}
+                    >
+                        {printing ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : <Tags className="w-3.5 h-3.5" aria-hidden="true" />}
+                    </button>
                     {nextStatus && (
                         <button
                             onClick={() => onAdvance(order)}

@@ -505,6 +505,8 @@
     "orderEmptyDescription": "Create your first sales order.",
     "orderNoMatch": "No orders matching \"{search}\"",
     "orderNoNumber": "No number",
+    "printLabels": "Print labels",
+    "printLabelsError": "Could not generate the labels",
     "orderAdvanceTo": "Advance to {status}",
     "orderSelectClient": "Select client…",
     "orderSelectProduct": "Select product…",
