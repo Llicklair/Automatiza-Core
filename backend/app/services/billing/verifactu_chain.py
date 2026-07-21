@@ -17,11 +17,16 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.billing import VerifactuRecord
+
+# Huso del territorio de expedición (art. 11 Orden HAC/1177/2024): fijo a
+# Europe/Madrid, no la tz del SO (un despliegue con TZ=UTC emitía +00:00).
+TZ_EXPEDICION = ZoneInfo("Europe/Madrid")
 
 if TYPE_CHECKING:  # pragma: no cover
     from app.db.models.billing import Invoice
@@ -238,10 +243,20 @@ async def append_verifactu_record(
     invoice_number = invoice.invoice_number or ""
     serie = "".join(ch for ch in invoice_number if not ch.isdigit() and ch != "-")[:16] or "A"
 
-    # TipoFactura (lista L2): R1 rectificativa (RD 1619/2012 Art. 15); F2 factura
-    # simplificada / ticket TPV (sin destinatario identificado); F1 completa.
+    # TipoFactura (lista L2): R1 rectificativa de completa / R5 de simplificada
+    # (RD 1619/2012 Art. 15); F3 sustitutiva; F2 simplificada / ticket TPV (sin
+    # destinatario identificado); F1 completa.
     if (invoice.invoice_type or "").lower() == "rectificativa":
         tipo_factura = "R1"
+        rectifies_id = getattr(invoice, "rectifies_invoice_id", None)
+        if rectifies_id is not None:
+            from app.db.models.billing import Invoice as _Invoice
+
+            rect_simpl = (
+                await db.execute(select(_Invoice.is_simplified).where(_Invoice.id == rectifies_id))
+            ).scalar_one_or_none()
+            if rect_simpl:
+                tipo_factura = "R5"
     elif getattr(invoice, "substitutes_invoice_id", None):
         tipo_factura = "F3"
     elif invoice.is_simplified:
@@ -259,7 +274,7 @@ async def append_verifactu_record(
         cuota_total=cuota,
         importe_total=importe,
         huella_anterior=huella_anterior,
-        fecha_hora_gen=_fmt_fecha_hora_gen(datetime.now(UTC).astimezone()),
+        fecha_hora_gen=_fmt_fecha_hora_gen(datetime.now(TZ_EXPEDICION)),
     )
     huella = compute_huella(payload)
 

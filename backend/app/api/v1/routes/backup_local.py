@@ -88,6 +88,30 @@ async def record_backup_endpoint(
     )
 
 
+class RecordRestoreRequest(BaseModel):
+    source_path: str = Field(..., min_length=1, max_length=1000)
+    note: str | None = None
+
+
+@router.post("/restore-event", status_code=status.HTTP_201_CREATED)
+async def record_restore_event(
+    body: RecordRestoreRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Registra el evento SIF de RESTAURACIÓN de copia de seguridad (art. 14
+    RD 1007/2023) en la cadena de eventos. Lo llama el cliente Electron (o un
+    admin) tras restaurar un backup gestionado desde el sistema."""
+    from app.services.billing.sif_events import EVENT_RESTAURACION, record_event
+
+    detalle = f"restauración de backup: {body.source_path}"
+    if body.note:
+        detalle += f" — {body.note}"
+    ev = await record_event(db, tenant_id=user.tenant_id, tipo_evento=EVENT_RESTAURACION, detalle=detalle)
+    await db.commit()
+    return {"id": str(ev.id), "tipo_evento": ev.tipo_evento, "huella": ev.huella}
+
+
 @router.get("/status", response_model=BackupStatusResponse)
 async def get_backup_status(
     user: User = Depends(get_current_user),

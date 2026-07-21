@@ -33,6 +33,21 @@ class Settings(BaseSettings):
     # apuntar a la URL accesible desde internet (Cloudflare Tunnel, dominio propio, IP fija…).
     PORTAL_PUBLIC_URL: str = ""
 
+    # ── VeriFactu: identificación del PRODUCTOR del SIF ─────────────────────
+    # Alimentan la declaración responsable (art. 15 Orden HAC/1177/2024) y el
+    # bloque SistemaInformatico de cada registro. Sin declararlos aquí,
+    # pydantic (extra="ignore") descartaba los valores del .env y el documento
+    # imprimía SIEMPRE los placeholders. El envío a AEAT sigue bloqueado
+    # mientras el NIF sea el placeholder (guard en verifactu_submit).
+    VERIFACTU_SIF_NOMBRE_RAZON: str = "AutomatizaCore"
+    VERIFACTU_SIF_NIF: str = "B00000000"
+    VERIFACTU_SIF_NOMBRE_SISTEMA: str = "AutomatizaCore"
+    VERIFACTU_SIF_ID: str = "01"
+    VERIFACTU_SIF_VERSION: str = "1.0"
+    VERIFACTU_SIF_NUM_INSTALACION: str = "0001"
+    VERIFACTU_SIF_DIRECCION: str = ""
+    VERIFACTU_SIF_LUGAR: str = ""
+
     @model_validator(mode="after")
     def check_secrets(self):
         if self.SECRET_KEY == _DEFAULT_SECRET:

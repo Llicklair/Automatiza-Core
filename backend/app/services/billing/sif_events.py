@@ -11,7 +11,7 @@ trazabilidad.
 from __future__ import annotations
 
 from collections import namedtuple
-from datetime import UTC, datetime
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import func, select, text
@@ -27,6 +27,7 @@ EVENT_DETECCION_ANOMALIAS = "DETECCION_ANOMALIAS"
 EVENT_RESUMEN = "RESUMEN"
 EVENT_EXPORTACION = "EXPORTACION"
 EVENT_CAMBIO_MODO = "CAMBIO_MODO"
+EVENT_RESTAURACION = "RESTAURACION"
 
 VALID_EVENTS = {
     EVENT_ARRANQUE,
@@ -35,18 +36,40 @@ VALID_EVENTS = {
     EVENT_RESUMEN,
     EVENT_EXPORTACION,
     EVENT_CAMBIO_MODO,
+    EVENT_RESTAURACION,
 }
 
 _EvLink = namedtuple("_EvLink", ["huella", "huella_anterior"])
 
 
-def build_payload_evento(*, tipo_evento: str, fecha_hora_gen: str, detalle: str, huella_anterior: str | None) -> str:
-    """Cadena canónica del evento sobre la que se aplica SHA-256 (hex mayúsculas)."""
+def build_payload_evento(
+    *,
+    nif_productor: str,
+    id_sistema: str,
+    version: str,
+    num_instalacion: str,
+    nif_obligado: str,
+    tipo_evento: str,
+    huella_anterior: str | None,
+    fecha_hora_gen: str,
+    detalle: str,
+) -> str:
+    """Cadena canónica del evento sobre la que se aplica SHA-256 (hex mayúsculas).
+
+    Campos y orden del art. 13.1.c Orden HAC/1177/2024: productor, id del SIF,
+    versión, número de instalación, NIF del obligado, tipo de evento, huella del
+    evento anterior y fecha-hora-huso. `Detalle` va al final para que la huella
+    también proteja el contenido del evento."""
     return (
-        f"TipoEvento={tipo_evento}"
+        f"NIFProductor={nif_productor}"
+        f"&IDSistemaInformatico={id_sistema}"
+        f"&Version={version}"
+        f"&NumeroInstalacion={num_instalacion}"
+        f"&NIFObligado={nif_obligado}"
+        f"&TipoEvento={tipo_evento}"
+        f"&HuellaAnterior={huella_anterior or ''}"
         f"&FechaHoraHusoGenRegistro={fecha_hora_gen}"
         f"&Detalle={detalle or ''}"
-        f"&HuellaAnterior={huella_anterior or ''}"
     )
 
 
@@ -73,13 +96,30 @@ async def record_event(db: AsyncSession, *, tenant_id: UUID, tipo_evento: str, d
         )
 
     huella_anterior = await _get_last_event_huella(db, tenant_id)
-    now = datetime.now(UTC)
-    fecha_hora_gen = now.astimezone().replace(microsecond=0).isoformat()
+
+    # Identificación exigida en el payload del evento (art. 13.1.c): productor +
+    # sistema desde settings; NIF del obligado desde el tenant (puede faltar en
+    # modo no_remission — el evento se registra igual, es de sistema).
+    from app.db.models.auth import Tenant
+    from app.services.billing.registro_facturacion import default_sistema_informatico
+    from app.services.billing.verifactu_chain import TZ_EXPEDICION
+
+    sif = default_sistema_informatico()
+    tenant = await db.get(Tenant, tenant_id)
+    nif_obligado = (tenant.nif if tenant is not None else "") or ""
+
+    now = datetime.now(TZ_EXPEDICION)
+    fecha_hora_gen = now.replace(microsecond=0).isoformat()
     payload = build_payload_evento(
+        nif_productor=sif.nif,
+        id_sistema=sif.id_sistema,
+        version=sif.version,
+        num_instalacion=sif.numero_instalacion,
+        nif_obligado=nif_obligado,
         tipo_evento=tipo_evento,
+        huella_anterior=huella_anterior,
         fecha_hora_gen=fecha_hora_gen,
         detalle=detalle,
-        huella_anterior=huella_anterior,
     )
     huella = compute_huella(payload)
 
@@ -98,13 +138,26 @@ async def record_event(db: AsyncSession, *, tenant_id: UUID, tipo_evento: str, d
 
 
 async def verify_events_integrity(db: AsyncSession, tenant_id: UUID) -> tuple[bool, int]:
-    """Recomputa la huella de cada evento y verifica que la cadena no fue alterada.
-    Devuelve `(ok, num_eventos)`."""
-    result = await db.execute(select(SifEvent).where(SifEvent.tenant_id == tenant_id).order_by(SifEvent.created_at))
+    """Verifica que la cadena de eventos no fue alterada. Tres comprobaciones:
+    (1) huella == SHA-256(payload) de cada evento; (2) la columna
+    `huella_anterior` coincide con la hasheada en el payload (una fila reescrita
+    de forma internamente consistente no cuela); (3) los enlaces forman UNA sola
+    cadena génesis→cola, sin ciclos ni bifurcaciones. Devuelve `(ok, n)`."""
+    from app.services.billing.verifactu_chain import order_verifactu_chain
+
+    result = await db.execute(select(SifEvent).where(SifEvent.tenant_id == tenant_id))
     events = list(result.scalars().all())
     for ev in events:
         if compute_huella(ev.payload_canonico) != ev.huella:
             return False, len(events)
+        # Enlace columna↔payload (compat con el formato antiguo, que terminaba
+        # en HuellaAnterior, y el nuevo, que sigue con FechaHora...).
+        marca = f"&HuellaAnterior={ev.huella_anterior or ''}"
+        if f"{marca}&" not in ev.payload_canonico and not ev.payload_canonico.endswith(marca):
+            return False, len(events)
+    _, bien_formada = order_verifactu_chain(events)
+    if not bien_formada:
+        return False, len(events)
     return True, len(events)
 
 
