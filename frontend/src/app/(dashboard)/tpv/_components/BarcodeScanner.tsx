@@ -38,6 +38,13 @@ export function BarcodeScanner({ open, onClose, onScan }: Props) {
             return;
         }
         setSupported(true);
+        // La cámara (getUserMedia) solo existe en contexto seguro: HTTPS o
+        // localhost. Por http:// con IP de LAN, `mediaDevices` es undefined y el
+        // acceso reventaba sin aviso. Fallamos con un mensaje claro.
+        if (!navigator.mediaDevices?.getUserMedia) {
+            setError(t("scanner.insecureContext"));
+            return;
+        }
         setStarting(true);
         let cancelled = false;
 

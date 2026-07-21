@@ -30,6 +30,7 @@ export default function ShareInvitationModal({
     // Si hay red local, el enlace usa la IP de LAN para que funcione en el móvil
     // del empleado (no localhost, que solo vale en este ordenador).
     const url = buildShareUrl(invitation.token, lanBase);
+    const isLocalhost = /\/\/(localhost|127\.0\.0\.1)(:|\/|$)/i.test(url);
 
     async function copy() {
         try {
@@ -50,6 +51,12 @@ export default function ShareInvitationModal({
                         strong: (chunks) => <strong>{chunks}</strong>,
                     })}
                 </div>
+
+                {isLocalhost && (
+                    <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-300">
+                        {t("usuarios.shareLocalhostWarning")}
+                    </div>
+                )}
 
                 <Field label={t("usuarios.shareLinkLabel")}>
                     <div className="flex items-center gap-2">

@@ -1761,6 +1761,7 @@
       "shareLinkLabel": "Link to share",
       "shareTitle": "Invitation link generated",
       "shareWarning": "<strong>Important:</strong> this link is shown only once. Copy it now and send it to {email} by whatever means you prefer.",
+      "shareLocalhostWarning": "This link points to localhost and will not work on another device. Configure LAN IP or HTTPS access below and generate the invitation again.",
       "status": "Status",
       "subtitle": "Invite people by email so each person sets their own password, or create accounts with a direct password. Employees with the \"Employee\" role will only see My portal.",
       "title": "Tenant users",
@@ -5294,6 +5295,7 @@
     "scanner": {
       "title": "Scan code",
       "cameraError": "Could not open the camera",
+      "insecureContext": "The camera only works over HTTPS. Open the app with https:// (or localhost), not http:// with the network IP.",
       "unsupportedTitle": "Camera scanning not supported",
       "unsupportedDescription": "Your browser does not implement BarcodeDetector. Use a USB/Bluetooth reader or enter the code manually.",
       "permissionHint": "Make sure to grant camera permission to the browser.",
