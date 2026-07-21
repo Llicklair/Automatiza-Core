@@ -40,15 +40,14 @@ Guardas de expedición centralizadas en `ensure_verifactu_on_expedition()`
 | 3 | `create_invoice` con guardas: nunca recibidas/demo; borrador encadena al expedirse |
 | 4 | `bulk_import`: con VeriFactu activo las emitidas se **rechazan** (anti-bypass); históricas en no_remission siguen sin encadenar (no las expidió este SIF — decisión documentada) |
 
-### P2 — Contenido del registro (anexo Orden) — quedan 2 de 4
+### ✅ P2 — CERRADO (commits `597f38fa` + `d25ba60d`, 2026-07-21)
 
-_Cerrados en `597f38fa`: R5 (rectificativa de simplificada) y huso fijo
-Europe/Madrid (`TZ_EXPEDICION`)._
-
-| # | Bloqueante | Evidencia | Esf. |
-|---|---|---|---|
-| 5 | Falta bloque **`Destinatarios`** (NIF/nombre cliente) en RegistroAlta para F1. | `registro_facturacion.py:256-309` | M |
-| 6 | **`CalificacionOperacion` fija S1**: exentas E1-E6, N1/N2, S2 se calificarían mal. | `registro_facturacion.py:52,236` | M |
+| # | Cierre |
+|---|---|
+| 5 | **Destinatarios** en F1/F3/R1 (NombreRazon+NIF del cliente, posición XSD); fail-closed sin NIF; R5 sin NIF → indicador art. 61.d |
+| 6 | **Calificación real**: tipo>0 → S1; 0% → `exencion_causa` (migración 0077): E1-E6 → OperacionExenta, N1/N2 → no sujeta; sin causa → bloqueo |
+| 7 | R5 para rectificativas de simplificadas |
+| 8 | Huso fijo Europe/Madrid (`TZ_EXPEDICION`) |
 
 ### ✅ P3 — CERRADO (commit `597f38fa`, 2026-07-21)
 
@@ -67,14 +66,12 @@ Europe/Madrid (`TZ_EXPEDICION`)._
 | 14 | `TiempoEsperaEnvio` ni persistido ni respetado; `error` terminal (sin backoff); sin subsanación por línea; sin remisión por requerimiento; anulaciones no se remiten. | `verifactu_submit.py:368-392`, `tasks_scheduler.py:131,142-151` | L |
 | 15 | Quitar `no_remission` / default voluntary (~25 ficheros; todo tenant necesitará NIF). | `verifactu_mode.py:17-18` | M |
 
-### P5 — Operativa mínima — queda 1 de 2
+### ✅ P5 — CERRADO (commits `597f38fa` + `d25ba60d`, 2026-07-21)
 
-_Cerrado en `597f38fa`: los 8 `VERIFACTU_SIF_*` declarados en Settings — el
-`.env` ya surte efecto en la declaración (NIF real cuando exista la SL)._
-
-| # | Bloqueante | Evidencia | Esf. |
-|---|---|---|---|
-| 16 | Export sin endpoint HTTP ni UI (la capacidad de volcado del art. 9 no es accesible al usuario/AEAT). | grep `export_periodo` → 0 rutas | M |
+| # | Cierre |
+|---|---|
+| 16 | Export accesible: `GET /verifactu/config/export` (json/xml, admin, evento EXPORTACION) + pestaña "Exportación" en Config › Verifactu |
+| 17 | Los 8 `VERIFACTU_SIF_*` declarados en Settings — el `.env` surte efecto en la declaración |
 
 ## No bloqueantes (recomendados, defendibles de posponer)
 
