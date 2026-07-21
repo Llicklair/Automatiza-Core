@@ -709,6 +709,8 @@
     "invoiceHistory": "Historial de facturas",
     "newInvoice": "Nueva factura",
     "crmActivities": "Actividades CRM",
+    "printCard": "Imprimir tarjeta",
+    "printCardError": "No se pudo generar la tarjeta",
     "noInvoices": "Sin facturas registradas",
     "draft": "Borrador",
     "base": "Base",

@@ -293,6 +293,7 @@ export const erp = {
             }),
         delete: (id: string) =>
             request<void>(`/api/v1/clients/${id}`, { method: "DELETE" }),
+        loyaltyCardPdf: (id: string) => downloadBlob(`/api/v1/clients/${id}/loyalty-card/pdf`, "tarjeta-cliente.pdf"),
         invoices: (id: string, params?: { skip?: number; limit?: number }) => {
             const q = new URLSearchParams(params as Record<string, string>).toString();
             return request<Invoice[]>(`/api/v1/clients/${id}/invoices${q ? "?" + q : ""}`);

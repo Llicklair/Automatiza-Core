@@ -709,6 +709,8 @@
     "invoiceHistory": "Invoice history",
     "newInvoice": "New invoice",
     "crmActivities": "CRM activities",
+    "printCard": "Print card",
+    "printCardError": "Could not generate the card",
     "noInvoices": "No invoices registered",
     "draft": "Draft",
     "base": "Base",

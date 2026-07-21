@@ -3,11 +3,14 @@
 import { useTranslations } from "next-intl";
 import {
     ArrowLeft, User, Mail, MapPin, Hash, FileText, CheckCircle2,
-    Clock, XCircle, Loader2, Plus, ExternalLink, Activity
+    Clock, XCircle, Loader2, Plus, ExternalLink, Activity, CreditCard
 } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 import { useClienteDetalle } from "./_hooks/useClienteDetalle";
 import { PageContainer } from "@/components/shared/PageContainer";
+import { api } from "@/lib/api";
+import { useToastStore } from "@/stores/toast";
 
 const fmt = (n: number) => n.toLocaleString("es-ES", { style: "currency", currency: "EUR" });
 
@@ -27,6 +30,19 @@ const STATUS_LABELS: Record<string, { color: string; bg: string; border: string 
 
 export default function ClientDetailPage() {
     const t = useTranslations("clientes");
+    const toast = useToastStore();
+    const [printingCard, setPrintingCard] = useState(false);
+    const handlePrintCard = async () => {
+        if (!client) return;
+        setPrintingCard(true);
+        try {
+            await api.erp.clients.loyaltyCardPdf(client.id);
+        } catch {
+            toast.error(t("printCardError"));
+        } finally {
+            setPrintingCard(false);
+        }
+    };
     const {
         router,
         client,
@@ -92,6 +108,13 @@ export default function ClientDetailPage() {
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
+                            <button
+                                onClick={handlePrintCard}
+                                disabled={printingCard}
+                                className="flex items-center gap-2 border border-border hover:bg-muted/60 text-foreground text-sm px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
+                            >
+                                {printingCard ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />} {t("printCard")}
+                            </button>
                             <Link
                                 href={`/crm/actividades?client=${client.id}`}
                                 className="flex items-center gap-2 border border-border hover:bg-muted/60 text-foreground text-sm px-4 py-2 rounded-xl transition-colors"

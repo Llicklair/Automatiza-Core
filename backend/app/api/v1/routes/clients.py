@@ -1,7 +1,7 @@
 import logging
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.erp import (
@@ -14,6 +14,7 @@ from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.models import User
 from app.middleware.rate_limit import limiter
+from app.services.crm import loyalty_card
 from app.services.sales import client as svc
 
 logger = logging.getLogger(__name__)
@@ -32,6 +33,26 @@ async def list_clients(
     current_user: User = Depends(get_current_user),
 ):
     return await svc.list_clients(db, current_user.tenant_id, skip=skip, limit=limit, client_type=client_type)
+
+
+@router.get("/clients/{client_id}/loyalty-card/pdf", tags=["erp"])
+@limiter.limit("20/minute")
+async def loyalty_card_pdf(
+    request: Request,
+    client_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """PDF de la tarjeta de fidelización del cliente (con QR para identificarlo en el TPV)."""
+    try:
+        pdf = await loyalty_card.generate_loyalty_card_pdf(db, current_user.tenant_id, client_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'inline; filename="tarjeta-cliente.pdf"'},
+    )
 
 
 @router.post("/clients", response_model=ClientResponse, status_code=status.HTTP_201_CREATED, tags=["erp"])
