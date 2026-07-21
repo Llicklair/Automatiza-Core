@@ -97,7 +97,7 @@
         "filter": [
           "**/*",
           "!node_modules/**",
-          "!.next/cache/**"
+          "!.next/**"
         ]
       }
     ]
