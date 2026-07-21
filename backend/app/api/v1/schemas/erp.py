@@ -141,6 +141,8 @@ class InvoiceCreate(BaseModel):
     terms: str | None = None
     # Régimen fiscal especial 303: intracomunitario | isp | recargo_equivalencia
     fiscal_regime: str | None = None
+    # Causa de exención VeriFactu para facturas al 0% de IVA: E1–E6 | N1 | N2
+    exencion_causa: str | None = None
     # Retención IRPF Art.95 (facturas recibidas de profesionales)
     retencion_irpf_rate: float | None = None
     retencion_irpf_amount: float | None = None

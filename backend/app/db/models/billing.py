@@ -111,6 +111,11 @@ class Invoice(Base):
     fiscal_regime = Column(String(30), nullable=True)
     # intracomunitario | isp | recargo_equivalencia
 
+    # Causa de exención/no sujeción para líneas al 0% de IVA (anexo VeriFactu):
+    # E1–E6 (OperacionExenta) o N1/N2 (no sujeta). Sin ella, el XML del registro
+    # de una factura al 0% se bloquea (fail-closed) en vez de calificar mal S1.
+    exencion_causa = Column(String(2), nullable=True)
+
     # Retención IRPF Art. 95 LIRPF (facturas recibidas de profesionales).
     # Alimenta el Modelo 111 (perceptores profesionales).
     retencion_irpf_rate = Column(Numeric(5, 2), nullable=True)  # p.ej. 15.00

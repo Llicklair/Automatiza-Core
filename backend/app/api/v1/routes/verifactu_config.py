@@ -69,6 +69,52 @@ async def put_endpoint(
     return to_dict(record)
 
 
+@router.get("/export", dependencies=[_admin_only])
+async def export_endpoint(
+    desde: str,
+    hasta: str,
+    formato: Literal["json", "xml"] = "json",
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """Exportación/volcado de los registros de facturación (y eventos) del
+    periodo — art. 8.2.c RD 1007/2023 y anexo ap. 3. Registra el evento
+    EXPORTACION en la cadena. Fechas `YYYY-MM-DD`; `hasta` inclusivo. Solo admin."""
+    import json
+    from datetime import datetime
+
+    from app.services.billing.verifactu_export import export_periodo, export_periodo_xml
+
+    try:
+        d = datetime.fromisoformat(desde)
+        h = datetime.fromisoformat(hasta)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail="Fechas inválidas: usa YYYY-MM-DD") from e
+    if "T" not in hasta:
+        h = h.replace(hour=23, minute=59, second=59)  # día final inclusivo
+    if h < d:
+        raise HTTPException(status_code=400, detail="'hasta' debe ser posterior a 'desde'")
+
+    try:
+        if formato == "xml":
+            contenido = await export_periodo_xml(db, tenant_id=user.tenant_id, desde=d, hasta=h)
+            media = "application/xml; charset=utf-8"
+            ext = "xml"
+        else:
+            data = await export_periodo(db, tenant_id=user.tenant_id, desde=d, hasta=h)
+            contenido = json.dumps(data, ensure_ascii=False, indent=2, default=str)
+            media = "application/json; charset=utf-8"
+            ext = "json"
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    await db.commit()  # persiste el evento EXPORTACION registrado por el servicio
+    return Response(
+        content=contenido,
+        media_type=media,
+        headers={"Content-Disposition": f'attachment; filename="verifactu-export-{desde}-a-{hasta}.{ext}"'},
+    )
+
+
 @router.get("/declaracion-responsable", dependencies=[_admin_only])
 async def declaracion_responsable_endpoint() -> Response:
     """Documento de la declaración responsable del productor del SIF (art. 15 Orden

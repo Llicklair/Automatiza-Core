@@ -1862,6 +1862,18 @@
       "tabFirma": "Firma digital",
       "tabVerifactu": "Modo Verifactu",
       "tabDeclaracion": "Declaración responsable",
+      "tabExport": "Exportación",
+      "export": {
+        "title": "Exportación de registros",
+        "subtitle": "Volcado de los registros de facturación del periodo (RD 1007/2023, art. 8). Cada descarga queda anotada como evento en la cadena.",
+        "from": "Desde",
+        "to": "Hasta",
+        "downloadXml": "Descargar XML (anexo AEAT)",
+        "downloadJson": "Descargar JSON (íntegro)",
+        "ok": "Exportación descargada",
+        "error": "No se pudo generar la exportación",
+        "hint": "XML: formato del anexo oficial (RegistroAlta). JSON: registros y eventos con payload y huella, para conservación o auditoría."
+      },
       "declaracionTitle": "Declaración responsable del sistema informático",
       "declaracionDesc": "Documento del art. 15 (Orden HAC/1177/2024) que el productor del software debe tener disponible dentro del sistema y a disposición del cliente.",
       "declaracionDownload": "Descargar (.txt)",

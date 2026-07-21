@@ -227,18 +227,43 @@ def _detalles(invoice, lines) -> list[_Detalle]:
     return [_Detalle(tipo=tipo, base=_fmt_importe(base), cuota=_fmt_importe(cuota) if cuota else None)]
 
 
+_CAUSAS_EXENCION = {"E1", "E2", "E3", "E4", "E5", "E6"}
+_CALIFICACIONES_NO_SUJETA = {"N1", "N2"}
+
+
 def _desglose(parent: Element, invoice, lines) -> None:
+    """`Desglose` con calificación REAL por tipo de IVA (antes S1 fija).
+
+    - Tipo > 0 → `CalificacionOperacion=S1` + TipoImpositivo + Cuota.
+    - Tipo 0 → según `invoice.exencion_causa`: E1–E6 → `OperacionExenta` (choice
+      del XSD, sin tipo/cuota); N1/N2 → `CalificacionOperacion` no sujeta. Sin
+      causa configurada se BLOQUEA (fail-closed): calificar mal una exenta como
+      S1 al 0% es un registro incorrecto ante la AEAT.
+    """
+    causa = (getattr(invoice, "exencion_causa", None) or "").strip().upper()
     desg = SubElement(parent, f"{{{NS_SF}}}Desglose")
     for det in _detalles(invoice, lines):
         d = SubElement(desg, f"{{{NS_SF}}}DetalleDesglose")
         _txt(d, NS_SF, "Impuesto", _IMPUESTO_IVA)
         _txt(d, NS_SF, "ClaveRegimen", _CLAVE_REGIMEN_GENERAL)
-        _txt(d, NS_SF, "CalificacionOperacion", _CALIFICACION_SUJETA_NO_EXENTA)
-        if det.tipo is not None:
+        tipo_cero = det.tipo is None or Decimal(det.tipo) == 0
+        if not tipo_cero:
+            _txt(d, NS_SF, "CalificacionOperacion", _CALIFICACION_SUJETA_NO_EXENTA)
             _txt(d, NS_SF, "TipoImpositivo", det.tipo)
-        _txt(d, NS_SF, "BaseImponibleOimporteNoSujeto", det.base)
-        if det.cuota is not None:
-            _txt(d, NS_SF, "CuotaRepercutida", det.cuota)
+            _txt(d, NS_SF, "BaseImponibleOimporteNoSujeto", det.base)
+            if det.cuota is not None:
+                _txt(d, NS_SF, "CuotaRepercutida", det.cuota)
+        elif causa in _CAUSAS_EXENCION:
+            _txt(d, NS_SF, "OperacionExenta", causa)
+            _txt(d, NS_SF, "BaseImponibleOimporteNoSujeto", det.base)
+        elif causa in _CALIFICACIONES_NO_SUJETA:
+            _txt(d, NS_SF, "CalificacionOperacion", causa)
+            _txt(d, NS_SF, "BaseImponibleOimporteNoSujeto", det.base)
+        else:
+            raise ValueError(
+                "Factura con IVA al 0% sin causa de exención: configura `exencion_causa` "
+                "(E1–E6 exenta, N1/N2 no sujeta) en la factura."
+            )
 
 
 def _descripcion(invoice, lines) -> str:
@@ -264,6 +289,8 @@ def build_registro_alta_xml(
     descripcion: str | None = None,
     rectified_invoice: Invoice | None = None,
     substituted_invoice: Invoice | None = None,
+    destinatario_nombre: str | None = None,
+    destinatario_nif: str | None = None,
 ) -> str:
     """Genera el XML `RegFactuSistemaFacturacion` con un `RegistroAlta`.
 
@@ -311,8 +338,25 @@ def build_registro_alta_xml(
     _txt(alta, NS_SF, "DescripcionOperacion", (descripcion or _descripcion(invoice, lines))[:500])
     # F2 (ticket TPV): factura simplificada sin destinatario identificado (art. 6.1.d
     # RD 1619/2012). El XSD coloca este indicador tras `DescripcionOperacion`.
-    if p["TipoFactura"].upper() == "F2":
+    # También lo lleva una R5 (rectificativa de simplificada) sin destinatario.
+    tipo_f = p["TipoFactura"].upper()
+    if tipo_f == "F2" or (tipo_f == "R5" and not destinatario_nif):
         _txt(alta, NS_SF, "FacturaSinIdentifDestinatarioArt61d", "S")
+    # Destinatarios (contraparte/cliente): OBLIGATORIO identificarlo en las
+    # facturas completas (F1/F3/R1...). El XSD lo coloca justo antes de
+    # `Desglose`. Las F2 van sin destinatario (art. 61.d); una R5 puede ir sin
+    # identificar (indicador de arriba). Sin NIF en una completa → fail-closed.
+    if tipo_f != "F2":
+        if destinatario_nif:
+            dest = SubElement(alta, f"{{{NS_SF}}}Destinatarios")
+            idd = SubElement(dest, f"{{{NS_SF}}}IDDestinatario")
+            _txt(idd, NS_SF, "NombreRazon", (destinatario_nombre or "Cliente")[:120])
+            _txt(idd, NS_SF, "NIF", destinatario_nif)
+        elif tipo_f != "R5":
+            raise ValueError(
+                f"Registro {tipo_f}: una factura completa exige identificar al destinatario "
+                "(NIF del cliente). Añade el NIF al cliente o emite una simplificada (F2)."
+            )
     _desglose(alta, invoice, lines)
     _txt(alta, NS_SF, "CuotaTotal", p["CuotaTotal"])
     _txt(alta, NS_SF, "ImporteTotal", p["ImporteTotal"])
@@ -418,7 +462,11 @@ async def generate_alta_xml(db, *, record: VerifactuRecord, sistema=None) -> str
     from app.db.models.auth import Tenant
     from app.db.models.billing import Invoice, VerifactuRecord
 
-    res = await db.execute(select(Invoice).options(selectinload(Invoice.lines)).where(Invoice.id == record.invoice_id))
+    res = await db.execute(
+        select(Invoice)
+        .options(selectinload(Invoice.lines), selectinload(Invoice.client))
+        .where(Invoice.id == record.invoice_id)
+    )
     invoice = res.scalar_one_or_none()
     if invoice is None:
         raise ValueError(f"Factura {record.invoice_id} no encontrada al generar el alta VeriFactu")
@@ -440,6 +488,13 @@ async def generate_alta_xml(db, *, record: VerifactuRecord, sistema=None) -> str
         ri = await db.execute(select(Invoice).where(Invoice.id == invoice.rectifies_invoice_id))
         rectified_invoice = ri.scalar_one_or_none()
 
+    # F3: cargar la simplificada sustituida para poblar FacturasSustituidas.
+    substituted_invoice = None
+    if getattr(invoice, "substitutes_invoice_id", None):
+        si = await db.execute(select(Invoice).where(Invoice.id == invoice.substitutes_invoice_id))
+        substituted_invoice = si.scalar_one_or_none()
+
+    client = invoice.client
     return build_registro_alta_xml(
         record=record,
         invoice=invoice,
@@ -448,4 +503,7 @@ async def generate_alta_xml(db, *, record: VerifactuRecord, sistema=None) -> str
         sistema=sistema,
         prev_record=prev_record,
         rectified_invoice=rectified_invoice,
+        substituted_invoice=substituted_invoice,
+        destinatario_nombre=getattr(client, "name", None),
+        destinatario_nif=getattr(client, "nif", None),
     )

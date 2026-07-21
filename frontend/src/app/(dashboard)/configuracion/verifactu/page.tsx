@@ -3,21 +3,24 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { BadgeCheck, Stamp, ShieldCheck, FileText } from "lucide-react";
+import { BadgeCheck, Stamp, ShieldCheck, FileText, Archive } from "lucide-react";
 import { ModoVerifactuPanel } from "./ModoVerifactuPanel";
 import { ApoderamientoPanel } from "./ApoderamientoPanel";
 import { FirmaDigitalPanel } from "./FirmaDigitalPanel";
 import { DeclaracionResponsablePanel } from "./DeclaracionResponsablePanel";
+import { ExportPanel } from "./ExportPanel";
 import { PageContainer } from "@/components/shared/PageContainer";
 
-type Tab = "verifactu" | "apoderamiento" | "firma" | "declaracion";
+type Tab = "verifactu" | "apoderamiento" | "firma" | "declaracion" | "export";
 
 export default function ConfiguracionFiscalPage() {
     const t = useTranslations("configuracion");
     const searchParams = useSearchParams();
     const initial = searchParams.get("tab");
     const [tab, setTab] = useState<Tab>(
-        initial === "apoderamiento" || initial === "firma" || initial === "declaracion" ? initial : "verifactu"
+        initial === "apoderamiento" || initial === "firma" || initial === "declaracion" || initial === "export"
+            ? initial
+            : "verifactu"
     );
 
     const tabs: { key: Tab; label: string; icon: typeof BadgeCheck }[] = [
@@ -25,6 +28,7 @@ export default function ConfiguracionFiscalPage() {
         { key: "apoderamiento", label: t("verifactu.tabApoderamiento"), icon: Stamp },
         { key: "firma", label: t("verifactu.tabFirma"), icon: ShieldCheck },
         { key: "declaracion", label: t("verifactu.tabDeclaracion"), icon: FileText },
+        { key: "export", label: t("verifactu.tabExport"), icon: Archive },
     ];
 
     return (
@@ -59,6 +63,7 @@ export default function ConfiguracionFiscalPage() {
             {tab === "apoderamiento" && <ApoderamientoPanel />}
             {tab === "firma" && <FirmaDigitalPanel />}
             {tab === "declaracion" && <DeclaracionResponsablePanel />}
+            {tab === "export" && <ExportPanel />}
         </PageContainer>
     );
 }

@@ -1862,6 +1862,18 @@
       "tabFirma": "Digital signature",
       "tabVerifactu": "Verifactu mode",
       "tabDeclaracion": "Responsible declaration",
+      "tabExport": "Export",
+      "export": {
+        "title": "Records export",
+        "subtitle": "Dump of the billing records for the period (RD 1007/2023, art. 8). Every download is recorded as an event in the chain.",
+        "from": "From",
+        "to": "To",
+        "downloadXml": "Download XML (AEAT annex)",
+        "downloadJson": "Download JSON (full)",
+        "ok": "Export downloaded",
+        "error": "Could not generate the export",
+        "hint": "XML: official annex format (RegistroAlta). JSON: records and events with payload and hash, for preservation or audit."
+      },
       "declaracionTitle": "Responsible declaration of the billing software",
       "declaracionDesc": "Art. 15 document (Order HAC/1177/2024) that the software producer must keep available within the system and at the customer's disposal.",
       "declaracionDownload": "Download (.txt)",

@@ -31,6 +31,15 @@ try:
 except ImportError:
     _LXML = False
 
+
+def _alta(**kw):
+    """build_registro_alta_xml con destinatario por defecto: las F1/R/F3 ahora
+    exigen identificar al cliente (bloque Destinatarios, fail-closed sin NIF)."""
+    kw.setdefault("destinatario_nombre", "CLIENTE TEST SL")
+    kw.setdefault("destinatario_nif", "B12345678")
+    return rf.build_registro_alta_xml(**kw)
+
+
 _NIF = "B12345678"
 _FECHA = datetime(2026, 6, 14, tzinfo=UTC)
 _FHG = _fmt_fecha_hora_gen(datetime(2026, 6, 14, 10, 30, 0, tzinfo=UTC).astimezone())
@@ -81,9 +90,7 @@ _xsd_required = pytest.mark.skipif(
 @_xsd_required
 def test_alta_primer_registro_valida_xsd():
     record = _make_record()
-    xml = rf.build_registro_alta_xml(
-        record=record, invoice=_invoice(), emisor_nombre="EMPRESA EJEMPLO SL", lines=_lines()
-    )
+    xml = _alta(record=record, invoice=_invoice(), emisor_nombre="EMPRESA EJEMPLO SL", lines=_lines())
     assert rf.validate_verifactu_xml(xml) == []
     assert "PrimerRegistro" in xml
     assert record.huella in xml
@@ -109,14 +116,14 @@ def test_f2_incluye_sin_identif_destinatario_valida_xsd():
         numero_factura="T2026/001",
         fecha_emision=_FECHA,
     )
-    xml = rf.build_registro_alta_xml(record=record, invoice=_invoice(), emisor_nombre="TINTORERIA SL", lines=_lines())
+    xml = _alta(record=record, invoice=_invoice(), emisor_nombre="TINTORERIA SL", lines=_lines())
     assert rf.validate_verifactu_xml(xml) == []
     assert "FacturaSinIdentifDestinatarioArt61d" in xml
 
 
 def test_f1_no_incluye_sin_identif_destinatario():
     record = _make_record()  # F1
-    xml = rf.build_registro_alta_xml(record=record, invoice=_invoice(), emisor_nombre="EMPRESA SL", lines=_lines())
+    xml = _alta(record=record, invoice=_invoice(), emisor_nombre="EMPRESA SL", lines=_lines())
     assert "FacturaSinIdentifDestinatarioArt61d" not in xml
 
 
@@ -141,7 +148,7 @@ def test_f3_sustitutiva_incluye_facturas_sustituidas_valida_xsd():
         fecha_emision=_FECHA,
     )
     substituida = SimpleNamespace(invoice_number="T2026/001", date=_FECHA)
-    xml = rf.build_registro_alta_xml(
+    xml = _alta(
         record=record,
         invoice=_invoice(),
         emisor_nombre="TINTORERIA SL",
@@ -158,7 +165,7 @@ def test_f3_sustitutiva_incluye_facturas_sustituidas_valida_xsd():
 def test_alta_encadenado_valida_xsd():
     prev = _make_record("FA2026/001")
     record = _make_record("FA2026/002", huella_anterior=prev.huella, cuota="10.50", importe="60.50")
-    xml = rf.build_registro_alta_xml(
+    xml = _alta(
         record=record,
         invoice=_invoice(),
         emisor_nombre="EMPRESA EJEMPLO SL",
@@ -223,7 +230,7 @@ def test_rectificativa_incluye_tipo_y_facturas_rectificadas_valida_xsd():
     ]
     original = SimpleNamespace(invoice_number="FA2026/001", date=_FECHA)
 
-    xml = rf.build_registro_alta_xml(
+    xml = _alta(
         record=record,
         invoice=rect_invoice,
         emisor_nombre="EMPRESA EJEMPLO SL",
@@ -241,7 +248,7 @@ def test_rectificativa_incluye_tipo_y_facturas_rectificadas_valida_xsd():
 def test_alta_normal_no_incluye_campos_rectificativa():
     """Control (no sobre-emisión): una F1 sin original NO lleva TipoRectificativa."""
     record = _make_record()
-    xml = rf.build_registro_alta_xml(record=record, invoice=_invoice(), emisor_nombre="EMPRESA SL", lines=_lines())
+    xml = _alta(record=record, invoice=_invoice(), emisor_nombre="EMPRESA SL", lines=_lines())
     assert rf.validate_verifactu_xml(xml) == []
     assert "TipoRectificativa" not in xml
     assert "FacturasRectificadas" not in xml
@@ -258,7 +265,7 @@ def test_multiples_tipos_iva_generan_varios_detalles():
             quantity=Decimal("1"), unit_price=Decimal("100.00"), tax_percentage=Decimal("10.50"), description="B"
         ),
     ]
-    xml = rf.build_registro_alta_xml(record=record, invoice=_invoice(), emisor_nombre="EMPRESA SL", lines=lines)
+    xml = _alta(record=record, invoice=_invoice(), emisor_nombre="EMPRESA SL", lines=lines)
     assert rf.validate_verifactu_xml(xml) == []
     assert xml.count("DetalleDesglose") == 2 * 2  # apertura + cierre por detalle
 
@@ -266,7 +273,7 @@ def test_multiples_tipos_iva_generan_varios_detalles():
 def test_huella_xml_coincide_con_payload():
     """La Huella del XML DEBE ser SHA-256 del payload canónico almacenado."""
     record = _make_record()
-    xml = rf.build_registro_alta_xml(record=record, invoice=_invoice(), emisor_nombre="EMPRESA SL", lines=_lines())
+    xml = _alta(record=record, invoice=_invoice(), emisor_nombre="EMPRESA SL", lines=_lines())
     assert compute_huella(record.payload_canonico) in xml
 
 
@@ -274,7 +281,7 @@ def test_registro_anterior_sin_prev_record_falla():
     """Con huella_anterior pero sin prev_record no se puede identificar la previa."""
     record = _make_record("FA2026/002", huella_anterior="DEAD" * 16)
     with pytest.raises(ValueError, match="prev_record"):
-        rf.build_registro_alta_xml(record=record, invoice=_invoice(), emisor_nombre="EMPRESA SL", lines=_lines())
+        _alta(record=record, invoice=_invoice(), emisor_nombre="EMPRESA SL", lines=_lines())
 
 
 def test_parse_payload_roundtrip():

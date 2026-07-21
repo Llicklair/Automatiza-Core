@@ -27,4 +27,11 @@ export const verifactuConfig = {
 
     descargarDeclaracionResponsable: (): Promise<void> =>
         downloadBlob("/api/v1/verifactu/config/declaracion-responsable", "declaracion-responsable.txt"),
+
+    // Exportación/volcado de registros del periodo (art. 8.2.c RD 1007/2023).
+    descargarExport: (desde: string, hasta: string, formato: "json" | "xml"): Promise<void> =>
+        downloadBlob(
+            `/api/v1/verifactu/config/export?desde=${desde}&hasta=${hasta}&formato=${formato}`,
+            `verifactu-export-${desde}-a-${hasta}.${formato}`,
+        ),
 };

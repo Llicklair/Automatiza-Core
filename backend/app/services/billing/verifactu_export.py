@@ -137,7 +137,11 @@ async def export_periodo_xml(db: AsyncSession, *, tenant_id: UUID, desde: dateti
     root = Element("ExportacionRegistrosFacturacion")
     for rec in periodo_recs:
         inv = (
-            await db.execute(select(Invoice).options(selectinload(Invoice.lines)).where(Invoice.id == rec.invoice_id))
+            await db.execute(
+                select(Invoice)
+                .options(selectinload(Invoice.lines), selectinload(Invoice.client))
+                .where(Invoice.id == rec.invoice_id)
+            )
         ).scalar_one_or_none()
         if inv is None:
             continue
@@ -152,6 +156,8 @@ async def export_periodo_xml(db: AsyncSession, *, tenant_id: UUID, desde: dateti
             prev_record=prev,
             rectified_invoice=rectified,
             substituted_invoice=substituted,
+            destinatario_nombre=getattr(inv.client, "name", None),
+            destinatario_nif=getattr(inv.client, "nif", None),
         )
         alta = fromstring(full).find(f".//{{{NS_SF}}}RegistroAlta")
         if alta is not None:
