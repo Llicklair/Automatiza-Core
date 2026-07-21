@@ -1317,3 +1317,22 @@ es un guard fail-fast (tenant None = bug) y los tools lo atrapan; `workers/compi
 **no es un tool** (es el compilador del grafo, con `Raises:` documentado y manejado por su caller).
 **Regla añadida:** un `raise` marcado por un informe NO es violación hasta comprobar (a) que el caller
 lo atrapa, y (b) que la función es realmente un `@tool` (no infra/helper). Mirar el call-site, no la línea.
+
+## 2026-07-21 — Cámara "Permission denied" sin diálogo: mirar Permissions-Policy PRIMERO
+
+El escáner por cámara (TPV y /mobile-scanner) falló durante una tarde entera con
+"Permission denied" instantáneo, sin diálogo de permiso, en todos los contextos
+(IP local, HTTPS con CA de confianza instalado, túnel Cloudflare, Chrome con
+permisos correctos). Se depuró de fuera hacia dentro (certificados, MIUI,
+navegadores) cuando la causa raíz estaba en NUESTRO código: `next.config.js`
+enviaba `Permissions-Policy: camera=()`, que bloquea getUserMedia en toda la app
+antes de llegar a preguntar al usuario (fix: `camera=(self)`, commit a0c637b5).
+Había además dos bloqueos reales apilados (contexto seguro → proxy HTTPS 8443;
+confianza del cert → mini-CA en /ca.crt instalable en el móvil), lo que enmascaró
+el diagnóstico.
+**Regla añadida:** si getUserMedia deniega SIN mostrar diálogo, el primer paso es
+`grep -ri "Permissions-Policy\|Feature-Policy"` en el propio repo (next.config,
+middleware, proxys) — es 1 minuto y descarta la causa más silenciosa. Solo después
+mirar contexto seguro, certificado y permisos de navegador/SO. Corolario general:
+ante un bloqueo de API de navegador, buscar primero qué cabeceras servimos
+nosotros antes de culpar al entorno.
