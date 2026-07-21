@@ -15,7 +15,7 @@ from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.models import User
 from app.middleware.rate_limit import limiter
-from app.services.sales import order_labels
+from app.services.sales import order_labels, order_resguardo
 from app.services.sales import sales_order as svc
 
 logger = logging.getLogger(__name__)
@@ -65,6 +65,26 @@ async def order_labels_pdf(
         content=pdf,
         media_type="application/pdf",
         headers={"Content-Disposition": 'inline; filename="etiquetas-pedido.pdf"'},
+    )
+
+
+@router.get("/orders/{order_id}/resguardo/pdf", tags=["erp"])
+@limiter.limit("20/minute")
+async def order_resguardo_pdf(
+    request: Request,
+    order_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """PDF del resguardo de depósito del pedido (comprobante para el cliente)."""
+    try:
+        pdf = await order_resguardo.generate_resguardo_pdf(db, current_user.tenant_id, order_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'inline; filename="resguardo.pdf"'},
     )
 
 

@@ -507,6 +507,8 @@
     "orderNoNumber": "No number",
     "printLabels": "Print labels",
     "printLabelsError": "Could not generate the labels",
+    "printResguardo": "Print receipt",
+    "printResguardoError": "Could not generate the receipt",
     "orderAdvanceTo": "Advance to {status}",
     "orderSelectClient": "Select client…",
     "orderSelectProduct": "Select product…",

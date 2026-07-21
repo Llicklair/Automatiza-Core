@@ -422,6 +422,7 @@ export const erp = {
             request<SalesOrder>(`/api/v1/orders/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
         delete: (id: string) => request<void>(`/api/v1/orders/${id}`, { method: "DELETE" }),
         labelsPdf: (id: string) => downloadBlob(`/api/v1/orders/${id}/labels/pdf`, "etiquetas-pedido.pdf"),
+        resguardoPdf: (id: string) => downloadBlob(`/api/v1/orders/${id}/resguardo/pdf`, "resguardo.pdf"),
     },
     purchaseOrders: {
         list: () => request<PurchaseOrder[]>("/api/v1/purchase-orders"),

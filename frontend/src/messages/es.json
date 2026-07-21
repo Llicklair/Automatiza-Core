@@ -507,6 +507,8 @@
     "orderNoNumber": "Sin número",
     "printLabels": "Imprimir etiquetas",
     "printLabelsError": "No se pudieron generar las etiquetas",
+    "printResguardo": "Imprimir resguardo",
+    "printResguardoError": "No se pudo generar el resguardo",
     "orderAdvanceTo": "Pasar a {status}",
     "orderSelectClient": "Seleccionar cliente…",
     "orderSelectProduct": "Seleccionar producto…",

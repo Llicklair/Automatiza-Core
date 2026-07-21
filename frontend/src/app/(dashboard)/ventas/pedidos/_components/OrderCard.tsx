@@ -6,7 +6,7 @@ import { useToastStore } from "@/stores/toast";
 import { fmt, STATUS_MAP, STATUS_FLOW } from "../_hooks/usePedidos";
 import {
     ClipboardList, ChevronDown, Package, Calendar, Check,
-    Loader2, Tags, Trash2
+    Loader2, Receipt, Tags, Trash2
 } from "lucide-react";
 
 interface OrderCardProps {
@@ -41,6 +41,17 @@ export default function OrderCard({
         }
     };
 
+    const handlePrintResguardo = async () => {
+        setPrinting(true);
+        try {
+            await api.erp.orders.resguardoPdf(order.id);
+        } catch {
+            toast.error(t("printResguardoError"));
+        } finally {
+            setPrinting(false);
+        }
+    };
+
     return (
         <div className="bg-card border border-border rounded-2xl overflow-hidden">
             <div className="flex items-center gap-4 px-6 py-4">
@@ -70,6 +81,15 @@ export default function OrderCard({
                         aria-label={t("printLabels")}
                     >
                         {printing ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : <Tags className="w-3.5 h-3.5" aria-hidden="true" />}
+                    </button>
+                    <button
+                        onClick={handlePrintResguardo}
+                        disabled={printing}
+                        className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                        title={t("printResguardo")}
+                        aria-label={t("printResguardo")}
+                    >
+                        <Receipt className="w-3.5 h-3.5" aria-hidden="true" />
                     </button>
                     {nextStatus && (
                         <button
