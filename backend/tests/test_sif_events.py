@@ -83,3 +83,40 @@ class TestSifEvents:
         events = res.scalars().all()
         assert len(events) == 1
         assert "voluntary" in (events[0].detalle or "")
+
+    async def test_detect_anomalies_sin_alteracion_devuelve_none(self, db, seed_tenant_and_user):
+        from app.services.billing.sif_events import detect_anomalies
+
+        tenant, _u, _t = seed_tenant_and_user
+        await record_event(db, tenant_id=tenant.id, tipo_evento=EVENT_ARRANQUE)
+        await db.flush()
+
+        assert await detect_anomalies(db, tenant_id=tenant.id) is None
+
+    async def test_detect_anomalies_cadena_rota_registra_evento(self, db, seed_tenant_and_user):
+        from app.services.billing.sif_events import EVENT_DETECCION_ANOMALIAS, detect_anomalies
+
+        tenant, _u, _t = seed_tenant_and_user
+        ev = await record_event(db, tenant_id=tenant.id, tipo_evento=EVENT_ARRANQUE)
+        await db.flush()
+        ev.huella = "0" * 64  # manipulación de la cadena de eventos
+        await db.flush()
+
+        anomaly = await detect_anomalies(db, tenant_id=tenant.id)
+        assert anomaly is not None
+        assert anomaly.tipo_evento == EVENT_DETECCION_ANOMALIAS
+        assert "eventos" in (anomaly.detalle or "")
+
+    async def test_record_periodic_summary_cuenta_facturas_y_eventos(self, db, seed_tenant_and_user):
+        from app.services.billing.sif_events import EVENT_RESUMEN, record_periodic_summary
+
+        tenant, _u, _t = seed_tenant_and_user
+        await record_event(db, tenant_id=tenant.id, tipo_evento=EVENT_ARRANQUE)
+        await db.flush()
+
+        resumen = await record_periodic_summary(db, tenant_id=tenant.id)
+        await db.commit()
+
+        assert resumen.tipo_evento == EVENT_RESUMEN
+        assert "facturas=" in (resumen.detalle or "")
+        assert "eventos=" in (resumen.detalle or "")

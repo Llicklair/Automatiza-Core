@@ -110,6 +110,18 @@ async def lifespan(app: FastAPI):
         replace_existing=True,
         max_instances=1,
     )
+
+    # Mantenimiento del registro de eventos del SIF (RD 1007/2023 Art. 14): cada 6 h
+    # detecta anomalías de las cadenas y registra el evento RESUMEN por tenant.
+    from app.workers.tasks_scheduler import sif_events_maintenance
+
+    scheduler.add_job(
+        sif_events_maintenance,
+        _IntervalTrigger(hours=6),
+        id="sif_events_maintenance",
+        replace_existing=True,
+        max_instances=1,
+    )
     # Relay WebSocket ↔ Redis (sólo cuando REDIS_URL está configurado)
     from app.services.ws_relay import start_ws_relay, stop_ws_relay
 

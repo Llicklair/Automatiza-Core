@@ -14,7 +14,7 @@ from collections import namedtuple
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.billing import SifEvent
@@ -106,3 +106,44 @@ async def verify_events_integrity(db: AsyncSession, tenant_id: UUID) -> tuple[bo
         if compute_huella(ev.payload_canonico) != ev.huella:
             return False, len(events)
     return True, len(events)
+
+
+async def detect_anomalies(db: AsyncSession, *, tenant_id: UUID) -> SifEvent | None:
+    """Detección de anomalías (RD 1007/2023 Art. 14): verifica la integridad de la
+    cadena de facturas y la de eventos. Si alguna está alterada, registra un evento
+    DETECCION_ANOMALIAS y lo devuelve; si todo está íntegro, devuelve None."""
+    from app.services.billing.verifactu_chain import verify_chain_integrity
+
+    ok_fact, _ = await verify_chain_integrity(db, tenant_id)
+    ok_ev, _ = await verify_events_integrity(db, tenant_id)
+    if ok_fact and ok_ev:
+        return None
+
+    partes = []
+    if not ok_fact:
+        partes.append("cadena de facturas")
+    if not ok_ev:
+        partes.append("cadena de eventos")
+    return await record_event(
+        db,
+        tenant_id=tenant_id,
+        tipo_evento=EVENT_DETECCION_ANOMALIAS,
+        detalle="anomalía de integridad en " + ", ".join(partes),
+    )
+
+
+async def record_periodic_summary(db: AsyncSession, *, tenant_id: UUID) -> SifEvent:
+    """Evento RESUMEN periódico (RD: al menos uno por cada 6 h de operación), con el
+    recuento de registros de facturación y de eventos del tenant hasta la fecha."""
+    from app.db.models.billing import VerifactuRecord
+
+    n_reg = (
+        await db.execute(select(func.count(VerifactuRecord.id)).where(VerifactuRecord.tenant_id == tenant_id))
+    ).scalar() or 0
+    n_ev = (await db.execute(select(func.count(SifEvent.id)).where(SifEvent.tenant_id == tenant_id))).scalar() or 0
+    return await record_event(
+        db,
+        tenant_id=tenant_id,
+        tipo_evento=EVENT_RESUMEN,
+        detalle=f"facturas={n_reg} eventos={n_ev}",
+    )

@@ -38,6 +38,30 @@ except Exception:
     _MADRID_TZ = UTC
 
 
+async def sif_events_maintenance() -> None:
+    """Job periódico (cada 6 h, RD 1007/2023 Art. 14): por cada tenant activo lanza
+    la detección de anomalías de las cadenas (facturas + eventos) y registra el
+    evento RESUMEN. Un fallo en un tenant no aborta el resto."""
+    from app.db.models.auth import Tenant
+    from app.services.billing.sif_events import detect_anomalies, record_periodic_summary
+
+    async with AsyncSessionLocal() as db:
+        set_current_tenant(None)
+        with rls_bypass():
+            res = await db.execute(select(Tenant.id).where(Tenant.is_active.is_(True)))
+            tenant_ids = [row[0] for row in res.all()]
+
+    for tid in tenant_ids:
+        set_current_tenant(str(tid))
+        async with AsyncSessionLocal() as db:
+            try:
+                await detect_anomalies(db, tenant_id=tid)
+                await record_periodic_summary(db, tenant_id=tid)
+                await db.commit()
+            except Exception:  # noqa: BLE001
+                logger.exception("sif_events_maintenance falló para tenant %s", tid)
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
