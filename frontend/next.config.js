@@ -15,8 +15,11 @@ const nextConfig = {
                     { key: "X-XSS-Protection", value: "1; mode=block" },
                     { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
                     {
+                        // camera=(self): el escáner de códigos (TPV y /mobile-scanner)
+                        // usa getUserMedia; camera=() lo bloqueaba en TODOS los
+                        // navegadores sin ni siquiera preguntar (NotAllowedError).
                         key: "Permissions-Policy",
-                        value: "camera=(), microphone=(), geolocation=()",
+                        value: "camera=(self), microphone=(), geolocation=()",
                     },
                 ],
             },
