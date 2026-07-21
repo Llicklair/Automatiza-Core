@@ -14,7 +14,7 @@ envolver cada registro en el XML exacto del anexo (RegistroAlta/RegistroEvento
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import select
@@ -95,3 +95,73 @@ async def export_periodo(db: AsyncSession, *, tenant_id: UUID, desde: datetime, 
     )
 
     return export
+
+
+async def export_periodo_xml(db: AsyncSession, *, tenant_id: UUID, desde: datetime, hasta: datetime) -> str:
+    """Exporta los registros de facturación del periodo en el formato del anexo
+    (apartado 3): cada uno como su elemento `RegistroAlta` "pelado" (sin la Cabecera,
+    que solo aplica a la remisión), reutilizando el builder oficial del registro.
+    Registra el evento de exportación de facturas (Orden art. 9.1.h)."""
+    from xml.etree.ElementTree import Element, fromstring, tostring
+
+    from sqlalchemy.orm import selectinload
+
+    from app.db.models.auth import Tenant
+    from app.db.models.billing import Invoice
+    from app.services.billing.registro_facturacion import NS_SF, build_registro_alta_xml
+
+    tenant = await db.get(Tenant, tenant_id)
+    emisor_nombre = tenant.name if tenant else ""
+
+    # Todos los registros hasta `hasta` para poder mapear la huella anterior (prev).
+    all_recs = (
+        (
+            await db.execute(
+                select(VerifactuRecord)
+                .where(VerifactuRecord.tenant_id == tenant_id, VerifactuRecord.fecha_emision <= hasta)
+                .order_by(VerifactuRecord.created_at)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    by_huella = {r.huella: r for r in all_recs}
+
+    # SQLite guarda los DateTime como naive; normalizamos la zona para comparar con
+    # `desde` (que puede venir tz-aware) sin romper.
+    def _aware(dt: datetime) -> datetime:
+        return dt if dt.tzinfo is not None else dt.replace(tzinfo=UTC)
+
+    periodo_recs = [r for r in all_recs if _aware(r.fecha_emision) >= _aware(desde)]
+
+    root = Element("ExportacionRegistrosFacturacion")
+    for rec in periodo_recs:
+        inv = (
+            await db.execute(select(Invoice).options(selectinload(Invoice.lines)).where(Invoice.id == rec.invoice_id))
+        ).scalar_one_or_none()
+        if inv is None:
+            continue
+        prev = by_huella.get(rec.huella_anterior) if rec.huella_anterior else None
+        rectified = await db.get(Invoice, inv.rectifies_invoice_id) if inv.rectifies_invoice_id else None
+        substituted = await db.get(Invoice, inv.substitutes_invoice_id) if inv.substitutes_invoice_id else None
+        full = build_registro_alta_xml(
+            record=rec,
+            invoice=inv,
+            emisor_nombre=emisor_nombre,
+            lines=inv.lines,
+            prev_record=prev,
+            rectified_invoice=rectified,
+            substituted_invoice=substituted,
+        )
+        alta = fromstring(full).find(f".//{{{NS_SF}}}RegistroAlta")
+        if alta is not None:
+            root.append(alta)
+
+    xml = tostring(root, encoding="utf-8", xml_declaration=True).decode("utf-8")
+    await record_event(
+        db,
+        tenant_id=tenant_id,
+        tipo_evento=EVENT_EXPORTACION,
+        detalle=f"XML facturas {desde.date()}..{hasta.date()} n={len(periodo_recs)}",
+    )
+    return xml
