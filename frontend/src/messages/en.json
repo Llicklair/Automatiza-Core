@@ -3801,7 +3801,11 @@
       "noReference": "No reference",
       "unitsShort": "{value} units",
       "boxesShort": "{value} boxes",
-      "writeOff": "Write off stock"
+      "writeOff": "Write off stock",
+      "sendToTpv": "Add to POS cart",
+      "sendToTpvShort": "To POS",
+      "sendToTpvOk": "{name} added to the POS",
+      "sendToTpvError": "Could not add to the POS"
     },
     "movementModal": {
       "title": "Log movement",

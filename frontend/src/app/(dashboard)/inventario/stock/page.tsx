@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Package, Plus, AlertTriangle, Pencil, Trash2, MoreHorizontal, ChevronDown, ChevronUp, Search, X, Warehouse as WarehouseIcon, ShoppingCart, Tags, BarChart3, PackageMinus } from "lucide-react";
+import { Package, Plus, AlertTriangle, Pencil, Trash2, MoreHorizontal, ChevronDown, ChevronUp, Search, X, Warehouse as WarehouseIcon, ShoppingCart, Tags, BarChart3, PackageMinus, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { ColumnDef } from "@tanstack/react-table";
 import { type Product } from "@/lib/api";
@@ -15,6 +15,7 @@ import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useStock } from "./_hooks/useStock";
+import { useSendToTpv } from "./_hooks/useSendToTpv";
 import { StockStatus, MovementsPanel } from "./_components/StockHelpers";
 import { MovementModal } from "./_components/MovementModal";
 import { ProductModal } from "./_components/ProductModal";
@@ -41,6 +42,7 @@ export default function StockPage() {
         toggleExpand, openMovement, openCreateProduct, openEditProduct,
         startEditAlert, saveAlert,
     } = useStock();
+    const { sendToTpv, sendingId } = useSendToTpv();
 
     const seenCategoriesRef = useRef<Set<string>>(new Set());
     const [categoryList, setCategoryList] = useState<string[]>([]);
@@ -167,6 +169,19 @@ export default function StockPage() {
                 const isExpanded = expandedId === product.id;
                 return (
                     <div className="flex items-center justify-end gap-1">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => sendToTpv(product)}
+                            disabled={sendingId === product.id}
+                            className="h-7 text-xs"
+                            title={t("stock.sendToTpv")}
+                        >
+                            {sendingId === product.id
+                                ? <Loader2 className="mr-1 w-3 h-3 animate-spin" aria-hidden="true" />
+                                : <ShoppingCart className="mr-1 w-3 h-3" aria-hidden="true" />}
+                            {t("stock.sendToTpvShort")}
+                        </Button>
                         <Button
                             variant="default"
                             size="sm"

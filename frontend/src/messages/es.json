@@ -3801,7 +3801,11 @@
       "noReference": "Sin referencia",
       "unitsShort": "{value} uds.",
       "boxesShort": "{value} cajas",
-      "writeOff": "Dar de baja stock"
+      "writeOff": "Dar de baja stock",
+      "sendToTpv": "Añadir al carrito del TPV",
+      "sendToTpvShort": "Al TPV",
+      "sendToTpvOk": "{name} añadido al TPV",
+      "sendToTpvError": "No se pudo añadir al TPV"
     },
     "movementModal": {
       "title": "Registrar movimiento",
