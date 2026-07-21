@@ -1,8 +1,8 @@
 # Estado — Declaración responsable / conformidad VeriFactu
 
-_Última actualización: 2026-07-21. Rama de trabajo: `feat/verifactu-eventos-declaracion`
-(stack sobre `fix/verifactu-doble-uso-registro` → `feat/verifactu-tickets-f2`), todo
-subido a `origin`, sin mergear a master._
+_Última actualización: 2026-07-21. **MERGEADO a `master`** (fast-forward, tip
+`efa37be3`, 24 commits) y subido a `origin`. La rama de trabajo era
+`feat/verifactu-eventos-declaracion` (stack sobre doble-uso → tickets-f2 → tintorería)._
 
 La **declaración responsable** (art. 13 RD 1007/2023 + art. 15 Orden HAC/1177/2024) es
 una declaración jurada del **productor** de que el SIF cumple. **Es el último paso**:
