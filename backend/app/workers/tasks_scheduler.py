@@ -91,6 +91,66 @@ async def record_sif_lifecycle_event(tipo_evento: str) -> None:
                 logger.exception("record_sif_lifecycle_event %s falló para tenant %s", tipo_evento, tid)
 
 
+async def submit_pending_verifactu(limit_per_tenant: int = 1000) -> None:
+    """Remisión continua a la AEAT (RD 1007/2023 art. 16): remite los registros
+    VeriFactu pendientes (aún no enviados) de cada tenant en modo `voluntary`. Máx.
+    `limit_per_tenant` por pasada (lote).
+
+    SEGURO E INACTIVO hasta configurar el NIF real del productor (VERIFACTU_SIF_NIF) y
+    el certificado del tenant: el submitter no remite nada real sin ellos (guards en
+    `verifactu_submit`), y aquí se hace un cortocircuito previo con el NIF para no
+    intentar (ni ensuciar logs) mientras siga en placeholder."""
+    from app.db.models.auth import Tenant
+    from app.db.models.billing import Invoice, VerifactuRecord
+    from app.services.billing.registro_facturacion import default_sistema_informatico
+    from app.services.billing.verifactu_mode import get_mode
+    from app.services.billing.verifactu_submit import submit_invoice_to_verifactu
+
+    sif_nif = (default_sistema_informatico().nif or "").strip().upper()
+    if not sif_nif or sif_nif == "B00000000":
+        logger.info("submit_pending_verifactu: VERIFACTU_SIF_NIF sin configurar; remisión automática inactiva")
+        return
+
+    async with AsyncSessionLocal() as db:
+        set_current_tenant(None)
+        with rls_bypass():
+            res = await db.execute(select(Tenant.id).where(Tenant.is_active.is_(True)))
+            tenant_ids = [row[0] for row in res.all()]
+
+    for tid in tenant_ids:
+        set_current_tenant(str(tid))
+        async with AsyncSessionLocal() as db:
+            try:
+                if await get_mode(db, tenant_id=tid) != "voluntary":
+                    continue
+                pending = (
+                    (
+                        await db.execute(
+                            select(Invoice.id)
+                            .join(VerifactuRecord, VerifactuRecord.invoice_id == Invoice.id)
+                            .where(Invoice.tenant_id == tid, Invoice.verifactu_status.is_(None))
+                            .limit(limit_per_tenant)
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+            except Exception:  # noqa: BLE001
+                logger.exception("submit_pending_verifactu: fallo enumerando pendientes (tenant %s)", tid)
+                continue
+
+            for inv_id in pending:
+                try:
+                    await submit_invoice_to_verifactu(db, inv_id, tid, confirmed=True)
+                except Exception:  # noqa: BLE001
+                    logger.warning(
+                        "submit_pending_verifactu: no se pudo remitir la factura %s (tenant %s)",
+                        inv_id,
+                        tid,
+                        exc_info=True,
+                    )
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
