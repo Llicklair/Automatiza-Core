@@ -315,6 +315,30 @@ async def maybe_append_verifactu_record(
     return await append_verifactu_record(db, invoice=invoice, nif_emisor=tenant.nif)
 
 
+async def ensure_verifactu_on_expedition(
+    db: AsyncSession,
+    invoice: Invoice,
+) -> VerifactuRecord | None:
+    """Aplica las guardas de EXPEDICIÓN y encadena si procede.
+
+    Punto único de decisión para todos los caminos que expiden facturas
+    (create_invoice no-borrador, update_status, conciliación bancaria,
+    importación masiva): solo encadena facturas EMITIDAS (issued/rectificativa),
+    nunca recibidas ni demo, y nunca borradores (la expedición es el hecho
+    fiscal; un borrador aún no está expedido). Idempotente; fail-closed sin
+    NIF en modo voluntary (ValueError). En "no_remission" es un no-op.
+    """
+    from app.services.billing.constants import EMITTED_INVOICE_TYPES
+
+    if (invoice.invoice_type or "issued") not in EMITTED_INVOICE_TYPES:
+        return None
+    if invoice.is_demo:
+        return None
+    if (invoice.status or "draft") in ("draft", "cancelled"):
+        return None
+    return await maybe_append_verifactu_record(db, invoice=invoice)
+
+
 async def verify_chain_integrity(db: AsyncSession, tenant_id: UUID) -> tuple[bool, int]:
     """Recorre la cadena completa del tenant y verifica integridad.
 

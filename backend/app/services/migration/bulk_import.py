@@ -299,6 +299,9 @@ async def import_invoices_rows(
       - PRESERVA el número y los importes de origen (no recalcula, no re-numera).
       - NO encadena Verifactu (son facturas previas al sistema; encadenarlas
         falsearía la cadena) ni genera asientos (el libro diario se migra aparte).
+      - Por lo anterior, con VeriFactu ACTIVO (voluntary) las emitidas se
+        RECHAZAN: importarlas sería un bypass de la cadena. La migración se
+        hace antes de activar el modo.
       - El cliente/proveedor debe existir (impórtalos antes).
       - Idempotente: para emitidas por (tipo, número); para recibidas por
         (tipo, número, proveedor) —el número de la recibida lo pone el proveedor.
@@ -308,6 +311,10 @@ async def import_invoices_rows(
     total, estado.
     """
     from app.db.models.billing import Invoice
+    from app.services.billing.constants import EMITTED_INVOICE_TYPES
+    from app.services.billing.verifactu_mode import should_remit
+
+    verifactu_activo = await should_remit(db, tenant_id=tenant_id)
 
     result = BulkImportResult()
     for i, row in enumerate(rows):
@@ -362,6 +369,23 @@ async def import_invoices_rows(
             conds.append(Invoice.client_id == party.id)
         dup = await db.execute(select(Invoice.id).where(*conds).limit(1))
         if dup.scalar_one_or_none() is not None:
+            result.skipped += 1
+            continue
+
+        # Verifactu activo → una "emitida importada" sería un bypass de la
+        # cadena (doble uso, art. 201 bis LGT): cualquier venta real podría
+        # colarse como "migración" sin registro. La migración de históricas se
+        # hace ANTES de activar VeriFactu (las previas no las expidió este SIF
+        # y por eso no se encadenan — ver docstring).
+        if verifactu_activo and itype in EMITTED_INVOICE_TYPES:
+            result.errors.append(
+                {
+                    "row": i + 2,
+                    "reason": "VeriFactu activo: las facturas emitidas no se importan "
+                    "(sería un bypass de la cadena). Migra antes de activar VeriFactu "
+                    "o emite la factura desde el sistema.",
+                }
+            )
             result.skipped += 1
             continue
 

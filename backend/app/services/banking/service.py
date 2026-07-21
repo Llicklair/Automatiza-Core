@@ -185,6 +185,13 @@ async def reconcile_transaction(
 
     if can_transition("Invoice", invoice.status, "paid"):
         invoice.status = "paid"
+        # Verifactu: conciliar un borrador lo EXPIDE (draft→paid) sin pasar por
+        # update_status; sin esto quedaba una factura emitida SIN registro
+        # (doble uso, art. 201 bis LGT). Idempotente para pending/sent (ya
+        # encadenadas en su expedición); no-op para recibidas/demo/no_remission.
+        from app.services.billing.verifactu_chain import ensure_verifactu_on_expedition
+
+        await ensure_verifactu_on_expedition(db, invoice)
     elif invoice.status == "paid":
         pass  # Already paid — idempotent
     else:
@@ -472,6 +479,11 @@ async def auto_reconcile(db: AsyncSession, tenant_id: uuid.UUID, user_id: uuid.U
             tx.status = "reconciled"
             if can_transition("Invoice", winner.status, "paid"):
                 winner.status = "paid"
+                # Verifactu: misma expedición implícita que en la conciliación
+                # manual (draft→paid) — encadena antes del commit.
+                from app.services.billing.verifactu_chain import ensure_verifactu_on_expedition
+
+                await ensure_verifactu_on_expedition(db, winner)
             # Mismo asiento de cobro (idempotente) que la conciliación manual:
             # antes auto_reconcile dejaba la contabilidad sin el asiento (B16).
             if winner.status == "paid":

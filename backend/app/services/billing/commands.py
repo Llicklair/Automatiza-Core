@@ -130,10 +130,13 @@ async def create_invoice(
         logger.warning("Factura creada con importe 0 para cliente %s", client_id)
 
     # Verifactu: encadena la huella ANTES del commit → factura y huella atómicas.
-    # En modo "no_remission" no hace nada.
-    from app.services.billing.verifactu_chain import maybe_append_verifactu_record
+    # Guardas de expedición centralizadas: solo emitidas (nunca recibidas ni
+    # demo) y solo si nace ya expedida (un borrador encadena después, en
+    # update_status). Antes se encadenaba INCONDICIONAL → una recibida/demo
+    # contaminaba la cadena en modo voluntary.
+    from app.services.billing.verifactu_chain import ensure_verifactu_on_expedition
 
-    await maybe_append_verifactu_record(db, invoice=new_invoice)
+    await ensure_verifactu_on_expedition(db, new_invoice)
 
     try:
         await db.commit()
@@ -282,6 +285,21 @@ async def update_status(
             f"Transición inválida: '{prev_status}' → '{new_status}'. "
             f"Permitidos: {allowed_next_states('Invoice', prev_status)}"
         )
+
+    # Anulación (RD 1007/2023): una factura con registro Verifactu no se anula
+    # en silencio — la cadena es append-only y este SIF no genera registros de
+    # anulación: la corrección fiscal es una rectificativa. Misma política que
+    # delete_invoice (borrado bloqueado).
+    if new_status == "cancelled":
+        from app.db.models.billing import VerifactuRecord
+
+        vf = await db.execute(select(VerifactuRecord.id).where(VerifactuRecord.invoice_id == invoice.id).limit(1))
+        if vf.scalar_one_or_none() is not None:
+            raise ValueError(
+                "No se puede anular: la factura tiene un registro Verifactu (cadena inmutable). "
+                "Emite una factura rectificativa en su lugar."
+            )
+
     invoice.status = new_status
 
     # Verifactu (RD 1007/2023 Art. 8): la EXPEDICIÓN (borrador → emitida) es el
@@ -291,15 +309,12 @@ async def update_status(
     # del orquestador), que en su creación aún no encadenaban → factura emitida sin
     # registro (doble uso, art. 201 bis LGT). Encadena ANTES del commit (atómico).
     # Idempotente: no duplica las ya registradas al crearse (create_invoice). No
-    # aplica a demo ni a recibidas. En modo "no_remission" es un no-op.
-    if (
-        new_status in ("pending", "sent", "paid")
-        and (invoice.invoice_type or "issued") in EMITTED_INVOICE_TYPES
-        and not invoice.is_demo
-    ):
-        from app.services.billing.verifactu_chain import maybe_append_verifactu_record
+    # aplica a demo ni a recibidas (guardas en ensure_verifactu_on_expedition).
+    # En modo "no_remission" es un no-op.
+    if new_status in ("pending", "sent", "paid"):
+        from app.services.billing.verifactu_chain import ensure_verifactu_on_expedition
 
-        await maybe_append_verifactu_record(db, invoice=invoice)
+        await ensure_verifactu_on_expedition(db, invoice)
 
     await db.commit()
     await db.refresh(invoice)
