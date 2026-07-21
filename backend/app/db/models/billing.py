@@ -156,6 +156,30 @@ class VerifactuRecord(Base):
     invoice = relationship("Invoice", foreign_keys=[invoice_id])
 
 
+class SifEvent(Base):
+    """Registro de eventos del SIF (RD 1007/2023 Art. 14, Orden HAC/1177/2024).
+
+    Cadena append-only por tenant, encadenada por huella SHA-256 igual que los
+    registros de facturación, para garantizar integridad, inalterabilidad y
+    trazabilidad de los eventos del sistema (arranque, parada, detección de
+    anomalías, resumen periódico, exportación, cambio de modo).
+    """
+
+    __tablename__ = "sif_events"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    tipo_evento = Column(String(40), nullable=False)
+    detalle = Column(Text, nullable=True)
+
+    huella = Column(String(64), nullable=False)
+    huella_anterior = Column(String(64), nullable=True)
+    payload_canonico = Column(Text, nullable=False)
+
+    fecha_hora = Column(DateTime(timezone=True), nullable=False, default=utcnow)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+
 class VerifactuConfig(Base):
     """Configuración del modo de remisión Verifactu por tenant (FAC.MODE).
 
