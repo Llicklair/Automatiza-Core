@@ -417,6 +417,8 @@
     "reopenPending": "Reopen (Pending)",
     "reopenDraft": "Reopen (Draft)",
     "downloadPdf": "Download PDF",
+    "printTicket": "Print receipt",
+    "printTicketError": "Could not print the receipt",
     "deleteInvoice": "Delete this invoice?",
     "errorLoadingInvoice": "Error loading invoice",
     "errorChangingStatus": "Error changing status",

@@ -417,6 +417,8 @@
     "reopenPending": "Reabrir (Pendiente)",
     "reopenDraft": "Reabrir (Borrador)",
     "downloadPdf": "Descargar PDF",
+    "printTicket": "Imprimir ticket",
+    "printTicketError": "No se pudo imprimir el ticket",
     "deleteInvoice": "¿Eliminar esta factura?",
     "errorLoadingInvoice": "Error cargando factura",
     "errorChangingStatus": "Error cambiando estado",

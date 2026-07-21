@@ -11,8 +11,10 @@ import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/data-table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { Download, Copy, Trash2, FileText } from "lucide-react";
+import { Download, Copy, Trash2, FileText, Printer } from "lucide-react";
 import Link from "next/link";
+import { printTicket } from "@/lib/print/ticket";
+import { getPrinterSettings } from "@/lib/print/printerSettings";
 
 
 export function useFacturas() {
@@ -98,6 +100,19 @@ export function useFacturas() {
         }
     };
 
+    // Reimprime el ticket 80mm de una factura emitida (térmica de TPV o impresora
+    // normal). Reutiliza el HTML del backend — misma fuente de verdad que el TPV.
+    const handlePrintTicket = async (id: string) => {
+        try {
+            const html = await api.pos.ticketHtml(id);
+            const settings = getPrinterSettings();
+            const res = await printTicket(html, { silent: false, deviceName: settings.deviceName });
+            if (!res.success) useToastStore.getState().error(t("printTicketError"));
+        } catch (err: any) {
+            useToastStore.getState().error(err?.message || t("printTicketError"));
+        }
+    };
+
     const columns: ColumnDef<Invoice, any>[] = [
         {
             accessorKey: "invoice_number",
@@ -166,6 +181,17 @@ export function useFacturas() {
                 const inv = row.original;
                 return (
                     <div className="flex items-center justify-end gap-1">
+                        {(inv.invoice_type ?? "issued") === "issued" && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => handlePrintTicket(inv.id)}
+                                title={t("printTicket")}
+                             aria-label={t("printTicket")}>
+                                <Printer className="h-4 w-4" aria-hidden="true" />
+                            </Button>
+                        )}
                         <Button
                             variant="ghost"
                             size="icon"
