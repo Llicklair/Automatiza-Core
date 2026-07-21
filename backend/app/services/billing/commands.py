@@ -204,7 +204,10 @@ async def create_rectificativa(
             "quantity": float(ln.quantity or 0),
             "unit_price": -float(ln.unit_price or 0),
             "discount_percentage": float(ln.discount_percentage or 0),
-            "tax_percentage": float(ln.tax_percentage or 21),
+            # `or 21` coercionaba Decimal('0.00') (falsy) a 21%: la rectificativa
+            # de una exenta nacía con IVA inventado y se ENCADENABA así (B3 del
+            # re-audit). 0% es un tipo válido; solo None cae al default.
+            "tax_percentage": float(ln.tax_percentage) if ln.tax_percentage is not None else 21.0,
         }
         for ln in original.lines
     ]
@@ -226,6 +229,10 @@ async def create_rectificativa(
         amount_base=totals["amount_base"],
         tax_amount=totals["tax_amount"],
         amount_total=totals["amount_total"],
+        # Hereda la causa de exención (una rectificativa al 0% se califica igual
+        # que su original) y la marca demo (una demo no debe encadenar).
+        exencion_causa=original.exencion_causa,
+        is_demo=original.is_demo,
     )
     db.add(rect)
     try:
@@ -251,10 +258,11 @@ async def create_rectificativa(
         )
 
     # Verifactu: la rectificativa es un hecho con efectos fiscales → encadena su
-    # propia huella ANTES del commit (atómico con la factura).
-    from app.services.billing.verifactu_chain import maybe_append_verifactu_record
+    # propia huella ANTES del commit (atómico con la factura). Con las guardas
+    # centralizadas: una rectificativa de demo no encadena.
+    from app.services.billing.verifactu_chain import ensure_verifactu_on_expedition
 
-    await maybe_append_verifactu_record(db, invoice=rect)
+    await ensure_verifactu_on_expedition(db, rect)
 
     await db.commit()
 

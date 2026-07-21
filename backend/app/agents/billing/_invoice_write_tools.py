@@ -19,15 +19,13 @@ logger = logging.getLogger(__name__)
 
 
 async def _update_invoice_status_async(tenant_id: str, invoice_id: str, new_status: str) -> str:
-    # Las transiciones válidas las define la máquina de estado canónica
-    # (services/state_machine), única fuente de verdad compartida con la capa de
-    # servicios. NO duplicar la tabla aquí: una factura 'paid' NO se cancela (se
-    # emite una rectificativa); solo admite revertir a 'sent' (desconciliar cobro).
-    from app.services.state_machine import (
-        InvalidTransitionError,
-        allowed_next_states,
-        validate_transition,
-    )
+    # Delegación TOTAL en el chokepoint de servicios (commands.update_status):
+    # valida la transición (state machine), bloquea anular facturas con registro
+    # VeriFactu (cadena append-only → rectificativa) y ENCADENA la expedición
+    # (ensure_verifactu_on_expedition). Antes esta tool mutaba `status` y
+    # commiteaba directo: un "marca la factura como pagada" al asistente expedía
+    # un borrador SIN registro (bypass del art. 201 bis, B1/B2 del re-audit).
+    from app.services.billing.commands import update_status
 
     allowed = {"draft", "pending", "sent", "paid", "cancelled"}
     if new_status not in allowed:
@@ -36,45 +34,40 @@ async def _update_invoice_status_async(tenant_id: str, invoice_id: str, new_stat
     try:
         async with AsyncSessionLocal() as db:
             result = await db.execute(
-                select(Invoice).where(
+                select(Invoice.status).where(
                     Invoice.tenant_id == UUID(tenant_id),
                     Invoice.id == UUID(invoice_id),
                 )
             )
-            invoice = result.scalar_one_or_none()
-            if not invoice:
+            old_status = result.scalar_one_or_none()
+            if old_status is None:
                 return f"Error: Factura con ID {invoice_id} no encontrada."
 
-            old_status = invoice.status or "draft"
             try:
-                validate_transition("Invoice", old_status, new_status)
-            except InvalidTransitionError:
-                nexts = allowed_next_states("Invoice", old_status)
-                return (
-                    f"Error: No se puede pasar de '{old_status}' a '{new_status}'. "
-                    f"Transiciones válidas desde '{old_status}': {nexts or 'ninguna (estado final)'}."
-                )
+                invoice = await update_status(UUID(invoice_id), UUID(tenant_id), new_status, db)
+            except ValueError as e:
+                return f"Error: {e}"
 
-            invoice.status = new_status
-            await db.commit()
+            # `update_status` ya emite `invoice_paid`; el resto de transiciones
+            # conservan su evento best-effort de siempre.
+            if new_status != "paid":
+                try:
+                    from app.services.event_bus import emit_event
 
-            try:
-                from app.services.event_bus import emit_event
-
-                await emit_event(
-                    db=db,
-                    tenant_id=UUID(tenant_id),
-                    user_id=None,
-                    event_name=f"invoice_{new_status}",
-                    context={
-                        "invoice_id": invoice_id,
-                        "invoice_number": invoice.invoice_number,
-                        "old_status": old_status,
-                        "new_status": new_status,
-                    },
-                )
-            except Exception:
-                logger.debug("Failed to emit invoice_%s event for %s", new_status, invoice_id, exc_info=True)
+                    await emit_event(
+                        db=db,
+                        tenant_id=UUID(tenant_id),
+                        user_id=None,
+                        event_name=f"invoice_{new_status}",
+                        context={
+                            "invoice_id": invoice_id,
+                            "invoice_number": invoice.invoice_number,
+                            "old_status": old_status,
+                            "new_status": new_status,
+                        },
+                    )
+                except Exception:
+                    logger.debug("Failed to emit invoice_%s event for %s", new_status, invoice_id, exc_info=True)
 
             return f"Factura {invoice.invoice_number} actualizada: {old_status} → {new_status}."
     except Exception as e:
@@ -276,6 +269,9 @@ async def update_invoice_status(tenant_id: str, invoice_id: str, new_status: str
     Cambia el estado de una factura existente. Las transiciones válidas las
     define la máquina de estado: una factura pagada NO se cancela (emite una
     rectificativa); solo puede revertir a 'sent' al desconciliar un cobro.
+    Al expedir (borrador → pendiente/enviada/pagada) se genera el registro
+    VeriFactu encadenado; una factura con registro NO puede cancelarse (hay
+    que emitir una rectificativa).
 
     Args:
         tenant_id: ID del tenant

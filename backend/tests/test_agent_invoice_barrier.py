@@ -142,7 +142,10 @@ async def test_agente_no_cancela_factura_pagada(db, seed_tenant_and_user):
 
     res = await _update_invoice_status_async(str(tenant.id), str(inv.id), "cancelled")
 
-    assert "No se puede pasar de 'paid' a 'cancelled'" in res
+    # Mensaje canonico del chokepoint (commands.update_status), al que la tool
+    # ahora delega (re-audit B1/B2): mismo fondo, otra literal.
+    assert res.startswith("Error")
+    assert "'paid'" in res and "'cancelled'" in res
     fresh = await _reload(db, inv.id)
     assert fresh.status == "paid"  # sigue pagada
 
