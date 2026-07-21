@@ -5,11 +5,11 @@ periodo, como copia fidedigna y legible. Cada exportación genera su evento
 correspondiente (Orden art. 9.1.h para los registros de facturación, art. 9.1.i para
 los de evento).
 
-Esta exportación preserva, por cada registro, su `payload_canonico` (el contenido
-exacto que se hashea) y su `huella` (integridad), más la metadata clave. NOTA:
-envolver cada registro en el XML exacto del anexo (RegistroAlta/RegistroEvento
-"pelado", apartados 3 y 5) es un refinamiento pendiente; el contenido íntegro
-(payload + huella) sí se exporta fielmente.
+`export_periodo()` devuelve el volcado íntegro (payload canónico + huella) de
+facturas y eventos. `export_periodo_xml()` produce, para las facturas, el formato del
+anexo (apartado 3): el `RegistroAlta` "pelado". Pendiente menor: el `RegistroEvento`
+del anexo (apartado 5) — hoy los eventos se exportan como payload + huella (íntegro),
+falta envolverlos en su XML exacto (requiere la estructura de campos del ap. 5).
 """
 
 from __future__ import annotations
