@@ -263,6 +263,7 @@ def build_registro_alta_xml(
     prev_record: VerifactuRecord | None = None,
     descripcion: str | None = None,
     rectified_invoice: Invoice | None = None,
+    substituted_invoice: Invoice | None = None,
 ) -> str:
     """Genera el XML `RegFactuSistemaFacturacion` con un `RegistroAlta`.
 
@@ -298,6 +299,15 @@ def build_registro_alta_xml(
         _txt(idr, NS_SF, "IDEmisorFactura", p["IDEmisorFactura"])
         _txt(idr, NS_SF, "NumSerieFactura", rectified_invoice.invoice_number or "")
         _txt(idr, NS_SF, "FechaExpedicionFactura", _fmt_fecha_expedicion(rectified_invoice.date))
+    # Sustitutiva (F3): factura completa que sustituye a una simplificada. El XSD
+    # coloca `FacturasSustituidas` tras `FacturasRectificadas` y antes de
+    # `DescripcionOperacion`. IDFacturaSustituida = IDEmisor + NºSerie + Fecha.
+    if p["TipoFactura"].upper() == "F3" and substituted_invoice is not None:
+        fs = SubElement(alta, f"{{{NS_SF}}}FacturasSustituidas")
+        ids = SubElement(fs, f"{{{NS_SF}}}IDFacturaSustituida")
+        _txt(ids, NS_SF, "IDEmisorFactura", p["IDEmisorFactura"])
+        _txt(ids, NS_SF, "NumSerieFactura", substituted_invoice.invoice_number or "")
+        _txt(ids, NS_SF, "FechaExpedicionFactura", _fmt_fecha_expedicion(substituted_invoice.date))
     _txt(alta, NS_SF, "DescripcionOperacion", (descripcion or _descripcion(invoice, lines))[:500])
     # F2 (ticket TPV): factura simplificada sin destinatario identificado (art. 6.1.d
     # RD 1619/2012). El XSD coloca este indicador tras `DescripcionOperacion`.

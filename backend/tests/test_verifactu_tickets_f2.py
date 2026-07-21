@@ -4,10 +4,12 @@ Lista L2 (RD 1007/2023 + Orden HAC/1177/2024): una factura simplificada se
 registra con TipoFactura=F2, no F1. Es la base de conformidad del TPV: sin esto
 el ticket de caja no puede emitir un registro VeriFactu correcto.
 """
+
 from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
+
 from app.db.models.billing import Invoice
 from app.db.models.crm import Client
 from app.services.billing.verifactu_chain import append_verifactu_record
@@ -61,3 +63,20 @@ class TestRegistroF2:
         await db.commit()
 
         assert "TipoFactura=F1" in rec.payload_canonico
+
+    async def test_sustitutiva_genera_tipofactura_f3(self, db, seed_tenant_and_user):
+        tenant, client = await self._setup(db, seed_tenant_and_user)
+        # Simplificada previa (el ticket que se sustituye).
+        simp = _invoice(tenant.id, client.id, number="T2026-0009", simplified=True)
+        db.add(simp)
+        await db.flush()
+        # F3: factura completa que sustituye a la simplificada.
+        f3 = _invoice(tenant.id, client.id, number="A2026-0009", simplified=False)
+        f3.substitutes_invoice_id = simp.id
+        db.add(f3)
+        await db.flush()
+
+        rec = await append_verifactu_record(db, invoice=f3, nif_emisor="B12345678")
+        await db.commit()
+
+        assert "TipoFactura=F3" in rec.payload_canonico

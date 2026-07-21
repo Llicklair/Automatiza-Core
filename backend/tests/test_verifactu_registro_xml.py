@@ -121,6 +121,40 @@ def test_f1_no_incluye_sin_identif_destinatario():
 
 
 @_xsd_required
+def test_f3_sustitutiva_incluye_facturas_sustituidas_valida_xsd():
+    payload = build_payload_alta(
+        id_emisor=_NIF,
+        num_serie_factura="FA2026/010",
+        fecha_expedicion=_fmt_fecha_expedicion(_FECHA),
+        tipo_factura="F3",
+        cuota_total=Decimal("21.00"),
+        importe_total=Decimal("121.00"),
+        huella_anterior=None,
+        fecha_hora_gen=_FHG,
+    )
+    record = SimpleNamespace(
+        payload_canonico=payload,
+        huella=compute_huella(payload),
+        huella_anterior=None,
+        nif_emisor=_NIF,
+        numero_factura="FA2026/010",
+        fecha_emision=_FECHA,
+    )
+    substituida = SimpleNamespace(invoice_number="T2026/001", date=_FECHA)
+    xml = rf.build_registro_alta_xml(
+        record=record,
+        invoice=_invoice(),
+        emisor_nombre="TINTORERIA SL",
+        lines=_lines(),
+        substituted_invoice=substituida,
+    )
+    assert rf.validate_verifactu_xml(xml) == []
+    assert "FacturasSustituidas" in xml
+    assert "IDFacturaSustituida" in xml
+    assert "T2026/001" in xml  # NumSerie de la simplificada sustituida
+
+
+@_xsd_required
 def test_alta_encadenado_valida_xsd():
     prev = _make_record("FA2026/001")
     record = _make_record("FA2026/002", huella_anterior=prev.huella, cuota="10.50", importe="60.50")

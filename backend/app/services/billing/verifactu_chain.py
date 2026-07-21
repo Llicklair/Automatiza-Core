@@ -242,6 +242,8 @@ async def append_verifactu_record(
     # simplificada / ticket TPV (sin destinatario identificado); F1 completa.
     if (invoice.invoice_type or "").lower() == "rectificativa":
         tipo_factura = "R1"
+    elif getattr(invoice, "substitutes_invoice_id", None):
+        tipo_factura = "F3"
     elif invoice.is_simplified:
         tipo_factura = "F2"
     else:

@@ -98,6 +98,11 @@ class Invoice(Base):
     rectifies_invoice_id = Column(UUID(as_uuid=True), ForeignKey("invoices.id"), nullable=True, index=True)
     rectification_reason = Column(Text, nullable=True)
 
+    # Sustitutiva (F3): factura completa que sustituye a una simplificada (ticket)
+    # previa cuando el cliente pide factura con sus datos. NULL en una factura
+    # ordinaria; alimenta el bloque FacturasSustituidas del registro VeriFactu.
+    substitutes_invoice_id = Column(UUID(as_uuid=True), ForeignKey("invoices.id"), nullable=True, index=True)
+
     verifactu_status = Column(String(30), nullable=True)  # None | "sent" | "error"
     verifactu_sent_at = Column(DateTime(timezone=True), nullable=True)
 
