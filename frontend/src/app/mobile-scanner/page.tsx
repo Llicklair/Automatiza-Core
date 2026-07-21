@@ -153,6 +153,12 @@ function MobileScannerInner() {
                         {loading ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <ScanLine className="w-4 h-4" aria-hidden="true" />}
                     </button>
                 </div>
+                <a
+                    href="/ca.crt"
+                    className="block text-[11px] text-cyan-400 underline"
+                >
+                    Para escanear con la cámara: instala el certificado una vez (tócame)
+                </a>
             </div>
 
             {/* Product info */}
