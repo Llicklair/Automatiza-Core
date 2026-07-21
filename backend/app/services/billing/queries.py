@@ -13,7 +13,6 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
-from app.core.config import settings
 from app.db.models.billing import VerifactuRecord
 from app.db.models.models import (
     FixedAsset,
@@ -125,24 +124,29 @@ async def _load_tenant(tenant_id, db: AsyncSession) -> tuple[str, str]:
 
 async def _load_verifactu(invoice_id: UUID, db: AsyncSession) -> dict | None:
     """Carga el registro Verifactu de una factura y devuelve `{huella, verify_url}`
-    listo para meter en el PDF (renderiza el QR FAC.QR). Devuelve None si la
-    factura aún no tiene registro encadenado — el PDF saldrá sin QR (válido,
-    el QR solo aplica cuando hay Verifactu activo).
+    para renderizar el QR tributario (FAC.QR). Devuelve None si la factura aún no
+    tiene registro encadenado (el PDF/ticket sale sin QR — válido).
 
-    `verify_url` se construye sobre `FRONTEND_URL` (primer host si la variable
-    contiene varios separados por comas). En producción esta URL debe ser
-    pública y proxiar `/api/v1/verify/*` al backend.
+    `verify_url` es la URL del servicio de COTEJO de la AEAT (`ValidarQR`) con los 4
+    parámetros obligatorios (nif, numserie, fecha, importe): es lo que el receptor
+    escanea para verificar la factura en la sede de la AEAT.
     """
     result = await db.execute(select(VerifactuRecord).where(VerifactuRecord.invoice_id == invoice_id))
     record = result.scalar_one_or_none()
     if record is None:
         return None
-    base = (settings.FRONTEND_URL or "").split(",")[0].strip().rstrip("/")
-    if not base:
-        return None
+
+    from app.services.billing.verifactu_chain import _fmt_fecha_expedicion, _fmt_importe
+    from app.services.billing.verifactu_qr import build_aeat_cotejo_url
+
     return {
         "huella": record.huella,
-        "verify_url": f"{base}/api/v1/verify/{record.huella}",
+        "verify_url": build_aeat_cotejo_url(
+            nif=record.nif_emisor,
+            num_serie=record.numero_factura,
+            fecha=_fmt_fecha_expedicion(record.fecha_emision),
+            importe=_fmt_importe(record.importe_total),
+        ),
     }
 
 

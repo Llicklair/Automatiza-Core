@@ -369,8 +369,11 @@ def _verifactu_qr_block(verifactu: dict | None) -> list:
 
     qr_cell = Table(
         [
+            # Leyendas oficiales: "QR tributario:" siempre precede al QR; "VERI*FACTU"
+            # debajo para facturas verificables (Orden HAC/1177/2024 art. 20.1.b).
+            [Paragraph("QR tributario:", caption_sty)],
             [drawing],
-            [Paragraph("Verifactu — Escanea para verificar", caption_sty)],
+            [Paragraph("VERI*FACTU", caption_sty)],
             [Paragraph(f"<font face='Helvetica'>Huella: {huella[:16]}…</font>", huella_sty)],
         ],
         colWidths=[qr_size + 4 * mm],
