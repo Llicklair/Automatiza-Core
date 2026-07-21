@@ -27,14 +27,18 @@ antes = exposición al art. 201 bis LGT.
 
 Esfuerzo: S = horas, M = 1-3 días, L = 1+ semana.
 
-### P1 — La garantía central ("todo lo expedido queda encadenado") es hoy falsa
+### ✅ P1 — CERRADO (commit `14497303`, 2026-07-21)
 
-| # | Bloqueante | Evidencia | Esf. |
-|---|---|---|---|
-| 1 | **Bypass banking**: la conciliación pasa facturas `draft`→`paid` directo, sin `update_status` → factura expedida SIN registro. Puentea el chokepoint. | `state_machine.py:52`, `banking/service.py:186-187,444,473-474` | S/M |
-| 2 | **Anulación sin registro**: `update_status` permite `cancelled` sobre factura con VerifactuRecord sin generar RegistroAnulacion (builders existen, huérfanos). | `commands.py:264-305`, `verifactu_chain.py:84` | M |
-| 3 | `create_invoice` encadena INCONDICIONAL (sin `EMITTED_INVOICE_TYPES` ni `is_demo`) → `received`/demo contaminarían la cadena en voluntary. | `billing/commands.py:134-136` | S |
-| 4 | `bulk_import` crea facturas `issued`/`paid` sin registro ni marca de excepción. | `migration/bulk_import.py:369-381` | S/M |
+Guardas de expedición centralizadas en `ensure_verifactu_on_expedition()`
+(único punto de decisión). Suite completa 2623✓ + 10 tests nuevos
+(`test_verifactu_expedicion_guards.py`).
+
+| # | Cierre |
+|---|---|
+| 1 | Banking: conciliar (manual/auto) un borrador lo expide → **encadena antes del commit** |
+| 2 | Anulación: `cancelled` **bloqueado** si hay registro → fuerza rectificativa (política = delete) |
+| 3 | `create_invoice` con guardas: nunca recibidas/demo; borrador encadena al expedirse |
+| 4 | `bulk_import`: con VeriFactu activo las emitidas se **rechazan** (anti-bypass); históricas en no_remission siguen sin encadenar (no las expidió este SIF — decisión documentada) |
 
 ### P2 — Contenido del registro (anexo Orden)
 
