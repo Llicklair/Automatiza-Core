@@ -40,23 +40,24 @@ Guardas de expedición centralizadas en `ensure_verifactu_on_expedition()`
 | 3 | `create_invoice` con guardas: nunca recibidas/demo; borrador encadena al expedirse |
 | 4 | `bulk_import`: con VeriFactu activo las emitidas se **rechazan** (anti-bypass); históricas en no_remission siguen sin encadenar (no las expidió este SIF — decisión documentada) |
 
-### P2 — Contenido del registro (anexo Orden)
+### P2 — Contenido del registro (anexo Orden) — quedan 2 de 4
+
+_Cerrados en `597f38fa`: R5 (rectificativa de simplificada) y huso fijo
+Europe/Madrid (`TZ_EXPEDICION`)._
 
 | # | Bloqueante | Evidencia | Esf. |
 |---|---|---|---|
 | 5 | Falta bloque **`Destinatarios`** (NIF/nombre cliente) en RegistroAlta para F1. | `registro_facturacion.py:256-309` | M |
 | 6 | **`CalificacionOperacion` fija S1**: exentas E1-E6, N1/N2, S2 se calificarían mal. | `registro_facturacion.py:52,236` | M |
-| 7 | Rectificativa de simplificada mapea a R1, no **R5**. | `verifactu_chain.py:243-244` | S |
-| 8 | Huso horario depende de la tz del SO, no fija Europe/Madrid. | `verifactu_chain.py:262`, `sif_events.py:77` | S |
 
-### P3 — Eventos SIF por debajo del mínimo
+### ✅ P3 — CERRADO (commit `597f38fa`, 2026-07-21)
 
-| # | Bloqueante | Evidencia | Esf. |
-|---|---|---|---|
-| 9 | Payload de evento con 3 de 8 campos exigidos (faltan productor, ID SIF, versión, instalación, NIF obligado). | `sif_events.py:43-50` | S/M |
-| 10 | Falta evento **RESTAURACIÓN** de copia de seguridad. | `sif_events.py:24-38` | S |
-| 11 | `sif_events` SIN triggers append-only (verifactu_chain sí los tiene). | `0074_sif_events.py` vs `0011:52-77` | S |
-| 12 | `verify_events_integrity` no valida el enlace `huella_anterior`. | `sif_events.py:100-108` | S |
+| # | Cierre |
+|---|---|
+| 9 | Payload de eventos con los **8 campos** del art. 13.1.c (antes 3/8); compat con eventos antiguos |
+| 10 | Evento **RESTAURACIÓN** + endpoint `POST /backup-local/restore-event` |
+| 11 | Migración **0076**: triggers WORM (append-only) en `sif_events` |
+| 12 | `verify_events_integrity` valida enlace columna↔payload + cadena única sin ciclos/bifurcaciones |
 
 ### P4 — Remisión + default (el bloque ya conocido)
 
@@ -66,12 +67,14 @@ Guardas de expedición centralizadas en `ensure_verifactu_on_expedition()`
 | 14 | `TiempoEsperaEnvio` ni persistido ni respetado; `error` terminal (sin backoff); sin subsanación por línea; sin remisión por requerimiento; anulaciones no se remiten. | `verifactu_submit.py:368-392`, `tasks_scheduler.py:131,142-151` | L |
 | 15 | Quitar `no_remission` / default voluntary (~25 ficheros; todo tenant necesitará NIF). | `verifactu_mode.py:17-18` | M |
 
-### P5 — Operativa mínima
+### P5 — Operativa mínima — queda 1 de 2
+
+_Cerrado en `597f38fa`: los 8 `VERIFACTU_SIF_*` declarados en Settings — el
+`.env` ya surte efecto en la declaración (NIF real cuando exista la SL)._
 
 | # | Bloqueante | Evidencia | Esf. |
 |---|---|---|---|
 | 16 | Export sin endpoint HTTP ni UI (la capacidad de volcado del art. 9 no es accesible al usuario/AEAT). | grep `export_periodo` → 0 rutas | M |
-| 17 | **Ningún `VERIFACTU_SIF_*` declarado en Settings** (`extra='ignore'` los descarta): la declaración imprime SIEMPRE placeholders (NIF B00000000, dirección "pendiente"). | `core/config.py` (0 matches) | S |
 
 ## No bloqueantes (recomendados, defendibles de posponer)
 
