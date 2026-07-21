@@ -21,6 +21,8 @@ interface Labels {
     title?: string;
     aimHint?: string;
     insecureContext?: string;
+    noCamera?: string;
+    permissionDenied?: string;
     cameraError?: string;
     permissionHint?: string;
     close?: string;
@@ -38,26 +40,33 @@ const DEFAULTS: Required<Labels> = {
     aimHint: "Apunta la cámara al código de barras o QR",
     insecureContext:
         "La cámara necesita HTTPS o localhost. Usa un lector USB/Bluetooth o introduce el código manualmente.",
+    noCamera: "Este equipo no tiene cámara disponible. Usa un lector USB o escanea con el móvil.",
+    permissionDenied: "Permiso de cámara denegado.",
     cameraError: "No se pudo acceder a la cámara",
-    permissionHint: "Revisa los permisos de cámara del sistema.",
+    permissionHint: "Actívalo en los permisos de cámara del navegador o del sistema y recarga.",
     close: "Cerrar",
 };
+
+interface ErrorInfo {
+    msg: string;
+    hint?: string;
+}
 
 export function CameraBarcodeScanner({ open, onClose, onScan, labels }: Props) {
     const L = { ...DEFAULTS, ...labels };
     const videoRef = useRef<HTMLVideoElement>(null);
     const controlsRef = useRef<IScannerControls | null>(null);
-    const [error, setError] = useState<string | null>(null);
+    const [errorInfo, setErrorInfo] = useState<ErrorInfo | null>(null);
     const [starting, setStarting] = useState(false);
 
     useEffect(() => {
         if (!open) return;
-        setError(null);
+        setErrorInfo(null);
 
         // getUserMedia solo existe en contexto seguro (HTTPS/localhost). Por
         // http:// con IP de LAN el navegador no lo expone — aviso claro.
         if (!navigator.mediaDevices?.getUserMedia) {
-            setError(L.insecureContext);
+            setErrorInfo({ msg: L.insecureContext });
             return;
         }
 
@@ -91,9 +100,18 @@ export function CameraBarcodeScanner({ open, onClose, onScan, labels }: Props) {
                 controlsRef.current = controls;
                 setStarting(false);
             })
-            .catch((e: Error) => {
+            .catch((e: { name?: string; message?: string }) => {
                 if (cancelled) return;
-                setError(e?.message || L.cameraError);
+                const name = e?.name || "";
+                // Distinguir "no hay cámara" de "permiso denegado": en un equipo sin
+                // webcam el error es NotFound, no un permiso que se pueda conceder.
+                if (["NotFoundError", "DevicesNotFoundError", "OverconstrainedError"].includes(name)) {
+                    setErrorInfo({ msg: L.noCamera });
+                } else if (["NotAllowedError", "PermissionDeniedError", "SecurityError"].includes(name)) {
+                    setErrorInfo({ msg: L.permissionDenied, hint: L.permissionHint });
+                } else {
+                    setErrorInfo({ msg: e?.message || L.cameraError, hint: L.permissionHint });
+                }
                 setStarting(false);
             });
 
@@ -128,11 +146,13 @@ export function CameraBarcodeScanner({ open, onClose, onScan, labels }: Props) {
                 </div>
 
                 <div className="relative aspect-square bg-black flex items-center justify-center">
-                    {error ? (
+                    {errorInfo ? (
                         <div className="text-center px-6 space-y-3 text-foreground">
                             <AlertTriangle className="w-10 h-10 text-amber-400 mx-auto" aria-hidden="true" />
-                            <p className="text-sm font-medium">{error}</p>
-                            <p className="text-xs text-muted-foreground">{L.permissionHint}</p>
+                            <p className="text-sm font-medium">{errorInfo.msg}</p>
+                            {errorInfo.hint && (
+                                <p className="text-xs text-muted-foreground">{errorInfo.hint}</p>
+                            )}
                         </div>
                     ) : (
                         <>
