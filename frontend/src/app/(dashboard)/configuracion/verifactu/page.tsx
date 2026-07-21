@@ -3,26 +3,28 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { BadgeCheck, Stamp, ShieldCheck } from "lucide-react";
+import { BadgeCheck, Stamp, ShieldCheck, FileText } from "lucide-react";
 import { ModoVerifactuPanel } from "./ModoVerifactuPanel";
 import { ApoderamientoPanel } from "./ApoderamientoPanel";
 import { FirmaDigitalPanel } from "./FirmaDigitalPanel";
+import { DeclaracionResponsablePanel } from "./DeclaracionResponsablePanel";
 import { PageContainer } from "@/components/shared/PageContainer";
 
-type Tab = "verifactu" | "apoderamiento" | "firma";
+type Tab = "verifactu" | "apoderamiento" | "firma" | "declaracion";
 
 export default function ConfiguracionFiscalPage() {
     const t = useTranslations("configuracion");
     const searchParams = useSearchParams();
     const initial = searchParams.get("tab");
     const [tab, setTab] = useState<Tab>(
-        initial === "apoderamiento" || initial === "firma" ? initial : "verifactu"
+        initial === "apoderamiento" || initial === "firma" || initial === "declaracion" ? initial : "verifactu"
     );
 
     const tabs: { key: Tab; label: string; icon: typeof BadgeCheck }[] = [
         { key: "verifactu", label: t("verifactu.tabVerifactu"), icon: BadgeCheck },
         { key: "apoderamiento", label: t("verifactu.tabApoderamiento"), icon: Stamp },
         { key: "firma", label: t("verifactu.tabFirma"), icon: ShieldCheck },
+        { key: "declaracion", label: t("verifactu.tabDeclaracion"), icon: FileText },
     ];
 
     return (
@@ -56,6 +58,7 @@ export default function ConfiguracionFiscalPage() {
             {tab === "verifactu" && <ModoVerifactuPanel />}
             {tab === "apoderamiento" && <ApoderamientoPanel />}
             {tab === "firma" && <FirmaDigitalPanel />}
+            {tab === "declaracion" && <DeclaracionResponsablePanel />}
         </PageContainer>
     );
 }

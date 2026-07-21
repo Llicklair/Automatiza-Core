@@ -1,7 +1,7 @@
 /**
  * FAC.MODE — cliente del modo de remisión Verifactu.
  */
-import { request } from "./client";
+import { request, fetchBlob, downloadBlob } from "./client";
 
 export type VerifactuMode = "voluntary" | "no_remission";
 
@@ -20,4 +20,11 @@ export const verifactuConfig = {
             method: "PUT",
             body: JSON.stringify({ mode }),
         }),
+
+    // Documento de la declaración responsable del productor (art. 15).
+    declaracionResponsable: (): Promise<Blob> =>
+        fetchBlob("/api/v1/verifactu/config/declaracion-responsable"),
+
+    descargarDeclaracionResponsable: (): Promise<void> =>
+        downloadBlob("/api/v1/verifactu/config/declaracion-responsable", "declaracion-responsable.txt"),
 };
