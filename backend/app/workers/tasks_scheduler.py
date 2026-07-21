@@ -62,6 +62,35 @@ async def sif_events_maintenance() -> None:
                 logger.exception("sif_events_maintenance falló para tenant %s", tid)
 
 
+async def record_sif_lifecycle_event(tipo_evento: str) -> None:
+    """Registra un evento de ciclo de vida del SIF (ARRANQUE/PARADA) en la cadena de
+    cada tenant activo (RD 1007/2023 Art. 14: inicio y fin de funcionamiento). Se llama
+    en el arranque y la parada de la app. Decisión de diseño en SaaS multi-tenant: se
+    registra por-tenant (cada obligado tiene su propia cadena); best-effort — un fallo
+    no debe bloquear el arranque/parada."""
+    from app.db.models.auth import Tenant
+    from app.services.billing.sif_events import record_event
+
+    try:
+        async with AsyncSessionLocal() as db:
+            set_current_tenant(None)
+            with rls_bypass():
+                res = await db.execute(select(Tenant.id).where(Tenant.is_active.is_(True)))
+                tenant_ids = [row[0] for row in res.all()]
+    except Exception:  # noqa: BLE001
+        logger.exception("record_sif_lifecycle_event %s: no se pudieron enumerar tenants", tipo_evento)
+        return
+
+    for tid in tenant_ids:
+        set_current_tenant(str(tid))
+        async with AsyncSessionLocal() as db:
+            try:
+                await record_event(db, tenant_id=tid, tipo_evento=tipo_evento)
+                await db.commit()
+            except Exception:  # noqa: BLE001
+                logger.exception("record_sif_lifecycle_event %s falló para tenant %s", tipo_evento, tid)
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

@@ -122,12 +122,25 @@ async def lifespan(app: FastAPI):
         replace_existing=True,
         max_instances=1,
     )
+    # Evento SIF de inicio de funcionamiento (RD 1007/2023 Art. 14), por tenant activo.
+    from app.services.billing.sif_events import EVENT_ARRANQUE, EVENT_PARADA
+    from app.workers.tasks_scheduler import record_sif_lifecycle_event
+
+    try:
+        await record_sif_lifecycle_event(EVENT_ARRANQUE)
+    except Exception:  # noqa: BLE001
+        logger.warning("No se pudo registrar el evento ARRANQUE del SIF", exc_info=True)
+
     # Relay WebSocket ↔ Redis (sólo cuando REDIS_URL está configurado)
     from app.services.ws_relay import start_ws_relay, stop_ws_relay
 
     await start_ws_relay()
     yield
     # Parar scheduler, relay y tareas en vuelo
+    try:
+        await record_sif_lifecycle_event(EVENT_PARADA)
+    except Exception:  # noqa: BLE001
+        logger.warning("No se pudo registrar el evento PARADA del SIF", exc_info=True)
     await stop_ws_relay()
     await llm_usage_tracker.persist_to_db()
     await stop_scheduler()
