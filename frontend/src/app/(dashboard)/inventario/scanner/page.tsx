@@ -106,6 +106,9 @@ export default function WarehouseScannerPage() {
                             <p className="text-[10px] text-muted-foreground">
                                 {t("scanner.scanHint")}
                             </p>
+                            <p className="text-[10px] text-amber-400/70 max-w-xs text-center">
+                                {t("scanner.certNote")}
+                            </p>
                         </div>
 
                         {scannerUrl && (

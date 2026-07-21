@@ -3747,7 +3747,8 @@
       "scanHint": "Scan this QR with the phone camera or copy the URL",
       "copied": "Copied",
       "copy": "Copy",
-      "generateNewToken": "Generate new token"
+      "generateNewToken": "Generate new token",
+      "certNote": "The first time, the phone will show a security warning (your device's own certificate): tap \"Advanced\" → \"Proceed\". It's your local network, nothing leaves to the internet."
     },
     "stock": {
       "movementError": "Error logging movement",

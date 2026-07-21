@@ -3747,7 +3747,8 @@
       "scanHint": "Escanea este QR con la cámara del móvil o copia la URL",
       "copied": "Copiado",
       "copy": "Copiar",
-      "generateNewToken": "Generar nuevo token"
+      "generateNewToken": "Generar nuevo token",
+      "certNote": "La primera vez el móvil mostrará un aviso de seguridad (certificado propio de tu equipo): pulsa \"Avanzado\" → \"Continuar\". Es tu red local, no sale nada a internet."
     },
     "stock": {
       "movementError": "Error al registrar movimiento",

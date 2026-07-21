@@ -63,6 +63,8 @@ declare global {
             localNetworkEnabled: boolean;
             lanIP: string | null;
             urls?: string[];
+            /** URL HTTPS del proxy de LAN (para la cámara del móvil). */
+            httpsUrl?: string | null;
         }>;
     }
 

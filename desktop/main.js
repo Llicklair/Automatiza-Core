@@ -6,6 +6,7 @@ const { app, BrowserWindow, dialog, shell, ipcMain, Menu, safeStorage } = requir
 const fs = require("fs");
 const path = require("path");
 const { autoUpdater } = require("electron-updater");
+const { startHttpsProxy, stopHttpsProxy } = require("./https-proxy");
 
 // ── SEC.JWT — secure storage handlers ───────────────────────────────────────
 // Tokens JWT cifrados con safeStorage (DPAPI/Keychain/libsecret) en
@@ -139,6 +140,8 @@ function setupAutoUpdater() {
 let mainWindow = null;
 let splashWindow = null;
 let isQuitting = false;
+/** URL HTTPS del proxy de LAN (para la cámara del móvil); null si no arrancó. */
+let httpsProxyUrl = null;
 /** true = backend en 0.0.0.0 (LAN); false = solo 127.0.0.1 */
 let localNetworkEnabled = true;
 
@@ -267,6 +270,19 @@ async function startup() {
     createMainWindow();
     setupAutoUpdater();
 
+    // Proxy HTTPS en la LAN — habilita la cámara del móvil en /mobile-scanner
+    // (getUserMedia exige HTTPS). No es crítico: si falla, la app sigue y el
+    // móvil usará lector USB / código manual.
+    try {
+      const { url } = await startHttpsProxy({
+        lanIP,
+        userDataDir: app.getPath("userData"),
+      });
+      httpsProxyUrl = url;
+    } catch (err) {
+      console.error("[https-proxy] no se pudo arrancar:", err.message);
+    }
+
     // Tray
     createTray({
       lanIP,
@@ -378,7 +394,12 @@ ipcMain.handle("toggle-local-network", async (_event, enabled) => {
 ipcMain.handle("get-network-status", async () => {
   const lanIP = getLanIP();
   const urls = getAccessURLs(lanIP);
-  return { localNetworkEnabled, lanIP, urls };
+  return { localNetworkEnabled, lanIP, urls, httpsUrl: httpsProxyUrl };
+});
+
+// Parar el proxy HTTPS al cerrar la app.
+app.on("before-quit", () => {
+  stopHttpsProxy();
 });
 
 // ── Impresión de tickets (TPV) ─────────────────────────────────────────────

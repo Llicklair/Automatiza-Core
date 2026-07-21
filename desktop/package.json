@@ -15,7 +15,8 @@
   },
   "dependencies": {
     "electron-store": "^11.0.2",
-    "electron-updater": "^6.8.9"
+    "electron-updater": "^6.8.9",
+    "selfsigned": "^5.5.0"
   },
   "devDependencies": {
     "electron": "^42.4.1",

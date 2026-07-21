@@ -22,7 +22,10 @@ export function useWarehouseScanner() {
         electron
             .getNetworkStatus()
             .then((st) => {
-                if (st?.lanIP) setLanOrigin(`http://${st.lanIP}:${window.location.port || "3000"}`);
+                // Preferimos HTTPS (habilita la cámara del móvil); si no, http LAN.
+                if (st?.httpsUrl) setLanOrigin(st.httpsUrl);
+                else if (st?.lanIP)
+                    setLanOrigin(`http://${st.lanIP}:${window.location.port || "3000"}`);
             })
             .catch(() => {});
     }, []);
