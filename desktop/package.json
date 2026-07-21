@@ -57,6 +57,7 @@
       "main.js",
       "launch.js",
       "preload.js",
+      "https-proxy.js",
       "service-manager.js",
       "postgres-manager.js",
       "python-manager.js",
