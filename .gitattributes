@@ -1,2 +1,5 @@
 *.bat text eol=crlf
 *.cmd text eol=crlf
+deploy/*.sh text eol=lf
+deploy/Caddyfile text eol=lf
+deploy/*.Dockerfile text eol=lf
