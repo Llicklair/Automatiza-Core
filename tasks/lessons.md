@@ -1336,3 +1336,15 @@ middleware, proxys) — es 1 minuto y descarta la causa más silenciosa. Solo de
 mirar contexto seguro, certificado y permisos de navegador/SO. Corolario general:
 ante un bloqueo de API de navegador, buscar primero qué cabeceras servimos
 nosotros antes de culpar al entorno.
+
+## 2026-07-22 — Heurísticas por nombre de tool: el allowlist envejece mal
+
+El detector de phantom-write exige que un intent de acción invoque una tool
+cuyo NOMBRE contenga un marcador de mutación (create/update/...). "Haz un
+excel" ejecutaba `export_erp_data` (que SÍ genera el fichero) pero "export" no
+estaba en la lista → falso "posible respuesta fabricada" sobre una operación
+que funcionó. **Regla añadida:** al crear una tool de agente cuyo nombre no
+contenga un marcador de `_WRITE_TOOL_MARKERS` pero que tenga efectos (fichero,
+BD, envío), añadir el marcador (o renombrar la tool) y un caso en
+`test_dispatcher_outcome.py` en el MISMO commit. Un falso fallo mina la
+confianza del usuario tanto como un fallo real.
