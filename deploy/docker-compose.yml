@@ -1,0 +1,70 @@
+# AutomatizaCore — despliegue en servidor dedicado (self-hosted).
+# Un stack por cliente: sus datos en SU servidor (local del negocio o VPS).
+# Uso: copia .env.example a .env, rellena, y `docker compose up -d --build`.
+
+name: automatizacore
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pyme_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: pyme_db
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init-db.sh:/docker-entrypoint-initdb.d/10-app-role.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pyme_user -d pyme_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build:
+      context: ..
+      dockerfile: deploy/backend.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Rol de APLICACIÓN (sin ownership → RLS efectivo) para el runtime;
+      # rol admin solo para migraciones/DDL.
+      DATABASE_URL: postgresql+asyncpg://pyme_app:${APP_DB_PASSWORD}@db:5432/pyme_db
+      ADMIN_DATABASE_URL: postgresql+asyncpg://pyme_user:${POSTGRES_PASSWORD}@db:5432/pyme_db
+      SECRET_KEY: ${SECRET_KEY}
+      FRONTEND_URL: https://${DOMAIN}
+      PORTAL_PUBLIC_URL: https://${DOMAIN}
+      DEBUG: "false"
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: deploy/frontend.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

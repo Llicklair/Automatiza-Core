@@ -1,0 +1,14 @@
+# Proxy inverso con TLS automático (Let's Encrypt).
+# Mismo origen para todo → el frontend usa rutas relativas (lib/api/base.ts) y
+# el :8080 nunca se expone; la cámara del móvil funciona (TLS real).
+{$DOMAIN} {
+	encode gzip
+
+	handle /api/* {
+		reverse_proxy backend:8080
+	}
+
+	handle {
+		reverse_proxy frontend:3000
+	}
+}
