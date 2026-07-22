@@ -88,7 +88,7 @@ async def generate_facturae_xml(invoice_id: UUID, tenant_id: UUID, db: AsyncSess
         q = Decimal(str(line.quantity))
         up = Decimal(str(line.unit_price))
         disc = Decimal(str(line.discount_percentage or 0)) / 100
-        rate_pct = Decimal(str(line.tax_percentage or 21))
+        rate_pct = Decimal(str(line.tax_percentage if line.tax_percentage is not None else 21))
         line_base = q * up * (1 - disc)
         line_tax = line_base * rate_pct / 100
         key = _fmt(rate_pct)
@@ -182,7 +182,7 @@ async def generate_facturae_xml(invoice_id: UUID, tenant_id: UUID, db: AsyncSess
         q = Decimal(str(line.quantity))
         up = Decimal(str(line.unit_price))
         disc = Decimal(str(line.discount_percentage or 0)) / 100
-        rate_pct = Decimal(str(line.tax_percentage or 21))
+        rate_pct = Decimal(str(line.tax_percentage if line.tax_percentage is not None else 21))
         line_base = q * up * (1 - disc)
         line_tax_amt = line_base * rate_pct / 100
 

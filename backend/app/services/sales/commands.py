@@ -353,7 +353,10 @@ async def convert_to_invoice(
 
     for ql in quote.lines or []:
         line_base = float(ql.quantity or 1) * float(ql.unit_price or 0)
-        line_tax = line_base * (float(ql.tax_percentage or 21) / 100)
+        # `or 21` coercionaba 0% (Decimal falsy) a 21% — B3-bis del re-audit: la
+        # linea exenta se persistia al 21% y contaminaba el registro encadenado.
+        line_rate = float(ql.tax_percentage) if ql.tax_percentage is not None else 21.0
+        line_tax = line_base * (line_rate / 100)
         db.add(
             InvoiceLine(
                 invoice_id=new_invoice.id,
@@ -361,7 +364,7 @@ async def convert_to_invoice(
                 description=ql.description,
                 quantity=float(ql.quantity or 1),
                 unit_price=float(ql.unit_price or 0),
-                tax_percentage=float(ql.tax_percentage or 21),
+                tax_percentage=line_rate,
                 discount_percentage=0.0,
                 total=line_base + line_tax,
             )

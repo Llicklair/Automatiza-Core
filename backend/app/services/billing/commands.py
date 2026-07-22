@@ -211,6 +211,26 @@ async def create_rectificativa(
         }
         for ln in original.lines
     ]
+    if not neg_lines:
+        # M5 del re-audit: una original sin líneas (p.ej. histórica importada)
+        # generaba una rectificativa a 0,00 € que encadenaba, y la idempotencia
+        # (guard + uq_invoices_rectifies_once) impedía emitir después la buena.
+        # Se sintetiza una línea negada desde los totales de cabecera.
+        base = Decimal(str(original.amount_base or 0))
+        tax = Decimal(str(original.tax_amount or 0))
+        if base == 0 and tax == 0:
+            raise ValueError("La factura original no tiene líneas ni importes: no se puede rectificar.")
+        rate = (tax / base * Decimal("100")).quantize(Decimal("0.01")) if base else Decimal("0")
+        neg_lines = [
+            {
+                "product_id": None,
+                "description": f"Rectificación de {original.invoice_number}",
+                "quantity": 1.0,
+                "unit_price": -float(base),
+                "discount_percentage": 0.0,
+                "tax_percentage": float(rate),
+            }
+        ]
     totals = compute_invoice_totals(neg_lines, allow_negative=True)
 
     serie = (serie or "R").upper()[:10]

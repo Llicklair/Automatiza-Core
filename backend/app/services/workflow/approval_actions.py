@@ -21,14 +21,14 @@ from collections.abc import Awaitable, Callable
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.tenant_context import get_current_task
 from app.db.base import AsyncSessionLocal
 from app.db.models.accounting import JournalEntry, JournalLine
 from app.db.models.hr import Payroll
-from app.db.models.models import Client, Invoice, InvoiceLine, PendingApproval
+from app.db.models.models import Client, PendingApproval
 
 logger = logging.getLogger(__name__)
 
@@ -219,36 +219,34 @@ async def _exec_create_invoice(params: dict, db: AsyncSession, tenant_id: str) -
         db.add(client)
         await db.flush()
 
-    tax_amount = round(amount_base * (vat_rate / Decimal("100")), 2)
-    total_amount = amount_base + tax_amount
-    count_res = await db.execute(select(func.count(Invoice.id)).where(Invoice.tenant_id == tid))
-    invoice_number = f"FAC-{inv_date.year}-{(count_res.scalar() or 0) + 1:04d}"
+    # M6 del re-audit: este camino construía la factura A MANO (numeración por
+    # count()+1 sin advisory lock y serie "FAC-" paralela — el patrón que el
+    # propio repo califica de ilegal en sales/commands). Delegamos en el
+    # servicio canónico: numeración con lock, totales Decimal y guardas
+    # Verifactu centralizadas (nace draft: encadena al expedirse).
+    from app.services.billing.commands import create_invoice as _create_invoice_svc
 
-    invoice = Invoice(
-        tenant_id=tid,
-        client_id=client.id,
-        invoice_number=invoice_number,
-        date=inv_date,
-        amount_base=amount_base,
-        tax_amount=tax_amount,
-        amount_total=total_amount,
-        status="draft",
-        invoice_type="issued",
-    )
-    db.add(invoice)
-    await db.flush()
-    db.add(
-        InvoiceLine(
-            invoice_id=invoice.id,
-            description=concept,
-            quantity=Decimal("1"),
-            unit_price=amount_base,
-            tax_percentage=vat_rate,
-            total=total_amount,
+    try:
+        invoice = await _create_invoice_svc(
+            client.id,
+            {"date": inv_date, "status": "draft", "invoice_type": "issued"},
+            [
+                {
+                    "description": concept,
+                    "quantity": 1,
+                    "unit_price": float(amount_base),
+                    "tax_percentage": float(vat_rate),
+                }
+            ],
+            tid,
+            None,
+            db,
         )
+    except ValueError as e:
+        return False, f"Error creando la factura aprobada: {e}"
+    return True, (
+        f"Factura {invoice.invoice_number} creada tras aprobación. Total: {float(invoice.amount_total):.2f}€."
     )
-    await db.flush()
-    return True, f"Factura {invoice_number} creada tras aprobación. Total: {total_amount:.2f}€."
 
 
 @register_action("inventory_batch_adjust")

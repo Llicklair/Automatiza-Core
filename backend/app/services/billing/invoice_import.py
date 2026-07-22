@@ -126,7 +126,7 @@ async def _create_product_from_line(db, tenant_id: UUID, ln: dict) -> Product:
         name=desc,
         cost_price=cost,
         price=cost,
-        tax_percentage=_dec(ln.get("tax_percentage") or 21),
+        tax_percentage=_dec(21 if ln.get("tax_percentage") in (None, "") else ln.get("tax_percentage")),
         stock_quantity=0,
         is_active=True,
     )
@@ -239,7 +239,7 @@ async def _import_one(db, tenant_id: UUID, draft: dict, user_id: UUID | None) ->
                 description=(ln.get("description") or "")[:500],
                 quantity=_dec(ln.get("quantity") or 1),
                 unit_price=_dec(ln.get("unit_price")),
-                tax_percentage=_dec(ln.get("tax_percentage") or 21),
+                tax_percentage=_dec(21 if ln.get("tax_percentage") in (None, "") else ln.get("tax_percentage")),
                 total=_dec(ln.get("total")),
             )
         )

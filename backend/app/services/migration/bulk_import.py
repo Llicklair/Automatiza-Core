@@ -133,6 +133,8 @@ async def import_products_rows(
             result.errors.append({"row": i + 2, "reason": "El campo 'nombre' es obligatorio"})
             result.skipped += 1
             continue
+        # `or 21.0` tras _coerce coercionaba un "0" explícito (0.0 falsy) a 21%.
+        _iva = _coerce(row.get("iva") or row.get("tax_percentage") or "21", float)
         try:
             product = Product(
                 tenant_id=tenant_id,
@@ -140,7 +142,7 @@ async def import_products_rows(
                 sku=row.get("sku") or None,
                 description=row.get("descripcion") or row.get("description") or None,
                 price=_coerce(row.get("precio") or row.get("price") or "0", float) or 0,
-                tax_percentage=_coerce(row.get("iva") or row.get("tax_percentage") or "21", float) or 21.0,
+                tax_percentage=_iva if _iva is not None else 21.0,
                 stock_quantity=_coerce(row.get("stock") or row.get("stock_quantity") or "0", int) or 0,
             )
             db.add(product)

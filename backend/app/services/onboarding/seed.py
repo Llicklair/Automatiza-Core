@@ -184,7 +184,7 @@ async def seed_demo_data(db: AsyncSession, *, tenant_id: UUID, user_id: UUID) ->
                 "quantity": qty,
                 "unit_price": float(prod.price),
                 "discount_percentage": 0.0,
-                "tax_percentage": float(prod.tax_percentage or 21),
+                "tax_percentage": float(prod.tax_percentage) if prod.tax_percentage is not None else 21.0,
             }
 
         # Facturas EMITIDAS demo (serie no fiscal "DEMO-"), repartidas en el

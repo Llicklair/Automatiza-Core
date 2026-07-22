@@ -358,7 +358,7 @@ async def build_libro_registro_csv(
                 base_line = qty * uprice
                 if discount:
                     base_line -= base_line * discount / 100
-                rate = float(line.tax_percentage or 21)
+                rate = float(line.tax_percentage) if line.tax_percentage is not None else 21.0
                 quota_line = base_line * rate / 100
                 writer.writerow(
                     [

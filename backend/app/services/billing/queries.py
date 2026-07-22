@@ -186,7 +186,7 @@ def _build_invoice_data(
                 "description": line.description or "",
                 "quantity": float(line.quantity or 1),
                 "unit_price": float(line.unit_price or 0),
-                "tax_percentage": float(line.tax_percentage or 21),
+                "tax_percentage": float(line.tax_percentage) if line.tax_percentage is not None else 21.0,
                 "total": float(line.total or 0),
             }
             for line in (invoice.lines or [])

@@ -450,7 +450,8 @@ async def _regenerate_ai_invoice_pdf(
     from app.services.pdf import generate_invoice_pdf
 
     base = float(extracted_data.get("amount_base") or 0)
-    vat_rate = float(extracted_data.get("vat_rate") or 21)
+    _vr = extracted_data.get("vat_rate")
+    vat_rate = float(_vr) if _vr not in (None, "") else 21.0
     tax = round(base * vat_rate / 100, 2)
     total = round(base + tax, 2)
     task_id_str = str(doc.task_id) if doc.task_id else ""
