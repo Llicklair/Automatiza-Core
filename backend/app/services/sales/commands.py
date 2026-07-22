@@ -550,6 +550,10 @@ async def _deduct_stock_for_albaran(db: AsyncSession, note: DeliveryNote, user_i
         product = product_res.scalar_one_or_none()
         if product is None:
             continue
+        # Un SERVICIO (tintorería: limpieza, planchado…) no tiene stock físico:
+        # ni genera movimiento ni puede bloquear la entrega por "insuficiente".
+        if (product.item_type or "product") == "service":
+            continue
         new_stock = int(product.stock_quantity) - qty
         if new_stock < 0:
             raise ValueError(
@@ -637,6 +641,10 @@ async def _revert_stock_for_albaran(db: AsyncSession, note: DeliveryNote, user_i
         )
         product = product_res.scalar_one_or_none()
         if product is None:
+            continue
+        # Un SERVICIO (tintorería: limpieza, planchado…) no tiene stock físico:
+        # ni genera movimiento ni puede bloquear la entrega por "insuficiente".
+        if (product.item_type or "product") == "service":
             continue
         new_stock = int(product.stock_quantity) + qty
         product.stock_quantity = new_stock

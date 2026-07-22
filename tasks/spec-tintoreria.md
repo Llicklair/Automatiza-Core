@@ -69,6 +69,36 @@ repo como vertical activable por tenant, sin fork._
 - "Entregar y cobrar": vuelca las líneas del albarán al TPV → factura
   simplificada F2 con su registro VeriFactu (todo eso ya existe).
 
+## Ampliación (2026-07-22, segunda conversación con Marcos)
+
+### Hechas ya
+- **Servicios sin stock** ✅: una tintorería vende SERVICIOS (`item_type=service`,
+  ya existía en el modelo). El descuento/reversión de stock del albarán ahora
+  los ignora — antes "entregar" un albarán de servicios reventaba con "stock
+  insuficiente" (bug cazado y testeado).
+- **iPad/tablet** ✅ por diseño: el modo mostrador es una página web táctil
+  (botones grandes) — desde el iPad se abre el navegador contra la app
+  (LAN HTTPS con el CA, o el servidor del kit `deploy/` con TLS real, que es
+  lo recomendado para Pascual).
+
+### Tandas nuevas
+- **T7 — Albaranes ↔ Facturas muchos-a-muchos (M)**: tabla de enlace
+  `invoice_delivery_notes`; seleccionar N albaranes de un cliente → "Facturar"
+  (una factura agrupa varios albaranes: caso hotel/restaurante a fin de mes) y
+  una factura puede colgar de varios albaranes y viceversa. Vista de qué
+  albaranes están facturados y cuáles no.
+- **T8 — Albaranes modificables (S/M)**: editar líneas/notas/cliente de un
+  albarán no entregado (con guardas: entregado o facturado → solo rectificar).
+- **T9 — Import/export masivo (S/M)**: catálogo de servicios con iconos por
+  CSV (el import de productos ya existe — añadir columna icon), clientes ya
+  importables; dataset "albaranes" en el export Excel del asistente y en CSV.
+
+### Pregunta abierta para Pascual
+- **"Distintos tipos de clientes en el albarán"** — hipótesis: particular vs
+  EMPRESA (hoteles/restaurantes con albaranes acumulados y factura mensual
+  agrupada, lo que conecta con T7; quizá tarifas distintas por tipo). El campo
+  `client_type` ya existe en el cliente. VALIDAR qué quiso decir exactamente.
+
 ## Asunciones a validar ANTES de construir
 
 1. Estados exactos: ¿`recibido / en proceso / listo / entregado` basta? ¿Hace

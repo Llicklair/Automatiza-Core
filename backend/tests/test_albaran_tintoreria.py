@@ -93,6 +93,69 @@ class TestEstadosTintoreria:
         await db.refresh(product)
         assert float(product.stock_quantity) == 8.0  # una sola vez
 
+    async def test_servicios_no_bloquean_entrega_ni_tocan_stock(self, db, seed_tenant_and_user):
+        # Una tintorería vende SERVICIOS (limpieza, planchado) sin stock físico.
+        # Antes, entregar un albarán con un servicio (stock 0) reventaba con
+        # "Stock insuficiente"; y anular sumaba stock a un servicio jamás
+        # descontado. Ambos caminos deben ignorar item_type="service".
+        tenant, user, _t = seed_tenant_and_user
+        cli = Client(tenant_id=tenant.id, name="Cliente Servicios")
+        db.add(cli)
+        await db.flush()
+        servicio = Product(tenant_id=tenant.id, name="Limpieza traje", item_type="service", price=12, stock_quantity=0)
+        producto = Product(tenant_id=tenant.id, name="Quitamanchas", item_type="product", price=5, stock_quantity=10)
+        db.add_all([servicio, producto])
+        await db.flush()
+        note = DeliveryNote(
+            tenant_id=tenant.id,
+            client_id=cli.id,
+            albaran_number="ALB-T-SRV",
+            date=datetime(2026, 7, 22, tzinfo=UTC).date(),
+            status="listo",
+            amount_base=Decimal("29.00"),
+            tax_amount=Decimal("6.09"),
+            amount_total=Decimal("35.09"),
+        )
+        db.add(note)
+        await db.flush()
+        db.add_all(
+            [
+                DeliveryNoteLine(
+                    albaran_id=note.id,
+                    product_id=servicio.id,
+                    description="Limpieza traje",
+                    quantity=Decimal("2"),
+                    unit_price=Decimal("12.00"),
+                    tax_percentage=Decimal("21.00"),
+                    total=Decimal("29.04"),
+                ),
+                DeliveryNoteLine(
+                    albaran_id=note.id,
+                    product_id=producto.id,
+                    description="Quitamanchas",
+                    quantity=Decimal("1"),
+                    unit_price=Decimal("5.00"),
+                    tax_percentage=Decimal("21.00"),
+                    total=Decimal("6.05"),
+                ),
+            ]
+        )
+        await db.commit()
+
+        # La entrega NO revienta pese al servicio con stock 0.
+        await update_albaran_status(note.id, tenant.id, "delivered", db, user_id=user.id)
+        await db.refresh(servicio)
+        await db.refresh(producto)
+        assert float(servicio.stock_quantity) == 0.0  # intacto
+        assert float(producto.stock_quantity) == 9.0  # 10 - 1
+
+        # Anular restaura SOLO el producto físico.
+        await update_albaran_status(note.id, tenant.id, "anulado", db, user_id=user.id)
+        await db.refresh(servicio)
+        await db.refresh(producto)
+        assert float(servicio.stock_quantity) == 0.0
+        assert float(producto.stock_quantity) == 10.0
+
     async def test_estado_invalido_rechazado(self, db, seed_tenant_and_user):
         tenant, user, _t = seed_tenant_and_user
         note, _ = await _seed_albaran(db, tenant.id)
