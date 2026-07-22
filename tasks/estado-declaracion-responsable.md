@@ -73,6 +73,42 @@ Guardas de expedición centralizadas en `ensure_verifactu_on_expedition()`
 | 16 | Export accesible: `GET /verifactu/config/export` (json/xml, admin, evento EXPORTACION) + pestaña "Exportación" en Config › Verifactu |
 | 17 | Los 8 `VERIFACTU_SIF_*` declarados en Settings — el `.env` surte efecto en la declaración |
 
+## Re-auditorías adversariales (2026-07-21/22) — 3 rondas, todo cerrado
+
+Tras cerrar P1-P3/P5 se corrieron DOS re-audits adversariales (auditores con
+mandato de refutar). Resultado y cierres:
+
+**Ronda 2** (commit `591312b4`): 3 bloqueantes nuevos, cerrados:
+- **B1** la tool del agente `update_invoice_status` expedía sin encadenar
+  (mutaba status + commit directo) → ahora delega 100% en el chokepoint
+  `commands.update_status`.
+- **B2** la misma tool anulaba facturas con registro → bloqueado vía chokepoint.
+- **B3** `create_rectificativa` con `or 21`: `Decimal('0.00')` falsy → una
+  rectificativa de EXENTA nacía con 21% inventado y se encadenaba → coalescing
+  `is not None`, hereda `exencion_causa` e `is_demo`.
+
+**Ronda 3** (commit `027a0627`): el barrido de la clase `or 21` estaba
+incompleto — cerrado entero:
+- **B3-bis** `convert_to_invoice` (presupuesto→factura) persistía exentas al
+  21% → contaminaba la cadena. Arreglado + 8 sitios más de la misma clase
+  (Facturae, libro fiscal, import, PDF, OCR, bulk, seed).
+- **M5** rectificativa de original sin líneas nacía a 0,00 € y la idempotencia
+  bloqueaba la buena → línea sintética desde cabecera.
+- **M6** el camino de aprobación fabricaba facturas a mano (count()+1 sin lock,
+  serie paralela FAC-) → delega en `commands.create_invoice`.
+- **Candado permanente**: `test_gate_sin_coercion_falsy_or21` escanea
+  `backend/app` y FALLA si el patrón se reintroduce.
+
+**Notas del juez ACEPTADAS y documentadas** (riesgo bajo, sin acción
+obligatoria antes de la firma): `create_rectificativa` no filtra facturas
+`received`; destinatario solo NIF español (sin rama `IDOtro`); `NIFObligado`
+vacío en eventos de tenant sin NIF; TRUNCATE no cubierto por triggers FOR EACH
+ROW; reescritura total de cadena indetectable sin ancla externa (inherente
+hasta que la remisión P4 dé anclaje en AEAT); backfill con huso +00:00 y tipos
+hardcodeados; `run_recurring` encadena el borrador (sobre-encadena, no omite);
+export XML aborta entero si un registro histórico está incompleto (debería
+degradar por registro).
+
 ## No bloqueantes (recomendados, defendibles de posponer)
 
 - `RegistroEvento` XML ap. 5 en el export (eventos ya se conservan íntegros).
