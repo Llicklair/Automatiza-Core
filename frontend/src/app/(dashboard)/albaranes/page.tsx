@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Plus, Loader2, FileText, Trash2, Download, FileEdit, Search } from "lucide-react";
+import { Plus, Loader2, FileText, Trash2, Download, FileEdit, Search, Printer } from "lucide-react";
 import { useAlbaranes, STATUS_COLORS, fmt } from "./_hooks/useAlbaranes";
 import { AlbaranModal } from "./_components/AlbaranModal";
 import { PageContainer } from "@/components/shared/PageContainer";
@@ -13,7 +13,7 @@ export default function AlbaranesPage() {
         loading, search, setSearch, filterStatus, setFilterStatus,
         showModal, setShowModal, saving,
         clientName, setClientName, date, setDate, notes, setNotes, lines, setLines,
-        resetModal, handleCreate, handleDelete, handleStatusChange, handleDownloadPdf, handleConvertToInvoice,
+        resetModal, handleCreate, handleDelete, handleStatusChange, handleDownloadPdf, handleConvertToInvoice, handlePrintTicket,
         filtered,
     } = useAlbaranes();
 
@@ -48,7 +48,11 @@ export default function AlbaranesPage() {
                     <option value="">{t("filter.allStatuses")}</option>
                     <option value="draft">{t("status.draft")}</option>
                     <option value="confirmed">{t("status.confirmed")}</option>
+                    <option value="recibido">{t("status.recibido")}</option>
+                    <option value="en_proceso">{t("status.en_proceso")}</option>
+                    <option value="listo">{t("status.listo")}</option>
                     <option value="delivered">{t("status.delivered")}</option>
+                    <option value="anulado">{t("status.anulado")}</option>
                 </select>
             </div>
 
@@ -92,12 +96,21 @@ export default function AlbaranesPage() {
                                                 >
                                                     <option value="draft">{t("status.draft")}</option>
                                                     <option value="confirmed">{t("status.confirmed")}</option>
+                                                    <option value="recibido">{t("status.recibido")}</option>
+                                                    <option value="en_proceso">{t("status.en_proceso")}</option>
+                                                    <option value="listo">{t("status.listo")}</option>
                                                     <option value="delivered">{t("status.delivered")}</option>
+                                                    <option value="anulado">{t("status.anulado")}</option>
                                                 </select>
                                             </td>
                                             <td className="px-6 py-4 text-right font-medium text-foreground">{fmt(albaran.amount_total)}</td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button
+                                                        onClick={() => handlePrintTicket(albaran.id)}
+                                                        className="p-1.5 rounded-lg text-muted-foreground hover:text-cyan-400 hover:bg-cyan-500/10 transition-all"
+                                                        title={t("actions.printTicket")}
+                                                    ><Printer className="w-3.5 h-3.5" /></button>
                                                     <button
                                                         onClick={() => handleDownloadPdf(albaran.id)}
                                                         className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"

@@ -5389,6 +5389,10 @@
       "allStatuses": "All statuses"
     },
     "status": {
+      "recibido": "Received",
+      "en_proceso": "In progress",
+      "listo": "Ready for pickup",
+      "anulado": "Cancelled",
       "draft": "Draft",
       "confirmed": "Confirmed",
       "delivered": "Delivered"
@@ -5408,6 +5412,7 @@
     },
     "actions": {
       "downloadPdf": "Download PDF",
+      "printTicket": "Print receipt (ticket)",
       "convertToInvoice": "Convert to invoice"
     },
     "delete": {

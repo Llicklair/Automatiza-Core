@@ -5389,6 +5389,10 @@
       "allStatuses": "Todos los estados"
     },
     "status": {
+      "recibido": "Recibido",
+      "en_proceso": "En proceso",
+      "listo": "Listo para recoger",
+      "anulado": "Anulado",
       "draft": "Borrador",
       "confirmed": "Confirmado",
       "delivered": "Entregado"
@@ -5408,6 +5412,7 @@
     },
     "actions": {
       "downloadPdf": "Descargar PDF",
+      "printTicket": "Imprimir resguardo (ticket)",
       "convertToInvoice": "Convertir a Factura"
     },
     "delete": {

@@ -39,7 +39,12 @@ from app.services.sales.queries import _get_quote_or_raise, _quote_query_with_re
 
 logger = logging.getLogger(__name__)
 
-VALID_STATUSES = ("draft", "confirmed", "delivered")
+# Clasico: draft -> confirmed -> delivered. Vertical tintoreria (mostrador):
+# recibido -> en_proceso -> listo -> delivered (entregado), y anulado terminal.
+# Transiciones laxas a proposito (correcciones de mostrador); el stock es lo
+# que se protege: descuenta al confirmar O entregar (idempotente) y revierte
+# al anular o volver a draft.
+VALID_STATUSES = ("draft", "confirmed", "recibido", "en_proceso", "listo", "delivered", "anulado")
 
 # ---------------------------------------------------------------------------
 # client commands
@@ -672,13 +677,19 @@ async def update_albaran_status(
     old_status = note.status
     note.status = new_status
 
-    if new_status == "confirmed" and old_status != "confirmed":
-        # Status sube a confirmed → descontar stock (idempotente).
+    if new_status in ("confirmed", "delivered") and old_status not in ("confirmed", "delivered"):
+        # Entra en un estado con efectos de stock → descontar (idempotente).
+        # En el flujo tintoreria no hay "confirmed": el descuento ocurre al entregar.
         await _deduct_stock_for_albaran(db, note, user_id)
-    elif old_status in ("confirmed", "delivered") and new_status == "draft":
-        # Status baja a draft tras haber confirmado → revertir stock con
-        # movimiento entrada compensatorio (idempotente).
+    elif old_status in ("confirmed", "delivered") and new_status in ("draft", "anulado"):
+        # Deshace (a borrador) o anula tras haber descontado → revertir stock
+        # con movimiento entrada compensatorio (idempotente).
         await _revert_stock_for_albaran(db, note, user_id)
+
+    # Registro de la entrega (quien y cuando) — el resguardo queda saldado.
+    if new_status == "delivered" and old_status != "delivered":
+        note.delivered_at = datetime.now(UTC)
+        note.delivered_by = user_id
 
     await db.commit()
     await db.refresh(note)

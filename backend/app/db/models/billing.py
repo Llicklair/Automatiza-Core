@@ -336,8 +336,13 @@ class DeliveryNote(Base):
     client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id"), nullable=True)
     albaran_number = Column(String(50), nullable=False)
     date = Column(Date, nullable=False, default=lambda: __import__("datetime").date.today())
-    status = Column(String(20), nullable=False, default="draft")  # draft, confirmed, delivered
+    # Estados: draft, confirmed, delivered (clasico) + ciclo tintoreria:
+    # recibido, en_proceso, listo (delivered = entregado) y anulado (terminal).
+    status = Column(String(20), nullable=False, default="draft")
     notes = Column(Text, nullable=True)
+    # Registro de la entrega (vertical tintoreria: el cliente recoge con el resguardo).
+    delivered_at = Column(DateTime(timezone=True), nullable=True)
+    delivered_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     amount_base = Column(Numeric(10, 2), nullable=False, default=0)
     tax_amount = Column(Numeric(10, 2), nullable=False, default=0)
     amount_total = Column(Numeric(10, 2), nullable=False, default=0)

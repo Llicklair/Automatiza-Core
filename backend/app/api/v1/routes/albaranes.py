@@ -99,6 +99,26 @@ async def delete_albaran(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
+@router.get("/{albaran_id}/ticket")
+@limiter.limit("60/minute")
+async def get_albaran_ticket(
+    request: Request,
+    albaran_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Ticket-resguardo 80 mm del albarán (vertical tintorería): HTML
+    autocontenido con QR del número para localizarlo al recoger. Imprimible en
+    térmica de TPV o impresora normal."""
+    from app.services.sales.albaran_ticket import build_albaran_ticket_html
+
+    try:
+        html = await build_albaran_ticket_html(albaran_id, current_user.tenant_id, db)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return Response(content=html, media_type="text/html; charset=utf-8")
+
+
 @router.get("/{albaran_id}/pdf")
 @limiter.limit("30/minute")
 async def get_albaran_pdf(

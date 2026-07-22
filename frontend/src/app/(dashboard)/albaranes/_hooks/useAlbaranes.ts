@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { printTicket } from "@/lib/print/ticket";
+import { getPrinterSettings } from "@/lib/print/printerSettings";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
@@ -15,9 +17,13 @@ export type LineForm = { description: string; quantity: string; unit_price: stri
 export const emptyLine = (): LineForm => ({ description: "", quantity: "1", unit_price: "0", tax_percentage: "21" });
 
 export const STATUS_COLORS: Record<string, string> = {
-    draft:     "text-muted-foreground bg-muted border-border",
-    confirmed: "text-primary bg-primary/10 border-primary/20",
-    delivered: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20",
+    draft:      "text-muted-foreground bg-muted border-border",
+    confirmed:  "text-primary bg-primary/10 border-primary/20",
+    recibido:   "text-sky-400 bg-sky-400/10 border-sky-400/20",
+    en_proceso: "text-amber-400 bg-amber-400/10 border-amber-400/20",
+    listo:      "text-violet-400 bg-violet-400/10 border-violet-400/20",
+    delivered:  "text-emerald-400 bg-emerald-400/10 border-emerald-400/20",
+    anulado:    "text-rose-400 bg-rose-400/10 border-rose-400/20",
 };
 
 export const fmt = (n: number) => n.toLocaleString("es-ES", { style: "currency", currency: "EUR" });
@@ -90,6 +96,17 @@ export function useAlbaranes() {
         } catch (e: unknown) { toast.error(e instanceof Error ? e.message : t("toasts.unknownError")); }
     };
 
+    // Ticket-resguardo 80 mm (tintorería): imprime en térmica o impresora normal.
+    const handlePrintTicket = async (id: string) => {
+        try {
+            const html = await api.albaranes.ticketHtml(id);
+            const settings = getPrinterSettings();
+            await printTicket(html, { silent: false, deviceName: settings.deviceName });
+        } catch (e) {
+            console.error("albaranes/printTicket", e);
+        }
+    };
+
     const handleDownloadPdf = (id: string) => {
         const token = getToken();
         const base = process.env.NEXT_PUBLIC_API_URL || "";
@@ -115,7 +132,7 @@ export function useAlbaranes() {
         albaranes, loading, search, setSearch, filterStatus, setFilterStatus,
         showModal, setShowModal, saving,
         clientName, setClientName, date, setDate, notes, setNotes, lines, setLines,
-        resetModal, handleCreate, handleDelete, handleStatusChange, handleDownloadPdf, handleConvertToInvoice,
+        resetModal, handleCreate, handleDelete, handleStatusChange, handleDownloadPdf, handleConvertToInvoice, handlePrintTicket,
         filtered,
     };
 }

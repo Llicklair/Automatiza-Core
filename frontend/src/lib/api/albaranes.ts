@@ -1,4 +1,4 @@
-import { request } from "./client";
+import { request, fetchText } from "./client";
 
 export interface DeliveryNoteLine {
     id: string;
@@ -16,7 +16,7 @@ export interface DeliveryNote {
     client_id: string | null;
     albaran_number: string;
     date: string;
-    status: "draft" | "confirmed" | "delivered";
+    status: "draft" | "confirmed" | "recibido" | "en_proceso" | "listo" | "delivered" | "anulado";
     notes: string | null;
     amount_base: number;
     tax_amount: number;
@@ -38,6 +38,8 @@ export const albaranes = {
     get: (id: string) => request<DeliveryNote>(`/api/v1/albaranes/${id}`),
     create: (data: DeliveryNoteCreate) => request<DeliveryNote>("/api/v1/albaranes", { method: "POST", body: JSON.stringify(data) }),
     updateStatus: (id: string, status: string) => request<DeliveryNote>(`/api/v1/albaranes/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
+    /** HTML del ticket-resguardo 80 mm (vertical tintorería). */
+    ticketHtml: (id: string): Promise<string> => fetchText(`/api/v1/albaranes/${id}/ticket`),
     delete: (id: string) => request(`/api/v1/albaranes/${id}`, { method: "DELETE" }),
     pdfUrl: (id: string) => `/api/v1/albaranes/${id}/pdf`,
 };
