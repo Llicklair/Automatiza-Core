@@ -133,6 +133,7 @@ export function useAlbaranes() {
         showModal, setShowModal, saving,
         clientName, setClientName, date, setDate, notes, setNotes, lines, setLines,
         resetModal, handleCreate, handleDelete, handleStatusChange, handleDownloadPdf, handleConvertToInvoice, handlePrintTicket,
+        reload: loadData,
         filtered,
     };
 }

@@ -31,6 +31,9 @@ class Product(Base):
     name = Column(String(255), nullable=False)
     description = Column(Text)
     category = Column(String(100), index=True)
+    # Icono/emoji del catálogo táctil del mostrador (tintorería T3). Nullable:
+    # sin icono la UI muestra las iniciales.
+    icon = Column(String(8), nullable=True)
     location = Column(String(100), index=True)
     unit = Column(String(20), nullable=False, default="ud")
     price = Column(Numeric(10, 2), nullable=False, default=0)

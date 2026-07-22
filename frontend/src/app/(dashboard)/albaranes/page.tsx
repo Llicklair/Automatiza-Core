@@ -2,8 +2,10 @@
 
 import { useTranslations } from "next-intl";
 import { Plus, Loader2, FileText, Trash2, Download, FileEdit, Search, Printer } from "lucide-react";
+import { useState } from "react";
 import { useAlbaranes, STATUS_COLORS, fmt } from "./_hooks/useAlbaranes";
 import { AlbaranModal } from "./_components/AlbaranModal";
+import { MostradorModal } from "./_components/MostradorModal";
 import { PageContainer } from "@/components/shared/PageContainer";
 
 export default function AlbaranesPage() {
@@ -14,8 +16,10 @@ export default function AlbaranesPage() {
         showModal, setShowModal, saving,
         clientName, setClientName, date, setDate, notes, setNotes, lines, setLines,
         resetModal, handleCreate, handleDelete, handleStatusChange, handleDownloadPdf, handleConvertToInvoice, handlePrintTicket,
+        reload,
         filtered,
     } = useAlbaranes();
+    const [showMostrador, setShowMostrador] = useState(false);
 
     return (
         <PageContainer className="animate-in fade-in duration-500">
@@ -24,12 +28,20 @@ export default function AlbaranesPage() {
                     <h1 className="text-3xl font-bold text-foreground mb-1">{t("title")}</h1>
                     <p className="text-muted-foreground text-sm">{t("subtitle")}</p>
                 </div>
-                <button
-                    onClick={() => setShowModal(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary text-foreground rounded-lg transition-colors font-medium shadow-lg shadow-primary/20"
-                >
-                    <Plus className="w-4 h-4" /> {t("newAlbaran")}
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setShowMostrador(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg transition-colors font-medium shadow-lg shadow-cyan-500/20"
+                    >
+                        <Printer className="w-4 h-4" /> {t("mostrador.boton")}
+                    </button>
+                    <button
+                        onClick={() => setShowModal(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary text-foreground rounded-lg transition-colors font-medium shadow-lg shadow-primary/20"
+                    >
+                        <Plus className="w-4 h-4" /> {t("newAlbaran")}
+                    </button>
+                </div>
             </div>
 
             <div className="flex gap-3 flex-wrap">
@@ -138,6 +150,10 @@ export default function AlbaranesPage() {
                     </div>
                 )}
             </div>
+
+            {showMostrador && (
+                <MostradorModal onClose={() => setShowMostrador(false)} onCreated={reload} />
+            )}
 
             {showModal && (
                 <AlbaranModal

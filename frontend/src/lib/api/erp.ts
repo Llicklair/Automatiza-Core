@@ -118,6 +118,7 @@ export interface Product {
     name: string;
     description: string | null;
     category: string | null;
+    icon?: string | null;
     location: string | null;
     unit: string;
     price: number;
@@ -277,7 +278,7 @@ export interface RecurringInvoice {
 
 export const erp = {
     clients: {
-        list: (params?: { skip?: number; limit?: number; client_type?: string }) => {
+        list: (params?: { skip?: number; limit?: number; client_type?: string; q?: string }) => {
             const q = new URLSearchParams(params as Record<string, string>).toString();
             return request<Client[]>(`/api/v1/clients${q ? "?" + q : ""}`);
         },

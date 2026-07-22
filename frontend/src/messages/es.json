@@ -5380,6 +5380,27 @@
     }
   },
   "albaranes": {
+      "mostrador": {
+        "boton": "Modo mostrador",
+        "title": "Mostrador — nuevo resguardo",
+        "close": "Cerrar",
+        "buscarCliente": "Cliente: nombre, NIF o teléfono…",
+        "altaExpres": "Dar de alta cliente nuevo",
+        "nombre": "Nombre",
+        "telefono": "Teléfono",
+        "crear": "Crear",
+        "cambiar": "Cambiar",
+        "todas": "Todas",
+        "sinProductos": "No hay productos en el catálogo. Créalos en Inventario → Stock.",
+        "vacio": "Toca los productos del catálogo para añadirlos",
+        "notas": "Notas del encargo (mancha, urgencia, etc.)",
+        "total": "Total",
+        "generar": "Generar albarán e imprimir",
+        "creado": "Resguardo {number} generado",
+        "error": "No se pudo generar el albarán",
+        "printError": "Albarán creado, pero la impresión falló (reimprime desde la lista)",
+        "altaError": "No se pudo crear el cliente"
+      },
     "title": "Albaranes",
     "subtitle": "Gestión de albaranes y notas de entrega.",
     "newAlbaran": "Nuevo Albarán",

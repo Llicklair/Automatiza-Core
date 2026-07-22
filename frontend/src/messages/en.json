@@ -5380,6 +5380,27 @@
     }
   },
   "albaranes": {
+      "mostrador": {
+        "boton": "Counter mode",
+        "title": "Counter — new receipt",
+        "close": "Close",
+        "buscarCliente": "Client: name, tax ID or phone…",
+        "altaExpres": "Create new client",
+        "nombre": "Name",
+        "telefono": "Phone",
+        "crear": "Create",
+        "cambiar": "Change",
+        "todas": "All",
+        "sinProductos": "No products in the catalog. Create them in Inventory → Stock.",
+        "vacio": "Tap catalog products to add them",
+        "notas": "Order notes (stain, urgency, etc.)",
+        "total": "Total",
+        "generar": "Generate note & print",
+        "creado": "Receipt {number} generated",
+        "error": "Could not create the delivery note",
+        "printError": "Note created, but printing failed (reprint from the list)",
+        "altaError": "Could not create the client"
+      },
     "title": "Delivery notes",
     "subtitle": "Management of delivery notes and dispatch notes.",
     "newAlbaran": "New delivery note",

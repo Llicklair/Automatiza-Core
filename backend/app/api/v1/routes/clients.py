@@ -29,10 +29,11 @@ async def list_clients(
     skip: int = 0,
     limit: int = Query(default=50, le=200),
     client_type: str | None = None,
+    q: str | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return await svc.list_clients(db, current_user.tenant_id, skip=skip, limit=limit, client_type=client_type)
+    return await svc.list_clients(db, current_user.tenant_id, skip=skip, limit=limit, client_type=client_type, q=q)
 
 
 @router.get("/clients/{client_id}/loyalty-card/pdf", tags=["erp"])

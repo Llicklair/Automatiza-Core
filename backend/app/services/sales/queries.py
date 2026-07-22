@@ -39,10 +39,23 @@ async def list_clients(
     skip: int = 0,
     limit: int = 50,
     client_type: str | None = None,
+    q: str | None = None,
 ) -> list[Client]:
     query = select(Client).where(Client.tenant_id == tenant_id)
     if client_type:
         query = query.where(Client.client_type == client_type)
+    if q and q.strip():
+        # Buscador único del mostrador (tintorería T3): nombre, NIF, teléfono
+        # o email con un solo campo.
+        like = f"%{q.strip()}%"
+        query = query.where(
+            or_(
+                Client.name.ilike(like),
+                Client.nif.ilike(like),
+                Client.phone.ilike(like),
+                Client.email.ilike(like),
+            )
+        )
     query = query.order_by(desc(Client.created_at)).offset(skip).limit(limit)
     result = await db.execute(query)
     return list(result.scalars().all())
