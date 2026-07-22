@@ -138,6 +138,10 @@ _WRITE_TOOL_MARKERS = (
     "reconcile",
     "propose",
     "import",
+    # "export" PRODUCE el entregable pedido (fichero Excel/CSV/XML): sin él,
+    # "haz un excel con las facturas" → export_erp_data se clasificaba como
+    # lectura y daba falso "posible respuesta fabricada" (bug 2026-07-22).
+    "export",
 )
 
 

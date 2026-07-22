@@ -119,3 +119,14 @@ def test_write_tool_was_invoked_excludes_reads():
     assert write_tool_was_invoked(_msgs_tool("update_stock")) is True
     assert write_tool_was_invoked(_msgs_tool("list_payrolls")) is False
     assert write_tool_was_invoked(_msgs_tool("get_account_balance")) is False
+
+
+def test_export_excel_es_escritura_no_phantom():
+    # Regresion 2026-07-22: "haz un excel con las facturas" -> export_erp_data
+    # GENERA el fichero (el entregable pedido), pero "export" no estaba en los
+    # marcadores de escritura -> falso "posible respuesta fabricada" pese a que
+    # el Excel se creo de verdad.
+    is_err, _ = detect_failure(
+        _msgs_tool("export_erp_data"), "Excel generado con 42 facturas.", "genera un excel con las facturas"
+    )
+    assert is_err is False
