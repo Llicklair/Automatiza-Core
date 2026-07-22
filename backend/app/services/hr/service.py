@@ -37,6 +37,7 @@ from app.services.hr.commands import (
 )
 from app.services.hr.queries import (
     UPLOAD_DIR,
+    attendance_summary,
     # payroll reads
     build_payroll_pdf,
     calc_payroll,
@@ -92,6 +93,7 @@ __all__ = [
     "UPLOAD_DIR",
     "upsert_schedule",
     "clock_in",
+    "attendance_summary",
     "clock_out_attendance",
     "list_schedules",
     "get_employee_schedule",

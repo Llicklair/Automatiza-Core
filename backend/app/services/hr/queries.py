@@ -717,6 +717,41 @@ async def list_attendance(db: AsyncSession, tenant_id, date=None) -> list[dict]:
     return [_attendance_row(r) for r in result.scalars().all()]
 
 
+async def attendance_summary(db: AsyncSession, tenant_id, desde, hasta) -> list[dict]:
+    """Horas fichadas por empleado en el rango [desde, hasta] (ambos inclusive).
+
+    Suma solo los tramos CERRADOS (con `clock_out`); los abiertos se cuentan
+    aparte (`abiertos`) para que un fichaje olvidado no infle las horas.
+    Devuelve una fila por empleado ordenada por horas descendentes."""
+    result = await db.execute(
+        select(Attendance).where(
+            Attendance.tenant_id == tenant_id,
+            Attendance.date >= desde,
+            Attendance.date <= hasta,
+        )
+    )
+    por_emp: dict[str, dict] = {}
+    for r in result.scalars().all():
+        acc = por_emp.setdefault(
+            str(r.employee_id),
+            {"employee_id": str(r.employee_id), "minutos": 0, "_dias": set(), "tramos": 0, "abiertos": 0},
+        )
+        if r.clock_out is not None:
+            delta_min = (r.clock_out - r.clock_in).total_seconds() / 60
+            if delta_min > 0:
+                acc["minutos"] += int(delta_min)
+            acc["tramos"] += 1
+            acc["_dias"].add(str(r.date))
+        else:
+            acc["abiertos"] += 1
+    filas = []
+    for acc in por_emp.values():
+        dias = len(acc.pop("_dias"))
+        filas.append({**acc, "dias": dias, "horas": round(acc["minutos"] / 60, 2)})
+    filas.sort(key=lambda f: f["minutos"], reverse=True)
+    return filas
+
+
 async def get_currently_working(db: AsyncSession, tenant_id) -> list[dict]:
     """Return attendance records where clock_out IS NULL."""
     result = await db.execute(

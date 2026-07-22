@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useFormat } from "@/hooks/useFormat";
 import { api, Employee, AttendanceRecord } from "@/lib/api";
+import type { AttendanceSummaryRow } from "@/lib/api/hr";
 import { useToastStore } from "@/stores/toast";
 import { logError } from "@/lib/logger";
 import { usePolling } from "@/lib/hooks/usePolling";
@@ -40,6 +41,14 @@ export function useFichajes() {
     const [clockInEmpId, setClockInEmpId] = useState("");
     const [clockInNotes, setClockInNotes] = useState("");
     const [submitting, setSubmitting] = useState(false);
+    // Resumen de horas por empleado (registro de jornada): rango por defecto,
+    // del día 1 del mes actual a hoy.
+    const [sumDesde, setSumDesde] = useState(() => {
+        const n = new Date();
+        return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-01`;
+    });
+    const [sumHasta, setSumHasta] = useState(() => new Date().toISOString().slice(0, 10));
+    const [summary, setSummary] = useState<AttendanceSummaryRow[]>([]);
 
     const loadData = useCallback(async () => {
         try {
@@ -63,6 +72,22 @@ export function useFichajes() {
     }, [loadData]);
 
     usePolling(loadData, 60_000);
+
+    // Recarga el resumen al cambiar el rango y tras cada fichaje (todayRecords
+    // cambia de referencia en cada loadData).
+    useEffect(() => {
+        if (!sumDesde || !sumHasta || sumHasta < sumDesde) return;
+        api.hr.attendance
+            .summary(sumDesde, sumHasta)
+            .then(setSummary)
+            .catch((err) => logError("rrhh/fichajes.summary", err));
+    }, [sumDesde, sumHasta, todayRecords]);
+
+    const formatHoras = (minutos: number): string => {
+        const h = Math.floor(minutos / 60);
+        const m = minutos % 60;
+        return h > 0 ? `${h}h ${String(m).padStart(2, "0")}m` : `${m}m`;
+    };
 
     const handleClockIn = async () => {
         if (!clockInEmpId) return;
@@ -114,5 +139,6 @@ export function useFichajes() {
         submitting,
         handleClockIn, handleClockOut,
         getEmployee, isWorking, formatTime, formatDuration,
+        summary, sumDesde, setSumDesde, sumHasta, setSumHasta, formatHoras,
     };
 }

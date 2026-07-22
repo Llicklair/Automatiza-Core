@@ -1091,6 +1091,16 @@
       "clockOut": "Clock out",
       "todayLog": "Today's log ({n})",
       "noRecordsToday": "No clock-ins today.",
+      "summary": {
+        "title": "Hours summary per employee",
+        "from": "From",
+        "to": "To",
+        "days": "Days",
+        "tramos": "Entries",
+        "open": "Open",
+        "hours": "Hours",
+        "empty": "No closed clock-ins in the selected range"
+      },
       "inProgress": "In progress",
       "table": {
         "employee": "Employee",

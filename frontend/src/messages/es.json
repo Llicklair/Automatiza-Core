@@ -1091,6 +1091,16 @@
       "clockOut": "Salida",
       "todayLog": "Registro de hoy ({n})",
       "noRecordsToday": "Sin fichajes hoy.",
+      "summary": {
+        "title": "Resumen de horas por empleado",
+        "from": "Desde",
+        "to": "Hasta",
+        "days": "Días",
+        "tramos": "Tramos",
+        "open": "En curso",
+        "hours": "Horas",
+        "empty": "Sin fichajes cerrados en el rango seleccionado"
+      },
       "inProgress": "En curso",
       "table": {
         "employee": "Empleado",

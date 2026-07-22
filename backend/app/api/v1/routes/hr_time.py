@@ -165,6 +165,30 @@ async def get_currently_working(
     return await svc.get_currently_working(db, current_user.tenant_id)
 
 
+@router.get("/attendance/summary")
+@limiter.limit("30/minute")
+async def attendance_summary(
+    request: Request,
+    desde: str,
+    hasta: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Horas fichadas por empleado en el rango [desde, hasta] (fechas ISO,
+    ambos inclusive). Solo suman los tramos cerrados; los abiertos se cuentan
+    aparte. Base del registro de jornada (RD-ley 8/2019)."""
+    from datetime import date as date_type
+
+    try:
+        d = date_type.fromisoformat(desde)
+        h = date_type.fromisoformat(hasta)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Fechas inválidas (usa YYYY-MM-DD)") from exc
+    if h < d:
+        raise HTTPException(status_code=400, detail="'hasta' debe ser posterior o igual a 'desde'")
+    return await svc.attendance_summary(db, current_user.tenant_id, d, h)
+
+
 @router.post("/attendance/clock-in", status_code=status.HTTP_201_CREATED)
 @limiter.limit("30/minute")
 async def clock_in(

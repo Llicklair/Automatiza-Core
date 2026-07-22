@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Timer, Plus, LogOut, Loader2, UserCheck } from "lucide-react";
+import { Timer, Plus, LogOut, Loader2, UserCheck, BarChart3 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +31,7 @@ export function FichajesPanel() {
         submitting,
         handleClockIn, handleClockOut,
         getEmployee, formatTime, formatDuration,
+        summary, sumDesde, setSumDesde, sumHasta, setSumHasta, formatHoras,
     } = useFichajes();
 
     if (isLoading) {
@@ -150,6 +151,74 @@ export function FichajesPanel() {
                                                     {formatDuration(r.clock_in, r.clock_out)}
                                                 </td>
                                                 <td className="px-4 py-3 text-muted-foreground text-xs">{r.notes || "—"}</td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Resumen de horas por empleado (registro de jornada) */}
+            <Card>
+                <CardHeader className="pb-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <CardTitle className="text-sm font-medium flex items-center gap-2">
+                            <BarChart3 className="w-4 h-4 text-muted-foreground" />
+                            {t("fichajes.summary.title")}
+                        </CardTitle>
+                        <div className="flex items-center gap-2">
+                            <Input
+                                type="date"
+                                value={sumDesde}
+                                onChange={(e) => setSumDesde(e.target.value)}
+                                className="h-8 w-auto text-xs"
+                                aria-label={t("fichajes.summary.from")}
+                            />
+                            <span className="text-xs text-muted-foreground">→</span>
+                            <Input
+                                type="date"
+                                value={sumHasta}
+                                onChange={(e) => setSumHasta(e.target.value)}
+                                className="h-8 w-auto text-xs"
+                                aria-label={t("fichajes.summary.to")}
+                            />
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                    {summary.length === 0 ? (
+                        <p className="text-sm text-muted-foreground px-6 pb-6">{t("fichajes.summary.empty")}</p>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="border-b border-border text-xs text-muted-foreground">
+                                        <th className="px-6 py-3 text-left font-medium">{t("fichajes.table.employee")}</th>
+                                        <th className="px-4 py-3 text-right font-medium">{t("fichajes.summary.days")}</th>
+                                        <th className="px-4 py-3 text-right font-medium">{t("fichajes.summary.tramos")}</th>
+                                        <th className="px-4 py-3 text-right font-medium">{t("fichajes.summary.open")}</th>
+                                        <th className="px-4 py-3 text-right font-medium">{t("fichajes.summary.hours")}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {summary.map((row) => {
+                                        const emp = getEmployee(row.employee_id);
+                                        return (
+                                            <tr key={row.employee_id} className="border-b border-border last:border-0 hover:bg-muted/30">
+                                                <td className="px-6 py-3 text-foreground font-medium">{emp?.name ?? "—"}</td>
+                                                <td className="px-4 py-3 text-right text-muted-foreground tabular-nums">{row.dias}</td>
+                                                <td className="px-4 py-3 text-right text-muted-foreground tabular-nums">{row.tramos}</td>
+                                                <td className="px-4 py-3 text-right tabular-nums">
+                                                    {row.abiertos > 0
+                                                        ? <span className="text-emerald-400">{row.abiertos}</span>
+                                                        : <span className="text-muted-foreground">—</span>}
+                                                </td>
+                                                <td className="px-4 py-3 text-right text-foreground font-semibold tabular-nums">
+                                                    {formatHoras(row.minutos)}
+                                                </td>
                                             </tr>
                                         );
                                     })}

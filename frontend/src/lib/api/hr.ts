@@ -112,6 +112,15 @@ export interface LeaveRequest {
     created_at: string;
 }
 
+export interface AttendanceSummaryRow {
+    employee_id: string;
+    minutos: number;
+    horas: number;
+    dias: number;
+    tramos: number;
+    abiertos: number;
+}
+
 export const hr = {
     employees: {
         list: () => request<Employee[]>("/api/v1/hr/employees"),
@@ -168,6 +177,8 @@ export const hr = {
         list: (date?: string) =>
             request<AttendanceRecord[]>(`/api/v1/hr/attendance${date ? `?date=${date}` : ""}`),
         now: () => request<AttendanceRecord[]>("/api/v1/hr/attendance/now"),
+        summary: (desde: string, hasta: string) =>
+            request<AttendanceSummaryRow[]>(`/api/v1/hr/attendance/summary?desde=${desde}&hasta=${hasta}`),
         clockIn: (employee_id: string, notes?: string) =>
             request<AttendanceRecord>("/api/v1/hr/attendance/clock-in", {
                 method: "POST",
