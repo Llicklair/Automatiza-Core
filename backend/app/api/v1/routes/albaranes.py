@@ -10,7 +10,9 @@ from app.api.v1.schemas.albaranes import (
     DeliveryNoteCreate,
     DeliveryNoteResponse,
     DeliveryNoteStatusUpdate,
+    FacturarAlbaranesRequest,
 )
+from app.api.v1.schemas.erp import InvoiceResponse
 from app.core.dependencies import get_current_user
 from app.db.base import get_db
 from app.db.models.models import User
@@ -46,6 +48,23 @@ async def create_albaran(
         lines=payload.lines,
         db=db,
     )
+
+
+@router.post("/facturar", response_model=InvoiceResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("30/minute")
+async def facturar_albaranes(
+    request: Request,
+    payload: FacturarAlbaranesRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Factura agrupada (tintorería T7): N albaranes del mismo cliente → una
+    factura BORRADOR con enlaces N:M. Se revisa y emite desde Facturas (allí
+    encadena VeriFactu). Un albarán ya facturado no se puede volver a facturar."""
+    try:
+        return await svc.facturar_albaranes(payload.albaran_ids, current_user.tenant_id, db, user_id=current_user.id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/{albaran_id}", response_model=DeliveryNoteResponse)

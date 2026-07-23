@@ -271,10 +271,15 @@ async def list_albaranes(tenant_id: UUID, db: AsyncSession) -> list:
     result = await db.execute(
         select(DeliveryNote)
         .where(DeliveryNote.tenant_id == tenant_id)
-        .options(selectinload(DeliveryNote.lines))
+        .options(selectinload(DeliveryNote.lines), selectinload(DeliveryNote.invoice_links))
         .order_by(desc(DeliveryNote.created_at))
     )
-    return list(result.scalars().all())
+    notes = list(result.scalars().all())
+    # Atributo transitorio para la respuesta (T7): con qué facturas está
+    # enlazado cada albarán (el frontend pinta "Facturado" y bloquea reselección).
+    for n in notes:
+        n.invoice_ids = [link.invoice_id for link in n.invoice_links]
+    return notes
 
 
 async def get_albaran(albaran_id: UUID, tenant_id: UUID, db: AsyncSession) -> DeliveryNote:

@@ -51,4 +51,10 @@ class DeliveryNoteResponse(BaseModel):
     amount_total: float
     created_at: datetime | None = None
     lines: list[DeliveryNoteLineResponse] = []
+    # T7: facturas enlazadas (lo puebla list_albaranes; vacío en otras rutas).
+    invoice_ids: list[UUID] = []
     model_config = {"from_attributes": True}
+
+
+class FacturarAlbaranesRequest(BaseModel):
+    albaran_ids: list[UUID]

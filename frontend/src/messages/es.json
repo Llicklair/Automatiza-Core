@@ -5381,6 +5381,11 @@
     }
   },
   "albaranes": {
+      "facturar": {
+        "boton": "Facturar seleccionados ({n})",
+        "seleccionar": "Seleccionar para facturar",
+        "facturado": "Facturado"
+      },
       "mostrador": {
         "boton": "Modo mostrador",
         "title": "Mostrador — nuevo resguardo",
@@ -5443,6 +5448,8 @@
       "message": "¿Eliminar este albarán? Esta acción no se puede deshacer."
     },
     "toasts": {
+        "facturarOk": "Factura {number} creada (borrador) — revísala en Ventas → Facturas",
+        "facturarError": "No se pudo crear la factura agrupada",
       "needLine": "Añade al menos una línea con descripción.",
       "created": "Albarán creado correctamente",
       "createError": "Error creando albarán: {error}",

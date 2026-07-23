@@ -5381,6 +5381,11 @@
     }
   },
   "albaranes": {
+      "facturar": {
+        "boton": "Invoice selected ({n})",
+        "seleccionar": "Select for invoicing",
+        "facturado": "Invoiced"
+      },
       "mostrador": {
         "boton": "Counter mode",
         "title": "Counter — new receipt",
@@ -5443,6 +5448,8 @@
       "message": "Delete this delivery note? This action cannot be undone."
     },
     "toasts": {
+        "facturarOk": "Invoice {number} created (draft) — review it in Sales → Invoices",
+        "facturarError": "Could not create the grouped invoice",
       "needLine": "Add at least one line with a description.",
       "created": "Delivery note created successfully",
       "createError": "Error creating delivery note: {error}",

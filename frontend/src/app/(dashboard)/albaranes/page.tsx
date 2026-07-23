@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Plus, Loader2, FileText, Trash2, Download, FileEdit, Search, Printer } from "lucide-react";
+import { Plus, Loader2, FileText, Trash2, Download, FileEdit, Search, Printer, Receipt } from "lucide-react";
 import { useState } from "react";
 import { useAlbaranes, STATUS_COLORS, fmt } from "./_hooks/useAlbaranes";
 import { AlbaranModal } from "./_components/AlbaranModal";
@@ -16,10 +16,25 @@ export default function AlbaranesPage() {
         showModal, setShowModal, saving,
         clientName, setClientName, date, setDate, notes, setNotes, lines, setLines,
         resetModal, handleCreate, handleDelete, handleStatusChange, handleDownloadPdf, handleConvertToInvoice, handlePrintTicket,
+        handleFacturar,
         reload,
         filtered,
     } = useAlbaranes();
     const [showMostrador, setShowMostrador] = useState(false);
+    // T7: selección para la factura agrupada (solo albaranes facturables).
+    const [sel, setSel] = useState<Set<string>>(new Set());
+    const toggleSel = (id: string) =>
+        setSel(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    const facturarSeleccion = async () => {
+        if (sel.size === 0) return;
+        const ok = await handleFacturar(Array.from(sel));
+        if (ok) setSel(new Set());
+    };
 
     return (
         <PageContainer className="animate-in fade-in duration-500">
@@ -29,6 +44,14 @@ export default function AlbaranesPage() {
                     <p className="text-muted-foreground text-sm">{t("subtitle")}</p>
                 </div>
                 <div className="flex items-center gap-2">
+                    {sel.size > 0 && (
+                        <button
+                            onClick={facturarSeleccion}
+                            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors font-medium shadow-lg shadow-emerald-500/20"
+                        >
+                            <Receipt className="w-4 h-4" /> {t("facturar.boton", { n: sel.size })}
+                        </button>
+                    )}
                     <button
                         onClick={() => setShowMostrador(true)}
                         className="flex items-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg transition-colors font-medium shadow-lg shadow-cyan-500/20"
@@ -84,6 +107,7 @@ export default function AlbaranesPage() {
                         <table className="w-full text-sm text-left">
                             <thead className="bg-card text-muted-foreground border-b border-border">
                                 <tr>
+                                    <th className="px-3 py-4 w-8"></th>
                                     <th className="px-6 py-4 font-medium">{t("table.number")}</th>
                                     <th className="px-6 py-4 font-medium">{t("table.date")}</th>
                                     <th className="px-6 py-4 font-medium">{t("table.client")}</th>
@@ -97,7 +121,24 @@ export default function AlbaranesPage() {
                                     const stColor = STATUS_COLORS[albaran.status] || STATUS_COLORS.draft;
                                     return (
                                         <tr key={albaran.id} className="group hover:bg-accent/50 transition-colors">
-                                            <td className="px-6 py-4 font-mono text-primary font-medium">{albaran.albaran_number}</td>
+                                            <td className="px-3 py-4">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={sel.has(albaran.id)}
+                                                    disabled={albaran.status === "anulado" || (albaran.invoice_ids?.length ?? 0) > 0}
+                                                    onChange={() => toggleSel(albaran.id)}
+                                                    className="h-4 w-4 accent-emerald-500 disabled:opacity-30"
+                                                    aria-label={t("facturar.seleccionar")}
+                                                />
+                                            </td>
+                                            <td className="px-6 py-4 font-mono text-primary font-medium">
+                                                {albaran.albaran_number}
+                                                {(albaran.invoice_ids?.length ?? 0) > 0 && (
+                                                    <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-sans">
+                                                        {t("facturar.facturado")}
+                                                    </span>
+                                                )}
+                                            </td>
                                             <td className="px-6 py-4 text-foreground">{new Date(albaran.date).toLocaleDateString("es-ES")}</td>
                                             <td className="px-6 py-4 text-foreground">{albaran.client_id ? "—" : t("table.noClient")}</td>
                                             <td className="px-6 py-4">

@@ -107,6 +107,19 @@ export function useAlbaranes() {
         }
     };
 
+    // T7: factura agrupada de los albaranes seleccionados (mismo cliente).
+    const handleFacturar = async (ids: string[]): Promise<boolean> => {
+        try {
+            const inv = await api.albaranes.facturar(ids);
+            toast.success(t("toasts.facturarOk", { number: inv.invoice_number ?? inv.id.slice(0, 8) }));
+            await loadData();
+            return true;
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : t("toasts.facturarError"));
+            return false;
+        }
+    };
+
     const handleDownloadPdf = (id: string) => {
         const token = getToken();
         const base = process.env.NEXT_PUBLIC_API_URL || "";
@@ -133,6 +146,7 @@ export function useAlbaranes() {
         showModal, setShowModal, saving,
         clientName, setClientName, date, setDate, notes, setNotes, lines, setLines,
         resetModal, handleCreate, handleDelete, handleStatusChange, handleDownloadPdf, handleConvertToInvoice, handlePrintTicket,
+        handleFacturar,
         reload: loadData,
         filtered,
     };

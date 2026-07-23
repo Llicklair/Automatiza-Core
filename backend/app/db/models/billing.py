@@ -350,6 +350,28 @@ class DeliveryNote(Base):
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
     lines = relationship("DeliveryNoteLine", back_populates="delivery_note", cascade="all, delete-orphan")
     client = relationship("Client", foreign_keys=[client_id])
+    invoice_links = relationship("InvoiceDeliveryNote", cascade="all, delete-orphan")
+
+
+class InvoiceDeliveryNote(Base):
+    """Enlace N:M factura ↔ albarán (vertical tintorería T7).
+
+    Una factura puede agrupar varios albaranes (cliente empresa con factura a
+    fin de mes) y un albarán puede colgar de varias facturas (p. ej. la
+    rectificativa de su factura). El flujo "facturar albaranes" usa los enlaces
+    vivos para impedir el doble cobro.
+    """
+
+    __tablename__ = "invoice_delivery_notes"
+    __table_args__ = (UniqueConstraint("invoice_id", "albaran_id", name="uq_invoice_albaran"),)
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    invoice_id = Column(UUID(as_uuid=True), ForeignKey("invoices.id", ondelete="CASCADE"), nullable=False, index=True)
+    albaran_id = Column(
+        UUID(as_uuid=True), ForeignKey("delivery_notes.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
 
 class DeliveryNoteLine(Base):

@@ -38,7 +38,7 @@ _EMPLOYEE_ALLOWED_EXACT = frozenset(
         "/api/v1/products",
     }
 )
-_EMPLOYEE_DENIED_FRAGMENTS = ("/invoices",)
+_EMPLOYEE_DENIED_FRAGMENTS = ("/invoices", "/facturar")
 
 
 def _employee_can_access(path: str) -> bool:

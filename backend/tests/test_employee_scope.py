@@ -63,6 +63,11 @@ class TestEmployeeDenegado:
     async def test_verifactu_config(self, employee_client):
         assert (await employee_client.get("/api/v1/verifactu/config")).status_code == 403
 
+    async def test_facturar_albaranes_denegado(self, employee_client):
+        # Prefijo permitido (/albaranes) pero facturar NO es mostrador (T7).
+        resp = await employee_client.post("/api/v1/albaranes/facturar", json={"albaran_ids": []})
+        assert resp.status_code == 403
+
     async def test_prefijo_no_cuela_por_concatenacion(self, employee_client):
         # /api/v1/clientsX no debe tratarse como /api/v1/clients.
         resp = await employee_client.get("/api/v1/clientsX")

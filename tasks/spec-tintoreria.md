@@ -82,11 +82,12 @@ repo como vertical activable por tenant, sin fork._
   lo recomendado para Pascual).
 
 ### Tandas nuevas
-- **T7 — Albaranes ↔ Facturas muchos-a-muchos (M)**: tabla de enlace
-  `invoice_delivery_notes`; seleccionar N albaranes de un cliente → "Facturar"
-  (una factura agrupa varios albaranes: caso hotel/restaurante a fin de mes) y
-  una factura puede colgar de varios albaranes y viceversa. Vista de qué
-  albaranes están facturados y cuáles no.
+- **✅ T7 — Albaranes ↔ Facturas muchos-a-muchos (HECHO)**: tabla de enlace
+  `invoice_delivery_notes` (migración 0080) + servicio `facturar_albaranes`
+  (mismo cliente, sin anulados, sin doble cobro; líneas prefijadas `[ALB-xxx]`,
+  factura BORRADOR que se emite desde Facturas → allí encadena VeriFactu) +
+  `POST /albaranes/facturar` (denegado al rol employee) + UI: checkboxes en el
+  listado, botón "Facturar seleccionados (N)" y badge "Facturado". 16 tests.
 - **T8 — Albaranes modificables (S/M)**: editar líneas/notas/cliente de un
   albarán no entregado (con guardas: entregado o facturado → solo rectificar).
 - **T9 — Import/export masivo (S/M)**: catálogo de servicios con iconos por

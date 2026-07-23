@@ -17,6 +17,8 @@ export interface DeliveryNote {
     albaran_number: string;
     date: string;
     status: "draft" | "confirmed" | "recibido" | "en_proceso" | "listo" | "delivered" | "anulado";
+    /** T7: facturas enlazadas (vacío = sin facturar). */
+    invoice_ids?: string[];
     notes: string | null;
     amount_base: number;
     tax_amount: number;
@@ -40,6 +42,12 @@ export const albaranes = {
     updateStatus: (id: string, status: string) => request<DeliveryNote>(`/api/v1/albaranes/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
     /** HTML del ticket-resguardo 80 mm (vertical tintorería). */
     ticketHtml: (id: string): Promise<string> => fetchText(`/api/v1/albaranes/${id}/ticket`),
+    /** T7: factura agrupada — N albaranes del mismo cliente → 1 factura borrador. */
+    facturar: (albaran_ids: string[]) =>
+        request<{ id: string; invoice_number: string | null }>("/api/v1/albaranes/facturar", {
+            method: "POST",
+            body: JSON.stringify({ albaran_ids }),
+        }),
     delete: (id: string) => request(`/api/v1/albaranes/${id}`, { method: "DELETE" }),
     pdfUrl: (id: string) => `/api/v1/albaranes/${id}/pdf`,
 };

@@ -704,6 +704,91 @@ async def update_albaran_status(
     return note
 
 
+async def facturar_albaranes(
+    albaran_ids: list[UUID],
+    tenant_id: UUID,
+    db: AsyncSession,
+    *,
+    user_id: UUID | None = None,
+):
+    """Factura agrupada (tintorería T7): N albaranes del MISMO cliente → UNA
+    factura BORRADOR con todas sus líneas (prefijadas con el nº de albarán) y
+    enlaces N:M. El borrador se revisa y se emite desde Facturas (ahí encadena
+    VeriFactu vía el chokepoint). Anti doble cobro: un albarán con enlace vivo
+    no se puede volver a facturar.
+
+    Lanza ValueError con mensaje claro en cada caso inválido."""
+    from app.db.models.billing import InvoiceDeliveryNote
+
+    if not albaran_ids:
+        raise ValueError("Selecciona al menos un albarán.")
+
+    result = await db.execute(
+        select(DeliveryNote)
+        .where(DeliveryNote.id.in_(albaran_ids), DeliveryNote.tenant_id == tenant_id)
+        .options(selectinload(DeliveryNote.lines), selectinload(DeliveryNote.invoice_links))
+    )
+    notes = list(result.scalars().all())
+    if len(notes) != len(set(albaran_ids)):
+        raise ValueError("Algún albarán seleccionado no existe.")
+
+    clientes = {n.client_id for n in notes}
+    if None in clientes:
+        raise ValueError("Todos los albaranes deben tener cliente asignado para facturar.")
+    if len(clientes) != 1:
+        raise ValueError("Todos los albaranes deben ser del mismo cliente.")
+    for n in notes:
+        if n.status == "anulado":
+            raise ValueError(f"El albarán {n.albaran_number} está anulado.")
+        if n.invoice_links:
+            raise ValueError(f"El albarán {n.albaran_number} ya está facturado.")
+
+    lines_data = []
+    for n in sorted(notes, key=lambda x: x.albaran_number or ""):
+        for ln in n.lines:
+            lines_data.append(
+                {
+                    "product_id": ln.product_id,
+                    "description": f"[{n.albaran_number}] {ln.description}",
+                    "quantity": float(ln.quantity or 0),
+                    "unit_price": float(ln.unit_price or 0),
+                    "discount_percentage": 0.0,
+                    "tax_percentage": float(ln.tax_percentage) if ln.tax_percentage is not None else 21.0,
+                }
+            )
+    if not lines_data:
+        raise ValueError("Los albaranes seleccionados no tienen líneas.")
+
+    from app.services.billing.commands import create_invoice
+
+    invoice = await create_invoice(
+        next(iter(clientes)),
+        {
+            "date": datetime.now(UTC),
+            "status": "draft",
+            "invoice_type": "issued",
+            "notes": "Factura agrupada de albaranes: " + ", ".join(n.albaran_number for n in notes),
+        },
+        lines_data,
+        tenant_id,
+        user_id,
+        db,
+    )
+
+    # Enlaces N:M. create_invoice ya commiteó la factura; si este commit fallara,
+    # quedaría un borrador visible SIN enlaces (borrable), nunca un doble cobro
+    # silencioso: el error llega al llamador.
+    for n in notes:
+        db.add(InvoiceDeliveryNote(tenant_id=tenant_id, invoice_id=invoice.id, albaran_id=n.id))
+    await db.commit()
+    # Con expire_on_commit=False, los albaranes de ESTA sesión conservarían su
+    # colección invoice_links vacía (cargada antes de crear los enlaces) y un
+    # listado posterior en la misma sesión mentiría. Se refresca explícito.
+    for n in notes:
+        await db.refresh(n, attribute_names=["invoice_links"])
+    return invoice
+
+
 async def delete_albaran(albaran_id: UUID, tenant_id: UUID, db: AsyncSession, *, user_id: UUID | None = None) -> None:
     result = await db.execute(
         select(DeliveryNote)
