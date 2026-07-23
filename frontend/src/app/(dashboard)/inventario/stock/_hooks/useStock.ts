@@ -21,6 +21,7 @@ export interface ProductForm {
     sku: string;
     barcode: string;
     category: string;
+    icon: string;
     location: string;
     unit: string;
     price: number;
@@ -33,7 +34,7 @@ export interface ProductForm {
 }
 
 const emptyProductForm: ProductForm = {
-    name: "", sku: "", barcode: "", category: "", location: "", unit: "ud",
+    name: "", sku: "", barcode: "", category: "", icon: "", location: "", unit: "ud",
     price: 0, cost_price: null, stock_min_alert: 0,
     description: "", is_active: true, supplier_id: null, reorder_quantity: null,
 };
@@ -170,6 +171,7 @@ export function useStock() {
             sku: product.sku || "",
             barcode: product.barcode || "",
             category: product.category || "",
+            icon: product.icon || "",
             location: product.location || "",
             unit: product.unit || "ud",
             price: product.price,
@@ -191,6 +193,7 @@ export function useStock() {
             sku: productForm.sku || null,
             barcode: productForm.barcode || null,
             category: productForm.category || null,
+            icon: productForm.icon || null,
             location: productForm.location || null,
             description: productForm.description || null,
             supplier_id: productForm.supplier_id || null,

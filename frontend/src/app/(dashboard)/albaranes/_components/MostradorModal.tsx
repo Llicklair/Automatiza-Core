@@ -29,6 +29,7 @@ export function MostradorModal({ onClose, onCreated }: { onClose: () => void; on
     const toast = useToastStore();
     const [products, setProducts] = useState<Product[]>([]);
     const [cat, setCat] = useState("");
+    const [prodQ, setProdQ] = useState("");
     const [clienteQ, setClienteQ] = useState("");
     const [resultados, setResultados] = useState<Client[]>([]);
     const [cliente, setCliente] = useState<Client | null>(null);
@@ -65,7 +66,16 @@ export function MostradorModal({ onClose, onCreated }: { onClose: () => void; on
         () => Array.from(new Set(products.map((p) => p.category).filter(Boolean))) as string[],
         [products],
     );
-    const visibles = useMemo(() => (cat ? products.filter((p) => p.category === cat) : products), [products, cat]);
+    const visibles = useMemo(() => {
+        let lista = cat ? products.filter((p) => p.category === cat) : products;
+        const q = prodQ.trim().toLowerCase();
+        if (q) {
+            lista = lista.filter(
+                (p) => p.name.toLowerCase().includes(q) || (p.sku || "").toLowerCase().includes(q),
+            );
+        }
+        return lista;
+    }, [products, cat, prodQ]);
 
     const addProducto = (p: Product) => {
         setLineas((prev) => {
@@ -219,6 +229,17 @@ export function MostradorModal({ onClose, onCreated }: { onClose: () => void; on
                                 <Button size="sm" variant="ghost" onClick={() => setShowAlta(false)}>{t("mostrador.close")}</Button>
                             </div>
                         )}
+
+                        {/* Buscador del catálogo */}
+                        <div className="relative">
+                            <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                            <Input
+                                value={prodQ}
+                                onChange={(e) => setProdQ(e.target.value)}
+                                placeholder={t("mostrador.buscarProducto")}
+                                className="pl-9 h-10"
+                            />
+                        </div>
 
                         {/* Categorías */}
                         {categorias.length > 0 && (

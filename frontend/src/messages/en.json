@@ -1281,6 +1281,7 @@
       "table": {
         "employee": "Employee",
         "category": "Category",
+      "icon": "Catalog icon (emoji)",
         "description": "Description",
         "date": "Date",
         "amount": "Amount",
@@ -5391,6 +5392,7 @@
         "crear": "Create",
         "cambiar": "Change",
         "todas": "All",
+        "buscarProducto": "Search the catalog…",
         "sinProductos": "No products in the catalog. Create them in Inventory → Stock.",
         "vacio": "Tap catalog products to add them",
         "notas": "Order notes (stain, urgency, etc.)",

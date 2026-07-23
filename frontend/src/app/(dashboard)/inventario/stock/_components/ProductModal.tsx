@@ -86,6 +86,16 @@ export function ProductModal({ open, onOpenChange, editingProduct, productForm, 
                             />
                         </div>
                         <div>
+                            <Label className="text-xs">{t("productModal.icon")}</Label>
+                            <Input
+                                type="text"
+                                value={productForm.icon}
+                                onChange={e => setProductForm(f => ({ ...f, icon: e.target.value.slice(0, 4) }))}
+                                placeholder="👔"
+                                className="mt-1.5"
+                            />
+                        </div>
+                        <div>
                             <Label className="text-xs">{t("productModal.unit")}</Label>
                             <select
                                 value={productForm.unit}
