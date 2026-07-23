@@ -60,7 +60,7 @@ repo como vertical activable por tenant, sin fork._
 - Vista de entrega: prendas, estado, notas → botón **"Entregar"** → estado
   `entregado` registrado.
 
-### T5 — Acceso de empleados (M)
+### ✅ T5 — Acceso de empleados (HECHO, commit `861cfe1e`)
 - Rol/permiso "mostrador": crear albaranes, cambiar estados y entregar SIN
   acceso al resto del ERP (facturas, nóminas, config).
 - Landing simplificada para ese rol (directo al modo mostrador).
