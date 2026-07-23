@@ -34,20 +34,20 @@ repo como vertical activable por tenant, sin fork._
 
 ## Tandas de construcción (cada una verificada y entregable por sí sola)
 
-### T1 — Estados del ciclo tintorería (S)
+### ✅ T1 — Estados del ciclo tintorería (HECHO, `48a692a6`)
 - `DeliveryNote.status`: añadir `recibido`, `en_proceso`, `listo` al flujo
   (hoy: draft/confirmed/delivered → mapeo compatible; `delivered`=entregado).
 - Máquina de estados + transición en un clic desde la lista/detalle.
 - Registro de quién y cuándo entrega (`delivered_at`, `delivered_by`).
 
-### T2 — Ticket-resguardo 80 mm del albarán (S/M)
+### ✅ T2 — Ticket-resguardo 80 mm del albarán (HECHO, `48a692a6`)
 - HTML autocontenido (mismo patrón que el ticket del TPV): negocio, nº albarán
   grande, **código de barras/QR con el número** (para localizarlo al volver),
   líneas, notas, leyenda "Resguardo de depósito".
 - Botón imprimir + impresión automática al generar (reutiliza ajustes de
   impresora del TPV).
 
-### T3 — Modal de creación rápida "modo mostrador" (M)
+### ✅ T3 — Modal de creación rápida "modo mostrador" (HECHO, `be50d21a` + buscador/icono `1208a1ac`)
 - Grid táctil de productos con **iconos** y categorías (asunción: campo
   icono/emoji por producto — validar si quieren fotos).
 - Cliente: un solo buscador (NIF/teléfono/nombre) + **alta exprés** inline.
