@@ -5411,7 +5411,7 @@
     "title": "Delivery notes",
     "subtitle": "Management of delivery notes and dispatch notes.",
     "newAlbaran": "New delivery note",
-    "searchPlaceholder": "Search by number...",
+    "searchPlaceholder": "Search by number, client, tax ID, phone...",
     "loading": "Loading delivery notes...",
     "filter": {
       "allStatuses": "All statuses"
@@ -5439,6 +5439,7 @@
       "noClient": "No client"
     },
     "actions": {
+        "edit": "Edit delivery note",
       "downloadPdf": "Download PDF",
       "printTicket": "Print receipt (ticket)",
       "convertToInvoice": "Convert to invoice"
@@ -5448,6 +5449,8 @@
       "message": "Delete this delivery note? This action cannot be undone."
     },
     "toasts": {
+        "updated": "Delivery note updated",
+        "updateError": "Could not update the delivery note",
         "facturarOk": "Invoice {number} created (draft) — review it in Sales → Invoices",
         "facturarError": "Could not create the grouped invoice",
       "needLine": "Add at least one line with a description.",
@@ -5457,6 +5460,8 @@
       "unknownError": "Unknown error"
     },
     "modal": {
+        "editTitle": "Edit delivery note",
+        "submitEdit": "Save changes",
       "title": "New delivery note",
       "client": "Client",
       "clientPlaceholder": "Client name (optional)",

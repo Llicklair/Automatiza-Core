@@ -23,6 +23,16 @@ class DeliveryNoteCreate(BaseModel):
     lines: list[DeliveryNoteLineCreate] = []
 
 
+class DeliveryNoteUpdate(BaseModel):
+    """Edición T8. None = no tocar; "" en notes/client_name = limpiar."""
+
+    client_id: UUID | None = None
+    client_name: str | None = None
+    date: date_type | None = None
+    notes: str | None = None
+    lines: list[DeliveryNoteLineCreate] | None = None
+
+
 class DeliveryNoteStatusUpdate(BaseModel):
     status: str  # draft, confirmed, delivered
 
@@ -53,6 +63,11 @@ class DeliveryNoteResponse(BaseModel):
     lines: list[DeliveryNoteLineResponse] = []
     # T7: facturas enlazadas (lo puebla list_albaranes; vacío en otras rutas).
     invoice_ids: list[UUID] = []
+    # Datos del cliente (solo en el listado): buscador por nombre/NIF/tel/email.
+    client_name: str | None = None
+    client_nif: str | None = None
+    client_phone: str | None = None
+    client_email: str | None = None
     model_config = {"from_attributes": True}
 
 

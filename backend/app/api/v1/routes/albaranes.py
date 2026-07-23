@@ -10,6 +10,7 @@ from app.api.v1.schemas.albaranes import (
     DeliveryNoteCreate,
     DeliveryNoteResponse,
     DeliveryNoteStatusUpdate,
+    DeliveryNoteUpdate,
     FacturarAlbaranesRequest,
 )
 from app.api.v1.schemas.erp import InvoiceResponse
@@ -47,6 +48,7 @@ async def create_albaran(
         notes=payload.notes,
         lines=payload.lines,
         db=db,
+        client_name=payload.client_name,
     )
 
 
@@ -77,6 +79,35 @@ async def get_albaran(
 ):
     try:
         return await svc.get_albaran(albaran_id, current_user.tenant_id, db)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.put("/{albaran_id}", response_model=DeliveryNoteResponse)
+@limiter.limit("30/minute")
+async def update_albaran(
+    request: Request,
+    albaran_id: UUID,
+    payload: DeliveryNoteUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Edición de albarán (tintorería T8). Entregado/anulado o facturado no
+    se editan (solo rectificar); confirmado con stock descontado no admite
+    cambio de líneas."""
+    try:
+        return await svc.update_albaran(
+            albaran_id,
+            current_user.tenant_id,
+            db,
+            client_id=payload.client_id,
+            client_name=payload.client_name,
+            entry_date=payload.date,
+            notes=payload.notes,
+            lines=payload.lines,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 

@@ -5411,7 +5411,7 @@
     "title": "Albaranes",
     "subtitle": "Gestión de albaranes y notas de entrega.",
     "newAlbaran": "Nuevo Albarán",
-    "searchPlaceholder": "Buscar por número...",
+    "searchPlaceholder": "Buscar por número, cliente, NIF, teléfono...",
     "loading": "Cargando albaranes...",
     "filter": {
       "allStatuses": "Todos los estados"
@@ -5439,6 +5439,7 @@
       "noClient": "Sin cliente"
     },
     "actions": {
+        "edit": "Editar albarán",
       "downloadPdf": "Descargar PDF",
       "printTicket": "Imprimir resguardo (ticket)",
       "convertToInvoice": "Convertir a Factura"
@@ -5448,6 +5449,8 @@
       "message": "¿Eliminar este albarán? Esta acción no se puede deshacer."
     },
     "toasts": {
+        "updated": "Albarán actualizado",
+        "updateError": "No se pudo actualizar el albarán",
         "facturarOk": "Factura {number} creada (borrador) — revísala en Ventas → Facturas",
         "facturarError": "No se pudo crear la factura agrupada",
       "needLine": "Añade al menos una línea con descripción.",
@@ -5457,6 +5460,8 @@
       "unknownError": "Error desconocido"
     },
     "modal": {
+        "editTitle": "Editar albarán",
+        "submitEdit": "Guardar cambios",
       "title": "Nuevo Albarán",
       "client": "Cliente",
       "clientPlaceholder": "Nombre del cliente (opcional)",

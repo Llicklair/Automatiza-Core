@@ -17,16 +17,18 @@ interface Props {
     setLines: React.Dispatch<React.SetStateAction<LineForm[]>>;
     onClose: () => void;
     onSubmit: (e: React.FormEvent) => void;
+    /** T8: true cuando el modal edita un albarán existente. */
+    editing?: boolean;
 }
 
-export function AlbaranModal({ saving, clientName, setClientName, date, setDate, notes, setNotes, lines, setLines, onClose, onSubmit }: Props) {
+export function AlbaranModal({ saving, clientName, setClientName, date, setDate, notes, setNotes, lines, setLines, onClose, onSubmit, editing }: Props) {
     const t = useTranslations("albaranes");
     const tc = useTranslations("common");
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-card border border-border rounded-2xl w-full max-w-3xl shadow-2xl flex flex-col max-h-[90vh]">
                 <div className="flex items-center justify-between p-6 border-b border-border">
-                    <h3 className="text-xl font-bold text-foreground">{t("modal.title")}</h3>
+                    <h3 className="text-xl font-bold text-foreground">{t(editing ? "modal.editTitle" : "modal.title")}</h3>
                     <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition" aria-label={tc("close")}>
                         <X className="w-5 h-5" aria-hidden="true" />
                     </button>
@@ -96,7 +98,7 @@ export function AlbaranModal({ saving, clientName, setClientName, date, setDate,
                         <button type="submit" disabled={saving}
                             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-primary disabled:opacity-50 text-foreground text-sm font-medium transition">
                             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                            {t("modal.submit")}
+                            {t(editing ? "modal.submitEdit" : "modal.submit")}
                         </button>
                     </div>
                 </form>

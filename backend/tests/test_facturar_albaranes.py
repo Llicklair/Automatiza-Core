@@ -46,7 +46,7 @@ async def _albaran(db, tenant_id, client_id, *, numero, total="12.10", status="d
 async def _cliente(db, tenant_id, name="Hotel Sol SL"):
     # NIF único por nombre: la tabla tiene unique(tenant_id, nif).
     nif = f"B{abs(hash(name)) % 10**8:08d}"
-    cli = Client(tenant_id=tenant_id, name=name, nif=nif)
+    cli = Client(tenant_id=tenant_id, name=name, nif=nif, phone="612 345 678")
     db.add(cli)
     await db.flush()
     return cli
@@ -77,10 +77,14 @@ class TestFacturarAlbaranes:
         )
         assert {link.albaran_id for link in links} == {a1.id, a2.id}
 
-        # El listado expone los enlaces (badge "Facturado" en el frontend).
+        # El listado expone los enlaces (badge "Facturado" en el frontend)
+        # y los datos del cliente para el buscador por nombre/NIF/teléfono (T4).
         listado = await list_albaranes(tenant.id, db)
         por_num = {n.albaran_number: n for n in listado}
         assert por_num["ALB-001"].invoice_ids == [invoice.id]
+        assert por_num["ALB-001"].client_name == "Hotel Sol SL"
+        assert por_num["ALB-001"].client_nif == cli.nif
+        assert por_num["ALB-001"].client_phone == "612 345 678"
 
     async def test_clientes_distintos_rechazado(self, db, seed_tenant_and_user):
         tenant, user, _t = seed_tenant_and_user

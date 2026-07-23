@@ -12,7 +12,7 @@ import { useToastStore } from "@/stores/toast";
 import { showConfirm } from "@/stores/confirm";
 import { logError } from "@/lib/logger";
 
-export type LineForm = { description: string; quantity: string; unit_price: string; tax_percentage: string };
+export type LineForm = { description: string; quantity: string; unit_price: string; tax_percentage: string; product_id?: string | null };
 
 export const emptyLine = (): LineForm => ({ description: "", quantity: "1", unit_price: "0", tax_percentage: "21" });
 
@@ -43,6 +43,8 @@ export function useAlbaranes() {
     const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
     const [notes, setNotes] = useState("");
     const [lines, setLines] = useState<LineForm[]>([emptyLine(), emptyLine()]);
+    // T8: id del albarán en edición (null = creando).
+    const [editingId, setEditingId] = useState<string | null>(null);
 
     const loadData = async () => {
         setLoading(true);
@@ -56,6 +58,25 @@ export function useAlbaranes() {
     const resetModal = () => {
         setClientName(""); setDate(new Date().toISOString().split("T")[0]);
         setNotes(""); setLines([emptyLine(), emptyLine()]);
+        setEditingId(null);
+    };
+
+    // T8: precarga el modal con un albarán existente para editarlo.
+    const openEdit = (a: DeliveryNote) => {
+        setEditingId(a.id);
+        setClientName(a.client_name ?? "");
+        setDate(a.date.split("T")[0]);
+        setNotes(a.notes ?? "");
+        setLines(a.lines.length
+            ? a.lines.map(l => ({
+                description: l.description,
+                quantity: String(l.quantity),
+                unit_price: String(l.unit_price),
+                tax_percentage: String(l.tax_percentage),
+                product_id: l.product_id,
+            }))
+            : [emptyLine()]);
+        setShowModal(true);
     };
 
     const handleCreate = async (e: React.FormEvent) => {
@@ -63,22 +84,34 @@ export function useAlbaranes() {
         const validLines = lines.filter(l => l.description.trim());
         if (!validLines.length) { toast.warning(t("toasts.needLine")); return; }
         setSaving(true);
+        const mappedLines = validLines.map(l => ({
+            product_id: l.product_id ?? undefined,
+            description: l.description,
+            quantity: parseFloat(l.quantity) || 1,
+            unit_price: parseFloat(l.unit_price) || 0,
+            tax_percentage: parseFloat(l.tax_percentage) || 21,
+        }));
         try {
-            const payload: DeliveryNoteCreate = {
-                client_name: clientName || undefined,
-                date,
-                notes: notes || undefined,
-                lines: validLines.map(l => ({
-                    description: l.description,
-                    quantity: parseFloat(l.quantity) || 1,
-                    unit_price: parseFloat(l.unit_price) || 0,
-                    tax_percentage: parseFloat(l.tax_percentage) || 21,
-                })),
-            };
-            await api.albaranes.create(payload);
-            setShowModal(false); resetModal(); await loadData();
-            toast.success(t("toasts.created"));
-        } catch (e: unknown) { toast.error(t("toasts.createError", { error: e instanceof Error ? e.message : t("toasts.unknownError") })); }
+            if (editingId) {
+                // client_name/notes van siempre: "" limpia el campo en el backend.
+                await api.albaranes.update(editingId, { client_name: clientName, date, notes, lines: mappedLines });
+                setShowModal(false); resetModal(); await loadData();
+                toast.success(t("toasts.updated"));
+            } else {
+                const payload: DeliveryNoteCreate = {
+                    client_name: clientName || undefined,
+                    date,
+                    notes: notes || undefined,
+                    lines: mappedLines,
+                };
+                await api.albaranes.create(payload);
+                setShowModal(false); resetModal(); await loadData();
+                toast.success(t("toasts.created"));
+            }
+        } catch (e: unknown) {
+            if (editingId) toast.error(e instanceof Error ? e.message : t("toasts.updateError"));
+            else toast.error(t("toasts.createError", { error: e instanceof Error ? e.message : t("toasts.unknownError") }));
+        }
         finally { setSaving(false); }
     };
 
@@ -135,8 +168,17 @@ export function useAlbaranes() {
         router.push(`/ventas/facturas/nueva?from_albaran=${albaran.id}`);
     };
 
+    // Buscador del mostrador (T4): número, cliente, NIF/DNI, teléfono o email.
+    // El teléfono se compara solo por dígitos ("612 34 56" encuentra "612345678").
+    const q = search.trim().toLowerCase();
+    const qDigits = q.replace(/\D/g, "");
     const filtered = albaranes.filter(a => {
-        const matchSearch = !search || a.albaran_number.toLowerCase().includes(search.toLowerCase());
+        const matchSearch = !q
+            || a.albaran_number.toLowerCase().includes(q)
+            || (a.client_name ?? "").toLowerCase().includes(q)
+            || (a.client_nif ?? "").toLowerCase().includes(q)
+            || (a.client_email ?? "").toLowerCase().includes(q)
+            || (qDigits.length >= 3 && (a.client_phone ?? "").replace(/\D/g, "").includes(qDigits));
         const matchStatus = !filterStatus || a.status === filterStatus;
         return matchSearch && matchStatus;
     });
@@ -147,6 +189,7 @@ export function useAlbaranes() {
         clientName, setClientName, date, setDate, notes, setNotes, lines, setLines,
         resetModal, handleCreate, handleDelete, handleStatusChange, handleDownloadPdf, handleConvertToInvoice, handlePrintTicket,
         handleFacturar,
+        openEdit, editingId,
         reload: loadData,
         filtered,
     };

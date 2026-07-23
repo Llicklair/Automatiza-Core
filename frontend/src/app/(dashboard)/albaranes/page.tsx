@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Plus, Loader2, FileText, Trash2, Download, FileEdit, Search, Printer, Receipt } from "lucide-react";
+import { Plus, Loader2, FileText, Trash2, Download, FileEdit, Search, Printer, Receipt, Pencil } from "lucide-react";
 import { useState } from "react";
 import { useAlbaranes, STATUS_COLORS, fmt } from "./_hooks/useAlbaranes";
 import { AlbaranModal } from "./_components/AlbaranModal";
@@ -17,6 +17,7 @@ export default function AlbaranesPage() {
         clientName, setClientName, date, setDate, notes, setNotes, lines, setLines,
         resetModal, handleCreate, handleDelete, handleStatusChange, handleDownloadPdf, handleConvertToInvoice, handlePrintTicket,
         handleFacturar,
+        openEdit, editingId,
         reload,
         filtered,
     } = useAlbaranes();
@@ -140,7 +141,12 @@ export default function AlbaranesPage() {
                                                 )}
                                             </td>
                                             <td className="px-6 py-4 text-foreground">{new Date(albaran.date).toLocaleDateString("es-ES")}</td>
-                                            <td className="px-6 py-4 text-foreground">{albaran.client_id ? "—" : t("table.noClient")}</td>
+                                            <td className="px-6 py-4 text-foreground">
+                                                {albaran.client_name ?? (albaran.client_id ? "—" : t("table.noClient"))}
+                                                {albaran.client_phone && (
+                                                    <span className="block text-xs text-muted-foreground">{albaran.client_phone}</span>
+                                                )}
+                                            </td>
                                             <td className="px-6 py-4">
                                                 <select
                                                     value={albaran.status}
@@ -159,6 +165,13 @@ export default function AlbaranesPage() {
                                             <td className="px-6 py-4 text-right font-medium text-foreground">{fmt(albaran.amount_total)}</td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    {!["delivered", "anulado"].includes(albaran.status) && !(albaran.invoice_ids?.length) && (
+                                                        <button
+                                                            onClick={() => openEdit(albaran)}
+                                                            className="p-1.5 rounded-lg text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10 transition-all"
+                                                            title={t("actions.edit")}
+                                                        ><Pencil className="w-3.5 h-3.5" /></button>
+                                                    )}
                                                     <button
                                                         onClick={() => handlePrintTicket(albaran.id)}
                                                         className="p-1.5 rounded-lg text-muted-foreground hover:text-cyan-400 hover:bg-cyan-500/10 transition-all"
@@ -209,6 +222,7 @@ export default function AlbaranesPage() {
                     setLines={setLines}
                     onClose={() => { setShowModal(false); resetModal(); }}
                     onSubmit={handleCreate}
+                    editing={!!editingId}
                 />
             )}
         </PageContainer>

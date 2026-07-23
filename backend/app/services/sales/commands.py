@@ -12,7 +12,7 @@ from datetime import date as date_type
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import desc, select, text, update
+from sqlalchemy import desc, func, select, text, update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
@@ -439,6 +439,33 @@ async def _next_albaran_number(tenant_id: UUID, db: AsyncSession) -> str:
     return f"ALB-{num:05d}"
 
 
+async def _resolve_client_id(
+    db: AsyncSession,
+    tenant_id: UUID,
+    client_id: UUID | None,
+    client_name: str | None,
+) -> UUID | None:
+    """Resuelve el cliente del albarán. Con client_id lo valida en el tenant;
+    con client_name busca por nombre exacto (case-insensitive) o lo crea
+    (alta exprés del mostrador). Sin ninguno → sin cliente."""
+    if client_id is not None:
+        await assert_fk_in_tenant(db, Client, client_id, tenant_id, "Client")
+        return client_id
+    name = (client_name or "").strip()
+    if not name:
+        return None
+    result = await db.execute(
+        select(Client).where(Client.tenant_id == tenant_id, func.lower(Client.name) == name.lower())
+    )
+    existing = result.scalars().first()
+    if existing:
+        return existing.id
+    nuevo = Client(tenant_id=tenant_id, name=name)
+    db.add(nuevo)
+    await db.flush()
+    return nuevo.id
+
+
 async def create_albaran(
     tenant_id: UUID,
     client_id: UUID | None,
@@ -446,6 +473,8 @@ async def create_albaran(
     notes: str | None,
     lines: list,
     db: AsyncSession,
+    *,
+    client_name: str | None = None,
 ) -> DeliveryNote:
     albaran_number = await _next_albaran_number(tenant_id, db)
     resolved_date = entry_date or local_today()
@@ -459,7 +488,7 @@ async def create_albaran(
         tax_amount += tax
     amount_total = amount_base + tax_amount
 
-    await assert_fk_in_tenant(db, Client, client_id, tenant_id, "Client")
+    client_id = await _resolve_client_id(db, tenant_id, client_id, client_name)
     note = DeliveryNote(
         tenant_id=tenant_id,
         client_id=client_id,
@@ -701,6 +730,79 @@ async def update_albaran_status(
 
     await db.commit()
     await db.refresh(note)
+    return note
+
+
+async def update_albaran(
+    albaran_id: UUID,
+    tenant_id: UUID,
+    db: AsyncSession,
+    *,
+    client_id: UUID | None = None,
+    client_name: str | None = None,
+    entry_date: date_type | None = None,
+    notes: str | None = None,
+    lines: list | None = None,
+) -> DeliveryNote:
+    """Edita un albarán no cerrado (T8 tintorería). Convención de parámetros:
+    None = no tocar; cadena vacía en notes/client_name = limpiar. Guardas:
+    entregado/anulado o ya facturado → solo rectificar (no editable); con
+    stock ya descontado (confirmed) las líneas no se tocan — pásalo a
+    borrador (eso revierte el stock) y edita ahí."""
+    result = await db.execute(
+        select(DeliveryNote)
+        .where(DeliveryNote.id == albaran_id, DeliveryNote.tenant_id == tenant_id)
+        .options(selectinload(DeliveryNote.lines), selectinload(DeliveryNote.invoice_links))
+    )
+    note = result.scalar_one_or_none()
+    if not note:
+        raise LookupError("Albaran no encontrado")
+    if note.status in ("delivered", "anulado"):
+        raise ValueError("No se puede editar un albarán entregado o anulado; emite una rectificación")
+    if note.invoice_links:
+        raise ValueError("El albarán ya está facturado; rectifica desde la factura")
+    if lines is not None and note.status == "confirmed":
+        raise ValueError("Albarán confirmado con stock descontado: pásalo a borrador para editar las líneas")
+
+    if entry_date is not None:
+        note.date = entry_date
+    if notes is not None:
+        note.notes = notes.strip() or None
+    if client_id is not None or client_name is not None:
+        if client_id is None and not (client_name or "").strip():
+            note.client_id = None
+        else:
+            note.client_id = await _resolve_client_id(db, tenant_id, client_id, client_name)
+
+    if lines is not None:
+        if not lines:
+            raise ValueError("El albarán necesita al menos una línea")
+        # Reemplazo completo vía colección: delete-orphan borra las viejas y el
+        # cascade inserta las nuevas (la colección en memoria queda fiel con
+        # expire_on_commit=False).
+        note.lines.clear()
+        amount_base = Decimal("0")
+        tax_amount = Decimal("0")
+        for line in lines:
+            base = Decimal(str(line.quantity)) * Decimal(str(line.unit_price))
+            tax = base * Decimal(str(line.tax_percentage)) / Decimal("100")
+            amount_base += base
+            tax_amount += tax
+            note.lines.append(
+                DeliveryNoteLine(
+                    product_id=line.product_id,
+                    description=line.description,
+                    quantity=line.quantity,
+                    unit_price=line.unit_price,
+                    tax_percentage=line.tax_percentage,
+                    total=base + tax,
+                )
+            )
+        note.amount_base = amount_base
+        note.tax_amount = tax_amount
+        note.amount_total = amount_base + tax_amount
+
+    await db.commit()
     return note
 
 

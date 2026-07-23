@@ -54,9 +54,10 @@ repo como vertical activable por tenant, sin fork._
 - Notas/concepto. Botón grande "Generar albarán" → crea + imprime resguardo.
 - Botones grandes, cero teclado salvo búsquedas.
 
-### T4 — Localizar y entregar (S/M)
-- Buscador de albaranes por número/cliente/teléfono + **escaneo del código del
-  resguardo** (lector USB o cámara).
+### T4 — Localizar y entregar (S/M) — buscador ✅, escaneo pendiente
+- ✅ Buscador de albaranes por número/cliente/NIF/teléfono/email (el listado
+  expone los datos del cliente; el teléfono compara solo dígitos).
+- Pendiente: **escaneo del código del resguardo** (lector USB o cámara).
 - Vista de entrega: prendas, estado, notas → botón **"Entregar"** → estado
   `entregado` registrado.
 
@@ -88,8 +89,12 @@ repo como vertical activable por tenant, sin fork._
   factura BORRADOR que se emite desde Facturas → allí encadena VeriFactu) +
   `POST /albaranes/facturar` (denegado al rol employee) + UI: checkboxes en el
   listado, botón "Facturar seleccionados (N)" y badge "Facturado". 16 tests.
-- **T8 — Albaranes modificables (S/M)**: editar líneas/notas/cliente de un
-  albarán no entregado (con guardas: entregado o facturado → solo rectificar).
+- **✅ T8 — Albaranes modificables (HECHO)**: `PUT /albaranes/{id}` + lápiz en
+  el listado (reutiliza el modal). Guardas: entregado/anulado o facturado → no
+  editable (solo rectificar); confirmado con stock descontado no admite cambio
+  de líneas (pasar a borrador primero). Cliente por nombre find-or-create
+  (alta exprés) — de paso el campo cliente del modal de creación, que se
+  ignoraba en silencio, ya enlaza/crea el cliente. 7 tests.
 - **T9 — Import/export masivo (S/M)**: catálogo de servicios con iconos por
   CSV (el import de productos ya existe — añadir columna icon), clientes ya
   importables; dataset "albaranes" en el export Excel del asistente y en CSV.

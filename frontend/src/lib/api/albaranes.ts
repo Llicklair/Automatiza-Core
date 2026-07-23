@@ -19,6 +19,10 @@ export interface DeliveryNote {
     status: "draft" | "confirmed" | "recibido" | "en_proceso" | "listo" | "delivered" | "anulado";
     /** T7: facturas enlazadas (vacío = sin facturar). */
     invoice_ids?: string[];
+    client_name?: string | null;
+    client_nif?: string | null;
+    client_phone?: string | null;
+    client_email?: string | null;
     notes: string | null;
     amount_base: number;
     tax_amount: number;
@@ -35,10 +39,20 @@ export interface DeliveryNoteCreate {
     lines: { product_id?: string; description: string; quantity: number; unit_price: number; tax_percentage: number }[];
 }
 
+/** T8: edición. Campo ausente = no tocar; "" en notes/client_name = limpiar. */
+export interface DeliveryNoteUpdate {
+    client_id?: string;
+    client_name?: string;
+    date?: string;
+    notes?: string;
+    lines?: { product_id?: string; description: string; quantity: number; unit_price: number; tax_percentage: number }[];
+}
+
 export const albaranes = {
     list: () => request<DeliveryNote[]>("/api/v1/albaranes"),
     get: (id: string) => request<DeliveryNote>(`/api/v1/albaranes/${id}`),
     create: (data: DeliveryNoteCreate) => request<DeliveryNote>("/api/v1/albaranes", { method: "POST", body: JSON.stringify(data) }),
+    update: (id: string, data: DeliveryNoteUpdate) => request<DeliveryNote>(`/api/v1/albaranes/${id}`, { method: "PUT", body: JSON.stringify(data) }),
     updateStatus: (id: string, status: string) => request<DeliveryNote>(`/api/v1/albaranes/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
     /** HTML del ticket-resguardo 80 mm (vertical tintorería). */
     ticketHtml: (id: string): Promise<string> => fetchText(`/api/v1/albaranes/${id}/ticket`),
