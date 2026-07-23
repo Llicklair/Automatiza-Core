@@ -18,21 +18,32 @@ from app.services import tenant_service
 # ausentes y lo que esperan los tests *_requiere_auth.
 bearer_scheme = HTTPBearer(auto_error=False)
 
-# Rol "employee": solo accede al portal del empleado, su propio perfil,
-# auth (refresh/logout) y datos básicos del tenant. Cualquier otro path → 403.
+# Rol "employee": portal del empleado, su perfil, auth… y el MOSTRADOR
+# (vertical tintorería T5): albaranes-resguardo, clientes (buscar/alta exprés)
+# y catálogo de productos. Cualquier otro path → 403 (default-deny central).
+# Las subrutas de facturación del cliente quedan explícitamente fuera.
 _EMPLOYEE_ALLOWED_PREFIXES = (
     "/api/v1/portal/",
     "/api/v1/auth/",
+    "/api/v1/albaranes/",
+    "/api/v1/clients/",
+    "/api/v1/products/",
 )
 _EMPLOYEE_ALLOWED_EXACT = frozenset(
     {
         "/api/v1/users/me",
         "/api/v1/tenant/me",
+        "/api/v1/albaranes",
+        "/api/v1/clients",
+        "/api/v1/products",
     }
 )
+_EMPLOYEE_DENIED_FRAGMENTS = ("/invoices",)
 
 
 def _employee_can_access(path: str) -> bool:
+    if any(frag in path for frag in _EMPLOYEE_DENIED_FRAGMENTS):
+        return False
     if path in _EMPLOYEE_ALLOWED_EXACT:
         return True
     return any(path.startswith(p) for p in _EMPLOYEE_ALLOWED_PREFIXES)

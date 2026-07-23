@@ -34,6 +34,10 @@ export function Sidebar() {
     const EMPLOYEE_ALLOWED_HREFS = new Set<string>([
         "/",
         "/portal",
+        // Vertical tintorería T5: el empleado trabaja el MOSTRADOR — albaranes
+        // (crear/resguardo/estados/entrega). El backend lo respalda con el
+        // allowlist central de get_current_user (default-deny).
+        "/albaranes",
         "/configuracion",
         "/configuracion/perfil",
     ]);
