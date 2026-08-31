@@ -9,14 +9,14 @@ packages = [{ include = "app" }]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-fastapi = ">=0.115,<0.138"
-uvicorn = { extras = ["standard"], version = ">=0.32,<0.50" }
+fastapi = ">=0.115,<0.142"
+uvicorn = { extras = ["standard"], version = ">=0.32,<0.53" }
 pydantic = { extras = ["email"], version = "^2.9.0" }
 pydantic-settings = "^2.6.0"
 sqlalchemy = { extras = ["asyncio"], version = "^2.0.36" }
 asyncpg = ">=0.30,<0.32"
 psycopg2-binary = "^2.9.10"
-alembic = "1.18.4"
+alembic = "1.19.1"
 python-jose = { extras = ["cryptography"], version = "^3.3.0" }
 PyJWT = "^2.9.0"
 passlib = { extras = ["bcrypt"], version = "^1.7.4" }
@@ -34,7 +34,7 @@ langchain-groq = "^1.0"
 cryptography = "^43.0.0"
 pypdf = "^5.0.0"
 opendataloader-pdf = ">=2.4,<3"
-pgvector = ">=0.3.6,<0.5.0"
+pgvector = ">=0.3.6,<0.6.0"
 reportlab = "^4.2.0"
 # Renderer PDF basado en HTML+CSS para informes textuales (whitepapers, estudios).
 # Pipeline: markdown → markdown-it-py → HTML → xhtml2pdf → PDF.
@@ -64,7 +64,7 @@ pytest = "^8.3.0"
 pytest-asyncio = "^0.24.0"
 pytest-cov = ">=6,<8"
 httpx = "^0.28.0"
-ruff = ">=0.7,<0.16"
+ruff = ">=0.7,<0.17"
 mypy = ">=1.13,<3.0"
 aiosqlite = ">=0.20,<0.23"
 
